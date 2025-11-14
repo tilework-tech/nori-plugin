@@ -15,7 +15,6 @@ vi.mock('child_process', () => ({
 // Mock filesystem
 vi.mock('fs', () => ({
   appendFileSync: vi.fn(),
-  createWriteStream: vi.fn(),
   openSync: vi.fn(),
   closeSync: vi.fn(),
 }));

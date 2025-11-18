@@ -9,10 +9,10 @@
  * @see mcp/src/installer/features/skills/config/paid-recall/script.ts - Full bundling documentation
  */
 
-import minimist from 'minimist';
+import minimist from "minimist";
 
-import { apiClient } from '@/api/index.js';
-import { loadDiskConfig, generateConfig } from '@/installer/config.js';
+import { apiClient } from "@/api/index.js";
+import { loadDiskConfig, generateConfig } from "@/installer/config.js";
 
 /**
  * Show usage information
@@ -64,9 +64,9 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
   const config = generateConfig({ diskConfig });
 
-  if (config.installType !== 'paid') {
-    console.error('Error: This feature requires a paid Nori subscription.');
-    console.error('Please configure your credentials in ~/nori-config.json');
+  if (config.installType !== "paid") {
+    console.error("Error: This feature requires a paid Nori subscription.");
+    console.error("Please configure your credentials in ~/nori-config.json");
     process.exit(1);
   }
 
@@ -95,7 +95,7 @@ export const main = async (): Promise<void> => {
     console.log(
       pathPrefix
         ? `No noridocs found with prefix "${pathPrefix}"`
-        : 'No noridocs found',
+        : "No noridocs found",
     );
     return;
   }
@@ -106,7 +106,7 @@ export const main = async (): Promise<void> => {
         `${i + 1}. ${n.sourceUrl}
    Last updated: ${new Date(n.updatedAt).toLocaleString()}`,
     )
-    .join('\n\n');
+    .join("\n\n");
 
   console.log(`Found ${filtered.length} noridoc(s):\n\n${formatted}`);
 };

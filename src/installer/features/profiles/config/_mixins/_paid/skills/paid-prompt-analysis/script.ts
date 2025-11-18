@@ -22,22 +22,22 @@
  * @see plugin/src/installer/features/skills/loader.ts - Installation to ~/.claude/skills/
  */
 
-import minimist from 'minimist';
+import minimist from "minimist";
 
-import type { FeedbackItem } from '@/api/promptAnalysis.js';
+import { apiClient } from "@/api/index.js";
+import { loadDiskConfig, generateConfig } from "@/installer/config.js";
 
-import { apiClient } from '@/api/index.js';
-import { loadDiskConfig, generateConfig } from '@/installer/config.js';
+import type { FeedbackItem } from "@/api/promptAnalysis.js";
 
 /**
  * ANSI color codes for terminal output
  */
 const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  red: '\x1b[31m',
-  bold: '\x1b[1m',
+  reset: "\x1b[0m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+  bold: "\x1b[1m",
 };
 
 /**
@@ -98,17 +98,17 @@ ${COLORS.bold}Requirements:${COLORS.reset}
 const formatFeedbackItem = (args: { item: FeedbackItem }): string => {
   const { item } = args;
 
-  let symbol = '';
+  let symbol = "";
   let color = COLORS.reset;
 
-  if (item.category === 'good') {
-    symbol = '✓';
+  if (item.category === "good") {
+    symbol = "✓";
     color = COLORS.green;
-  } else if (item.category === 'warning') {
-    symbol = '⚠';
+  } else if (item.category === "warning") {
+    symbol = "⚠";
     color = COLORS.yellow;
-  } else if (item.category === 'critical') {
-    symbol = '✗';
+  } else if (item.category === "critical") {
+    symbol = "✗";
     color = COLORS.red;
   }
 
@@ -123,9 +123,9 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
   const config = generateConfig({ diskConfig });
 
-  if (config.installType !== 'paid') {
-    console.error('Error: This feature requires a paid Nori subscription.');
-    console.error('Please configure your credentials in ~/nori-config.json');
+  if (config.installType !== "paid") {
+    console.error("Error: This feature requires a paid Nori subscription.");
+    console.error("Please configure your credentials in ~/nori-config.json");
     process.exit(1);
   }
 
@@ -133,17 +133,17 @@ export const main = async (): Promise<void> => {
   const args = minimist(process.argv.slice(2));
 
   if (args.prompt == null) {
-    console.error('Error: --prompt parameter is required');
-    console.error('');
+    console.error("Error: --prompt parameter is required");
+    console.error("");
     showUsage();
     process.exit(1);
   }
 
   const prompt = args.prompt as string;
 
-  if (prompt.trim() === '') {
-    console.error('Error: --prompt cannot be empty');
-    console.error('');
+  if (prompt.trim() === "") {
+    console.error("Error: --prompt cannot be empty");
+    console.error("");
     showUsage();
     process.exit(1);
   }
@@ -155,17 +155,17 @@ export const main = async (): Promise<void> => {
 
   // 4. Format and display output
   if (!result.feedback || result.feedback.length === 0) {
-    console.log('No feedback available for this prompt.');
+    console.log("No feedback available for this prompt.");
     return;
   }
 
   // Group feedback by category
-  const good = result.feedback.filter((item) => item.category === 'good');
+  const good = result.feedback.filter((item) => item.category === "good");
   const warnings = result.feedback.filter(
-    (item) => item.category === 'warning',
+    (item) => item.category === "warning",
   );
   const critical = result.feedback.filter(
-    (item) => item.category === 'critical',
+    (item) => item.category === "critical",
   );
 
   console.log(`${COLORS.bold}Prompt Analysis Results:${COLORS.reset}\n`);
@@ -177,7 +177,7 @@ export const main = async (): Promise<void> => {
     good.forEach((item) => {
       console.log(`  ${formatFeedbackItem({ item })}`);
     });
-    console.log('');
+    console.log("");
   }
 
   if (warnings.length > 0) {
@@ -187,7 +187,7 @@ export const main = async (): Promise<void> => {
     warnings.forEach((item) => {
       console.log(`  ${formatFeedbackItem({ item })}`);
     });
-    console.log('');
+    console.log("");
   }
 
   if (critical.length > 0) {
@@ -197,7 +197,7 @@ export const main = async (): Promise<void> => {
     critical.forEach((item) => {
       console.log(`  ${formatFeedbackItem({ item })}`);
     });
-    console.log('');
+    console.log("");
   }
 
   console.log(

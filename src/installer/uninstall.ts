@@ -6,19 +6,19 @@
  * Removes all features installed by the Nori Agent Brain installer.
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as path from "path";
 
-import { trackEvent } from '@/installer/analytics.js';
+import { trackEvent } from "@/installer/analytics.js";
 import {
   loadDiskConfig,
   generateConfig,
   getConfigPath,
   type Config,
-} from '@/installer/config.js';
-import { LoaderRegistry } from '@/installer/features/loaderRegistry.js';
-import { error, success, info, warn } from '@/installer/logger.js';
-import { promptUser } from '@/installer/prompt.js';
+} from "@/installer/config.js";
+import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
+import { error, success, info, warn } from "@/installer/logger.js";
+import { promptUser } from "@/installer/prompt.js";
 
 /**
  * Prompt user for confirmation before uninstalling
@@ -27,11 +27,10 @@ import { promptUser } from '@/installer/prompt.js';
 const promptForUninstall = async (): Promise<{
   config: Config;
 } | null> => {
-  info({ message: 'Nori Agent Brain Uninstaller' });
+  info({ message: "Nori Agent Brain Uninstaller" });
   console.log();
   warn({
-    message:
-      'This will remove all Nori Agent Brain features from your system.',
+    message: "This will remove all Nori Agent Brain features from your system.",
   });
   console.log();
 
@@ -39,7 +38,7 @@ const promptForUninstall = async (): Promise<{
   const existingDiskConfig = await loadDiskConfig();
 
   if (existingDiskConfig?.auth) {
-    info({ message: 'Found existing Nori configuration:' });
+    info({ message: "Found existing Nori configuration:" });
     info({ message: `  Username: ${existingDiskConfig.auth.username}` });
     info({
       message: `  Organization URL: ${existingDiskConfig.auth.organizationUrl}`,
@@ -48,29 +47,29 @@ const promptForUninstall = async (): Promise<{
   } else {
     info({
       message:
-        'No existing configuration found. Will uninstall free mode features.',
+        "No existing configuration found. Will uninstall free mode features.",
     });
     console.log();
   }
 
-  info({ message: 'The following will be removed:' });
+  info({ message: "The following will be removed:" });
   if (existingDiskConfig?.auth) {
-    info({ message: '  - MCP server (agent-brain)' });
-    info({ message: '  - nori-knowledge-researcher subagent' });
-    info({ message: '  - Automatic memorization hooks' });
+    info({ message: "  - MCP server (agent-brain)" });
+    info({ message: "  - nori-knowledge-researcher subagent" });
+    info({ message: "  - Automatic memorization hooks" });
   }
-  info({ message: '  - Desktop notification hook' });
-  info({ message: '  - Status line configuration' });
-  info({ message: '  - CLAUDE.md (with confirmation)' });
-  info({ message: '  - Nori configuration file' });
+  info({ message: "  - Desktop notification hook" });
+  info({ message: "  - Status line configuration" });
+  info({ message: "  - CLAUDE.md (with confirmation)" });
+  info({ message: "  - Nori configuration file" });
   console.log();
 
   const proceed = await promptUser({
-    prompt: 'Do you want to proceed with uninstallation? (y/n): ',
+    prompt: "Do you want to proceed with uninstallation? (y/n): ",
   });
 
   if (!proceed.match(/^[Yy]$/)) {
-    info({ message: 'Uninstallation cancelled.' });
+    info({ message: "Uninstallation cancelled." });
     return null;
   }
 
@@ -87,18 +86,18 @@ const promptForUninstall = async (): Promise<{
 const removeConfigFile = async (): Promise<void> => {
   const configPath = getConfigPath();
   const versionPath = path.join(
-    process.env.HOME || '~',
-    '.nori-installed-version',
+    process.env.HOME || "~",
+    ".nori-installed-version",
   );
 
-  info({ message: 'Removing Nori configuration files...' });
+  info({ message: "Removing Nori configuration files..." });
 
   try {
     await fs.access(configPath);
     await fs.unlink(configPath);
     success({ message: `✓ Configuration file removed: ${configPath}` });
   } catch {
-    info({ message: 'Configuration file not found (may not exist)' });
+    info({ message: "Configuration file not found (may not exist)" });
   }
 
   // Also remove version file
@@ -107,7 +106,7 @@ const removeConfigFile = async (): Promise<void> => {
     await fs.unlink(versionPath);
     success({ message: `✓ Version file removed: ${versionPath}` });
   } catch {
-    info({ message: 'Version file not found (may not exist)' });
+    info({ message: "Version file not found (may not exist)" });
   }
 };
 
@@ -135,7 +134,7 @@ export const runUninstall = async (args?: {
 
   // Track uninstallation start
   trackEvent({
-    eventName: 'plugin_uninstall_started',
+    eventName: "plugin_uninstall_started",
     eventParams: {
       install_type: config.installType,
     },
@@ -165,7 +164,7 @@ export const runUninstall = async (args?: {
 
   // Track uninstallation completion
   trackEvent({
-    eventName: 'plugin_uninstall_completed',
+    eventName: "plugin_uninstall_completed",
     eventParams: {
       install_type: config.installType,
     },
@@ -204,28 +203,26 @@ export const main = async (args?: {
     console.log();
     success({
       message:
-        '======================================================================',
+        "======================================================================",
+    });
+    success({
+      message: "       Nori Agent Brain Uninstallation Complete!              ",
     });
     success({
       message:
-        '       Nori Agent Brain Uninstallation Complete!              ',
-    });
-    success({
-      message:
-        '======================================================================',
+        "======================================================================",
     });
     console.log();
 
-    info({ message: 'All features have been removed.' });
+    info({ message: "All features have been removed." });
     console.log();
     warn({
-      message:
-        'Note: You must restart Claude Code for changes to take effect!',
+      message: "Note: You must restart Claude Code for changes to take effect!",
     });
     console.log();
     info({
       message:
-        'To completely remove the package, run: npm uninstall -g nori-ai',
+        "To completely remove the package, run: npm uninstall -g nori-ai",
     });
   } catch (err: any) {
     error({ message: err.message });

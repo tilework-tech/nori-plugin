@@ -2,15 +2,15 @@
  * Tests for paid-write-noridoc skill script
  */
 
-import * as fs from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { main } from './script.js';
+import { main } from "./script.js";
 
-describe('paid-write-noridoc script', () => {
+describe("paid-write-noridoc script", () => {
   let tempConfigPath: string;
   let originalHome: string | undefined;
   let originalArgv: Array<string>;
@@ -23,13 +23,13 @@ describe('paid-write-noridoc script', () => {
 
     const tempDir = path.join(os.tmpdir(), `write-noridoc-test-${Date.now()}`);
     process.env.HOME = tempDir;
-    tempConfigPath = path.join(tempDir, 'nori-config.json');
+    tempConfigPath = path.join(tempDir, "nori-config.json");
 
     consoleErrorSpy = vi
-      .spyOn(console, 'error')
+      .spyOn(console, "error")
       .mockImplementation(() => undefined);
     processExitSpy = vi
-      .spyOn(process, 'exit')
+      .spyOn(process, "exit")
       .mockImplementation((code?: string | number | null) => {
         throw new Error(`process.exit(${code})`);
       }) as any;
@@ -54,100 +54,100 @@ describe('paid-write-noridoc script', () => {
     }
   });
 
-  describe('tier checking', () => {
-    it('should fail when no config file exists', async () => {
+  describe("tier checking", () => {
+    it("should fail when no config file exists", async () => {
       process.argv = [
-        'node',
-        'script.js',
-        '--filePath=@/test',
-        '--content=Test',
+        "node",
+        "script.js",
+        "--filePath=@/test",
+        "--content=Test",
       ];
 
-      await expect(main()).rejects.toThrow('process.exit(1)');
+      await expect(main()).rejects.toThrow("process.exit(1)");
       expect(processExitSpy).toHaveBeenCalledWith(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error: This feature requires a paid Nori subscription.',
+        "Error: This feature requires a paid Nori subscription.",
       );
     });
 
-    it('should fail when config has no auth credentials', async () => {
+    it("should fail when config has no auth credentials", async () => {
       await fs.mkdir(path.dirname(tempConfigPath), { recursive: true });
       await fs.writeFile(tempConfigPath, JSON.stringify({}));
 
       process.argv = [
-        'node',
-        'script.js',
-        '--filePath=@/test',
-        '--content=Test',
+        "node",
+        "script.js",
+        "--filePath=@/test",
+        "--content=Test",
       ];
 
-      await expect(main()).rejects.toThrow('process.exit(1)');
+      await expect(main()).rejects.toThrow("process.exit(1)");
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
   });
 
-  describe('argument parsing', () => {
-    it('should fail when --filePath is missing', async () => {
+  describe("argument parsing", () => {
+    it("should fail when --filePath is missing", async () => {
       await fs.mkdir(path.dirname(tempConfigPath), { recursive: true });
       await fs.writeFile(
         tempConfigPath,
         JSON.stringify({
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://test.nori.ai',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://test.nori.ai",
         }),
       );
 
-      process.argv = ['node', 'script.js', '--content=Test'];
+      process.argv = ["node", "script.js", "--content=Test"];
 
-      await expect(main()).rejects.toThrow('process.exit(1)');
+      await expect(main()).rejects.toThrow("process.exit(1)");
       expect(processExitSpy).toHaveBeenCalledWith(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error: --filePath parameter is required',
+        "Error: --filePath parameter is required",
       );
     });
 
-    it('should fail when --content is missing', async () => {
+    it("should fail when --content is missing", async () => {
       await fs.mkdir(path.dirname(tempConfigPath), { recursive: true });
       await fs.writeFile(
         tempConfigPath,
         JSON.stringify({
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://test.nori.ai',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://test.nori.ai",
         }),
       );
 
-      process.argv = ['node', 'script.js', '--filePath=@/test'];
+      process.argv = ["node", "script.js", "--filePath=@/test"];
 
-      await expect(main()).rejects.toThrow('process.exit(1)');
+      await expect(main()).rejects.toThrow("process.exit(1)");
       expect(processExitSpy).toHaveBeenCalledWith(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error: --content parameter is required',
+        "Error: --content parameter is required",
       );
     });
 
-    it('should show usage help when arguments are invalid', async () => {
+    it("should show usage help when arguments are invalid", async () => {
       await fs.mkdir(path.dirname(tempConfigPath), { recursive: true });
       await fs.writeFile(
         tempConfigPath,
         JSON.stringify({
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://test.nori.ai',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://test.nori.ai",
         }),
       );
 
-      process.argv = ['node', 'script.js'];
+      process.argv = ["node", "script.js"];
 
-      await expect(main()).rejects.toThrow('process.exit(1)');
-      const errorCalls = consoleErrorSpy.mock.calls.flat().join('\n');
+      await expect(main()).rejects.toThrow("process.exit(1)");
+      const errorCalls = consoleErrorSpy.mock.calls.flat().join("\n");
       expect(errorCalls).toMatch(/Usage:/);
     });
   });
 
-  describe('output formatting', () => {
-    it('should output confirmation message', async () => {
+  describe("output formatting", () => {
+    it("should output confirmation message", async () => {
       // Test structure for API mock integration
       expect(true).toBe(true);
     });

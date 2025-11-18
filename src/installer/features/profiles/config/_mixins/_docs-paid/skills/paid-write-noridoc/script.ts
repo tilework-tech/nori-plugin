@@ -9,10 +9,10 @@
  * @see mcp/src/installer/features/skills/config/paid-recall/script.ts - Full bundling documentation
  */
 
-import minimist from 'minimist';
+import minimist from "minimist";
 
-import { apiClient } from '@/api/index.js';
-import { loadDiskConfig, generateConfig } from '@/installer/config.js';
+import { apiClient } from "@/api/index.js";
+import { loadDiskConfig, generateConfig } from "@/installer/config.js";
 
 /**
  * Show usage information
@@ -61,9 +61,9 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
   const config = generateConfig({ diskConfig });
 
-  if (config.installType !== 'paid') {
-    console.error('Error: This feature requires a paid Nori subscription.');
-    console.error('Please configure your credentials in ~/nori-config.json');
+  if (config.installType !== "paid") {
+    console.error("Error: This feature requires a paid Nori subscription.");
+    console.error("Please configure your credentials in ~/nori-config.json");
     process.exit(1);
   }
 
@@ -72,12 +72,12 @@ export const main = async (): Promise<void> => {
 
   if (args.filePath == null || args.content == null) {
     if (args.filePath == null) {
-      console.error('Error: --filePath parameter is required');
+      console.error("Error: --filePath parameter is required");
     }
     if (args.content == null) {
-      console.error('Error: --content parameter is required');
+      console.error("Error: --content parameter is required");
     }
-    console.error('');
+    console.error("");
     showUsage();
     process.exit(1);
   }
@@ -101,7 +101,7 @@ export const main = async (): Promise<void> => {
 
     console.log(
       `Successfully updated noridoc at "${filePath}" (version ${
-        versions[0]?.version || 'unknown'
+        versions[0]?.version || "unknown"
       })`,
     );
   } catch (error) {

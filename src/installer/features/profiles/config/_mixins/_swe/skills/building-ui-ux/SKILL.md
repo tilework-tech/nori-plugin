@@ -13,7 +13,7 @@ description: Use when implementing user interfaces or user experiences - guides 
 5. Ask user for feedback on the design
 6. Iterate based on feedback
 7. Ensure the new UI is properly wired up and integrated
-</required>
+   </required>
 
 # Building UI/UX
 
@@ -32,10 +32,12 @@ This skill guides you through implementing user interfaces and experiences with 
 **Ask the user:**
 
 "Would you like to:
+
 - See multiple UI variations to choose from?
 - Go with a single design approach?"
 
 **If multiple variations:**
+
 - Ask what kinds of variations they want (e.g., minimalist vs rich, card-based vs list-based, light vs dark)
 - Aim for 2-4 distinct approaches
 - Plan to implement all variations in a way that allows easy comparison
@@ -45,12 +47,14 @@ This skill guides you through implementing user interfaces and experiences with 
 **For web projects:**
 
 Check if the dev server is running:
+
 - If not, identify the start command (e.g., `npm run dev`, `npm start`)
 - Start the dev server
 - Note the localhost URL (typically `http://localhost:3000` or similar)
 - Inform user: "Starting dev server at [URL]"
 
 **For other UI types:**
+
 - Identify appropriate preview/testing mechanism
 - Set up accordingly
 
@@ -59,12 +63,14 @@ Check if the dev server is running:
 **When implementing multiple variations:**
 
 Stack variations in a way that makes comparison easy. For web UIs, this typically means:
+
 - Render all variations on a single page, stacked vertically
 - Add clear section dividers/headings for each variation
 - Use consistent spacing between variations
 - Ensure each variation is self-contained and functional
 
 **Example for React:**
+
 ```tsx
 export default function UIExploration() {
   return (
@@ -89,6 +95,7 @@ export default function UIExploration() {
 ```
 
 **When implementing a single design:**
+
 - Focus on clean, production-ready implementation
 - Follow project conventions and style guides
 - Ensure responsive design if applicable
@@ -96,11 +103,13 @@ export default function UIExploration() {
 ### Phase 4: Feedback & Iteration
 
 **Present to user:**
+
 - Share the localhost URL or preview mechanism
 - Briefly describe each variation (if multiple)
 - Ask: "What do you think? Any changes you'd like to see?"
 
 **Iterate based on feedback:**
+
 - Make requested changes
 - Continue asking for feedback until satisfied
 - Be ready to combine elements from different variations
@@ -119,6 +128,7 @@ export default function UIExploration() {
 - Verify accessibility basics
 
 **Common integration points to check:**
+
 - Form submissions → backend endpoints
 - Navigation → routing system
 - Authentication → auth context/store

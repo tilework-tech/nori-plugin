@@ -9,10 +9,10 @@
  * @see mcp/src/installer/features/skills/config/paid-recall/script.ts - Full bundling documentation
  */
 
-import minimist from 'minimist';
+import minimist from "minimist";
 
-import { apiClient } from '@/api/index.js';
-import { loadDiskConfig, generateConfig } from '@/installer/config.js';
+import { apiClient } from "@/api/index.js";
+import { loadDiskConfig, generateConfig } from "@/installer/config.js";
 
 /**
  * Show usage information
@@ -70,7 +70,7 @@ ${name}
    Created: ${new Date(createdAt).toLocaleString()}
    Updated: ${new Date(updatedAt).toLocaleString()}
    Content: ${
-     content.length > 200 ? content.substring(0, 200) + '...' : content
+     content.length > 200 ? content.substring(0, 200) + "..." : content
    }`;
 };
 
@@ -82,9 +82,9 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
   const config = generateConfig({ diskConfig });
 
-  if (config.installType !== 'paid') {
-    console.error('Error: This feature requires a paid Nori subscription.');
-    console.error('Please configure your credentials in ~/nori-config.json');
+  if (config.installType !== "paid") {
+    console.error("Error: This feature requires a paid Nori subscription.");
+    console.error("Please configure your credentials in ~/nori-config.json");
     process.exit(1);
   }
 
@@ -93,12 +93,12 @@ export const main = async (): Promise<void> => {
 
   if (args.name == null || args.content == null) {
     if (args.name == null) {
-      console.error('Error: --name parameter is required');
+      console.error("Error: --name parameter is required");
     }
     if (args.content == null) {
-      console.error('Error: --content parameter is required');
+      console.error("Error: --content parameter is required");
     }
-    console.error('');
+    console.error("");
     showUsage();
     process.exit(1);
   }
@@ -107,7 +107,7 @@ export const main = async (): Promise<void> => {
   const result = await apiClient.artifacts.create({
     name: args.name,
     content: args.content,
-    type: 'memory',
+    type: "memory",
   });
 
   // 4. Format and display output

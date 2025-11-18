@@ -3,60 +3,61 @@
  * Verifies install, uninstall, and validate operations
  */
 
-import * as fs from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type { Config } from '@/installer/config.js';
+import { profilesLoader } from "@/installer/features/profiles/loader.js";
+
+import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir: string;
 let mockClaudeAgentsDir: string;
 
-vi.mock('@/installer/env.js', () => ({
+vi.mock("@/installer/env.js", () => ({
   get CLAUDE_DIR() {
     return mockClaudeDir;
   },
   get CLAUDE_MD_FILE() {
-    return path.join(mockClaudeDir, 'CLAUDE.md');
+    return path.join(mockClaudeDir, "CLAUDE.md");
   },
   get CLAUDE_SETTINGS_FILE() {
-    return path.join(mockClaudeDir, 'settings.json');
+    return path.join(mockClaudeDir, "settings.json");
   },
   get CLAUDE_AGENTS_DIR() {
     return mockClaudeAgentsDir;
   },
   get CLAUDE_COMMANDS_DIR() {
-    return path.join(mockClaudeDir, 'commands');
+    return path.join(mockClaudeDir, "commands");
   },
   get CLAUDE_NORI_DIR() {
-    return path.join(mockClaudeDir, 'nori-deprecated');
+    return path.join(mockClaudeDir, "nori-deprecated");
   },
   get CLAUDE_ABILITIES_DIR() {
-    return path.join(mockClaudeDir, 'nori', 'abilities');
+    return path.join(mockClaudeDir, "nori", "abilities");
   },
   get CLAUDE_PROFILES_DIR() {
-    return path.join(mockClaudeDir, 'profiles');
+    return path.join(mockClaudeDir, "profiles");
   },
-  MCP_ROOT: '/mock/mcp/root',
+  MCP_ROOT: "/mock/mcp/root",
 }));
 
 // Import loaders after mocking env
-import { subagentsLoader } from './loader.js';
-import { profilesLoader } from '@/installer/features/profiles/loader.js';
+import { subagentsLoader } from "./loader.js";
 
-describe('subagentsLoader', () => {
+describe("subagentsLoader", () => {
   let tempDir: string;
   let claudeDir: string;
   let agentsDir: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'subagents-test-'));
-    claudeDir = path.join(tempDir, '.claude');
-    agentsDir = path.join(claudeDir, 'agents');
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "subagents-test-"));
+    claudeDir = path.join(tempDir, ".claude");
+    agentsDir = path.join(claudeDir, "agents");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
@@ -68,7 +69,7 @@ describe('subagentsLoader', () => {
     // Install profiles first to set up composed profile structure
     // Run profiles loader to populate ~/.claude/profiles/ directory
     // This is required since feature loaders now read from ~/.claude/profiles/
-    const config: Config = { installType: 'free' };
+    const config: Config = { installType: "free" };
     await profilesLoader.run({ config });
   });
 
@@ -80,9 +81,9 @@ describe('subagentsLoader', () => {
     vi.clearAllMocks();
   });
 
-  describe('run', () => {
-    it('should create agents directory and copy subagent files for free installation', async () => {
-      const config: Config = { installType: 'free' };
+  describe("run", () => {
+    it("should create agents directory and copy subagent files for free installation", async () => {
+      const config: Config = { installType: "free" };
 
       await subagentsLoader.run({ config });
 
@@ -101,18 +102,18 @@ describe('subagentsLoader', () => {
       // Free mode should have common subagents like nori-codebase-analyzer
       const fileNames = await fs.readdir(agentsDir);
       const hasCodebaseAnalyzer = fileNames.includes(
-        'nori-codebase-analyzer.md',
+        "nori-codebase-analyzer.md",
       );
       expect(hasCodebaseAnalyzer).toBe(true);
     });
 
-    it('should create agents directory and copy subagent files for paid installation', async () => {
+    it("should create agents directory and copy subagent files for paid installation", async () => {
       const config: Config = {
-        installType: 'paid',
+        installType: "paid",
         auth: {
-          username: 'test',
-          password: 'test',
-          organizationUrl: 'https://test.com',
+          username: "test",
+          password: "test",
+          organizationUrl: "https://test.com",
         },
       };
 
@@ -136,19 +137,19 @@ describe('subagentsLoader', () => {
       // Paid mode should have nori-knowledge-researcher subagent
       const fileNames = await fs.readdir(agentsDir);
       const hasKnowledgeResearcher = fileNames.includes(
-        'nori-knowledge-researcher.md',
+        "nori-knowledge-researcher.md",
       );
       expect(hasKnowledgeResearcher).toBe(true);
     });
 
-    it('should copy more subagents for paid than free installation', async () => {
-      const freeConfig: Config = { installType: 'free' };
+    it("should copy more subagents for paid than free installation", async () => {
+      const freeConfig: Config = { installType: "free" };
       const paidConfig: Config = {
-        installType: 'paid',
+        installType: "paid",
         auth: {
-          username: 'test',
-          password: 'test',
-          organizationUrl: 'https://test.com',
+          username: "test",
+          password: "test",
+          organizationUrl: "https://test.com",
         },
       };
 
@@ -171,8 +172,8 @@ describe('subagentsLoader', () => {
       expect(paidCount).toBeGreaterThanOrEqual(freeCount);
     });
 
-    it('should handle reinstallation (update scenario)', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle reinstallation (update scenario)", async () => {
+      const config: Config = { installType: "free" };
 
       // First installation
       await subagentsLoader.run({ config });
@@ -188,9 +189,9 @@ describe('subagentsLoader', () => {
     });
   });
 
-  describe('uninstall', () => {
-    it('should remove subagent files for free installation', async () => {
-      const config: Config = { installType: 'free' };
+  describe("uninstall", () => {
+    it("should remove subagent files for free installation", async () => {
+      const config: Config = { installType: "free" };
 
       // Install first
       await subagentsLoader.run({ config });
@@ -212,15 +213,13 @@ describe('subagentsLoader', () => {
       if (exists) {
         files = await fs.readdir(agentsDir);
         // Should have removed the nori-codebase-analyzer and other free subagents
-        const hasCodebaseAnalyzer = files.includes(
-          'nori-codebase-analyzer.md',
-        );
+        const hasCodebaseAnalyzer = files.includes("nori-codebase-analyzer.md");
         expect(hasCodebaseAnalyzer).toBe(false);
       }
     });
 
-    it('should remove subagent files for paid installation', async () => {
-      const config: Config = { installType: 'paid' };
+    it("should remove subagent files for paid installation", async () => {
+      const config: Config = { installType: "paid" };
 
       // Install first
       await subagentsLoader.run({ config });
@@ -243,14 +242,14 @@ describe('subagentsLoader', () => {
         files = await fs.readdir(agentsDir);
         // Should have removed nori-knowledge-researcher and other paid subagents
         const hasKnowledgeResearcher = files.includes(
-          'nori-knowledge-researcher.md',
+          "nori-knowledge-researcher.md",
         );
         expect(hasKnowledgeResearcher).toBe(false);
       }
     });
 
-    it('should handle missing agents directory gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle missing agents directory gracefully", async () => {
+      const config: Config = { installType: "free" };
 
       // Uninstall without installing first
       await expect(
@@ -259,56 +258,56 @@ describe('subagentsLoader', () => {
     });
   });
 
-  describe('validate', () => {
-    it('should return valid for properly installed subagents', async () => {
-      const config: Config = { installType: 'free' };
+  describe("validate", () => {
+    it("should return valid for properly installed subagents", async () => {
+      const config: Config = { installType: "free" };
 
       // Install
       await subagentsLoader.run({ config });
 
       // Validate
       if (subagentsLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await subagentsLoader.validate({ config });
 
       expect(result.valid).toBe(true);
-      expect(result.message).toContain('properly installed');
+      expect(result.message).toContain("properly installed");
       expect(result.errors).toBeNull();
     });
 
-    it('should return invalid when agents directory does not exist', async () => {
-      const config: Config = { installType: 'free' };
+    it("should return invalid when agents directory does not exist", async () => {
+      const config: Config = { installType: "free" };
 
       // Validate without installing
       if (subagentsLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await subagentsLoader.validate({ config });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toContain('not found');
+      expect(result.message).toContain("not found");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
     });
 
-    it('should return invalid when subagent files are missing', async () => {
-      const config: Config = { installType: 'free' };
+    it("should return invalid when subagent files are missing", async () => {
+      const config: Config = { installType: "free" };
 
       // Create agents directory but don't install subagents
       await fs.mkdir(agentsDir, { recursive: true });
 
       // Validate
       if (subagentsLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await subagentsLoader.validate({ config });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toContain('not installed');
+      expect(result.message).toContain("not installed");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
     });

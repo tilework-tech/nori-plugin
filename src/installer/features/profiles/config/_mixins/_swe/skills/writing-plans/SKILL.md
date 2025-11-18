@@ -8,7 +8,7 @@ description: Use when design is complete and you need detailed implementation ta
 
 - Read the 'Guidelines'.
 - Create a comprehensive plan that a senior engineer can follow.
-<system-reminder>Any absolute paths in your plan MUST take into account any worktrees that may have been created</system-reminder>
+  <system-reminder>Any absolute paths in your plan MUST take into account any worktrees that may have been created</system-reminder>
 - Think about edge cases. Add them to the plan.
 - Think about questions or areas that require clarity. Add them to the plan.
 - Emphasize how you will test your plan.
@@ -55,10 +55,9 @@ Do not add code, but include enough detail that the necessary code is obvious.
 ## Test Section
 
 Every plan MUST have a test section. This should be written first, and should
-document how you plan to test the *behavior*.
+document how you plan to test the _behavior_.
 
 ```markdown
-
 **Testing Plan**
 
 I will add an integration test that ensures foo behaves like blah. The

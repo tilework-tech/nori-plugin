@@ -25,7 +25,7 @@ export const normalizeUrl = (args: {
   const { baseUrl, path } = args;
 
   // Remove trailing slashes from base URL
-  const normalizedBase = baseUrl.replace(/\/+$/, '');
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
 
   // If no path provided, return normalized base
   if (!path) {
@@ -33,7 +33,7 @@ export const normalizeUrl = (args: {
   }
 
   // Ensure path starts with exactly one slash
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
   return `${normalizedBase}${normalizedPath}`;
 };

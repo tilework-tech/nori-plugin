@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/base.js';
+import { apiRequest } from "@/api/base.js";
 
 export type Webhook = {
   id: string;
@@ -24,16 +24,16 @@ export type UpdateWebhookRequest = {
 export type ListWebhooksParams = {
   limit?: number;
   offset?: number;
-  orderBy?: 'createdAt' | 'updatedAt' | 'name';
-  order?: 'ASC' | 'DESC';
+  orderBy?: "createdAt" | "updatedAt" | "name";
+  order?: "ASC" | "DESC";
   getCount?: boolean;
 };
 
 export const webhooksApi = {
   create: async (args: CreateWebhookRequest): Promise<Webhook> => {
     return apiRequest<Webhook>({
-      path: '/webhooks',
-      method: 'POST',
+      path: "/webhooks",
+      method: "POST",
       body: args,
     });
   },
@@ -49,7 +49,7 @@ export const webhooksApi = {
       queryParams.getCount = args.getCount.toString();
 
     return apiRequest<Array<Webhook>>({
-      path: '/webhooks',
+      path: "/webhooks",
       queryParams:
         Object.keys(queryParams).length > 0 ? queryParams : undefined,
     });
@@ -71,7 +71,7 @@ export const webhooksApi = {
 
     return apiRequest<Webhook>({
       path: `/webhooks/${id}`,
-      method: 'PUT',
+      method: "PUT",
       body: data,
     });
   },
@@ -81,7 +81,7 @@ export const webhooksApi = {
 
     return apiRequest<{ success: boolean }>({
       path: `/webhooks/${id}`,
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 };

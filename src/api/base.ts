@@ -1,11 +1,11 @@
-import { readFileSync, existsSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
+import { readFileSync, existsSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from "firebase/auth";
 
-import { getFirebase, configureFirebase } from '@/providers/firebase.js';
-import { normalizeUrl } from '@/utils/url.js';
+import { getFirebase, configureFirebase } from "@/providers/firebase.js";
+import { normalizeUrl } from "@/utils/url.js";
 
 export type NoriConfig = {
   username?: string | null;
@@ -14,12 +14,12 @@ export type NoriConfig = {
 };
 
 export class ConfigManager {
-  private static readonly CONFIG_PATH = join(homedir(), 'nori-config.json');
+  private static readonly CONFIG_PATH = join(homedir(), "nori-config.json");
 
   static loadConfig = (): NoriConfig => {
     try {
       if (existsSync(ConfigManager.CONFIG_PATH)) {
-        const content = readFileSync(ConfigManager.CONFIG_PATH, 'utf8');
+        const content = readFileSync(ConfigManager.CONFIG_PATH, "utf8");
 
         // RACE CONDITION HANDLING:
         // During fresh installation, trackEvent() is called fire-and-forget (not awaited)
@@ -35,14 +35,14 @@ export class ConfigManager {
         //
         // This is an EXPECTED race condition by design (analytics shouldn't block install)
         const trimmedContent = content.trim();
-        if (trimmedContent === '') {
+        if (trimmedContent === "") {
           return {};
         }
 
         return JSON.parse(trimmedContent);
       }
     } catch (error) {
-      console.error('Error loading config:', error);
+      console.error("Error loading config:", error);
     }
     return {};
   };
@@ -73,7 +73,7 @@ class AuthManager {
 
     if (!config.organizationUrl || !config.username || !config.password) {
       throw new Error(
-        'Nori is not configured. Please set username, password, and organizationUrl in ~/nori-config.json',
+        "Nori is not configured. Please set username, password, and organizationUrl in ~/nori-config.json",
       );
     }
 
@@ -104,17 +104,17 @@ class AuthManager {
 
 export const apiRequest = async <T>(args: {
   path: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: any;
   queryParams?: Record<string, string>;
   retries?: number | null;
 }): Promise<T> => {
-  const { path, method = 'GET', body, queryParams, retries = 3 } = args;
+  const { path, method = "GET", body, queryParams, retries = 3 } = args;
 
   const config = ConfigManager.loadConfig();
 
   if (!config.organizationUrl) {
-    throw new Error('Organization URL not configured');
+    throw new Error("Organization URL not configured");
   }
 
   // Build URL with query params (normalize to prevent double slashes)
@@ -131,7 +131,7 @@ export const apiRequest = async <T>(args: {
   const token = await AuthManager.getAuthToken();
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
@@ -157,7 +157,7 @@ export const apiRequest = async <T>(args: {
           error: `HTTP ${response.status}: ${response.statusText}`,
         }))) as { error?: string };
 
-        throw new Error(errorData.error || 'API request failed');
+        throw new Error(errorData.error || "API request failed");
       }
 
       return (await response.json()) as T;
@@ -174,5 +174,5 @@ export const apiRequest = async <T>(args: {
     }
   }
 
-  throw lastError || new Error('API request failed after retries');
+  throw lastError || new Error("API request failed after retries");
 };

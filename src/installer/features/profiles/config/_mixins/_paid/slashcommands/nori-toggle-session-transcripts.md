@@ -27,6 +27,7 @@ cat ~/nori-config.json
 ## Example
 
 If the current config is:
+
 ```json
 {
   "username": "user@example.com",
@@ -36,6 +37,7 @@ If the current config is:
 ```
 
 And the user wants to disable transcripts, update it to:
+
 ```json
 {
   "username": "user@example.com",

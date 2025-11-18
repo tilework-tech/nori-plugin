@@ -5,15 +5,15 @@
  * by actually running the build command and verifying it succeeds.
  */
 
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import { execSync } from "child_process";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
-describe('build process', () => {
-  it('should successfully run npm run build without errors', () => {
+describe("build process", () => {
+  it("should successfully run npm run build without errors", () => {
     // Run the actual build command from the plugin directory
     // This verifies that:
     // - @types/node is installed (required by tsconfig.json)
@@ -23,25 +23,25 @@ describe('build process', () => {
     // When tests run via vitest, cwd is already the plugin directory
     const pluginDir = process.cwd();
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
     try {
-      const result = execSync('npm run build', {
+      const result = execSync("npm run build", {
         cwd: pluginDir,
-        encoding: 'utf-8',
-        env: { ...process.env, FORCE_COLOR: '0' },
+        encoding: "utf-8",
+        env: { ...process.env, FORCE_COLOR: "0" },
       });
       stdout = result;
     } catch (error: unknown) {
       // If build fails, show the error output
-      if (error && typeof error === 'object') {
+      if (error && typeof error === "object") {
         const execError = error as {
           stdout?: string;
           stderr?: string;
           status?: number;
         };
-        stdout = execError.stdout || '';
-        stderr = execError.stderr || '';
+        stdout = execError.stdout || "";
+        stderr = execError.stderr || "";
         throw new Error(
           `Build failed with status ${execError.status}:\nSTDOUT:\n${stdout}\n\nSTDERR:\n${stderr}`,
         );
@@ -50,10 +50,10 @@ describe('build process', () => {
     }
 
     // Verify build completed successfully
-    expect(stdout).toContain('Build Complete');
+    expect(stdout).toContain("Build Complete");
   });
 
-  it('should successfully run install after build and pass validation', () => {
+  it("should successfully run install after build and pass validation", () => {
     // This test verifies that all config files are properly copied during build
     // by actually running the installer after build completes, then running
     // the 'check' command to validate the installation.
@@ -65,7 +65,7 @@ describe('build process', () => {
 
     // Create a temporary directory for the test installation
     const tempDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'nori-install-test-'),
+      path.join(os.tmpdir(), "nori-install-test-"),
     );
 
     try {
@@ -74,12 +74,12 @@ describe('build process', () => {
       // to skip prompts and default to free mode
       // Note: We don't check install output - it's expected to succeed
       // The real validation happens with the check command below
-      execSync('node build/src/installer/cli.js install --non-interactive', {
+      execSync("node build/src/installer/cli.js install --non-interactive", {
         cwd: pluginDir,
-        encoding: 'utf-8',
+        encoding: "utf-8",
         env: {
           ...process.env,
-          FORCE_COLOR: '0',
+          FORCE_COLOR: "0",
           HOME: tempDir, // Installer uses HOME to find ~/.claude
         },
       });
@@ -89,45 +89,45 @@ describe('build process', () => {
       // It validates all loaders (skills, profiles, hooks, subagents, etc.)
       // Note: We expect this to fail overall because there's no nori-config.json,
       // but we can still check that all features validated successfully
-      let checkOutput = '';
+      let checkOutput = "";
       try {
-        checkOutput = execSync('node build/src/installer/cli.js check', {
+        checkOutput = execSync("node build/src/installer/cli.js check", {
           cwd: pluginDir,
-          encoding: 'utf-8',
+          encoding: "utf-8",
           env: {
             ...process.env,
-            FORCE_COLOR: '0',
+            FORCE_COLOR: "0",
             HOME: tempDir, // Use same temp directory
           },
         });
       } catch (error: unknown) {
         // Check command exits with error due to missing config, but that's OK
         // We can still verify the feature installations from stdout
-        if (error && typeof error === 'object') {
+        if (error && typeof error === "object") {
           const execError = error as { stdout?: string | Buffer };
           checkOutput =
-            typeof execError.stdout === 'string'
+            typeof execError.stdout === "string"
               ? execError.stdout
-              : execError.stdout?.toString() || '';
+              : execError.stdout?.toString() || "";
         }
       }
 
       // Verify all features validated successfully
       // This proves the build script copied all necessary config files
-      expect(checkOutput).toContain('✓ skills: Skills are properly installed');
+      expect(checkOutput).toContain("✓ skills: Skills are properly installed");
       expect(checkOutput).toContain(
-        '✓ claudemd: CLAUDE.md is properly configured',
+        "✓ claudemd: CLAUDE.md is properly configured",
       );
-      expect(checkOutput).toContain('✓ hooks: Hooks are properly configured');
+      expect(checkOutput).toContain("✓ hooks: Hooks are properly configured");
       expect(checkOutput).toContain(
-        '✓ profiles: All required profiles are properly installed',
+        "✓ profiles: All required profiles are properly installed",
       );
       expect(checkOutput).toContain(
-        '✓ slashcommands: All 5 slash commands are properly installed',
+        "✓ slashcommands: All 5 slash commands are properly installed",
       );
-      expect(checkOutput).toContain('subagents are properly installed');
+      expect(checkOutput).toContain("subagents are properly installed");
     } catch (error: unknown) {
-      if (error && typeof error === 'object') {
+      if (error && typeof error === "object") {
         const execError = error as {
           stdout?: string | Buffer;
           stderr?: string | Buffer;
@@ -135,21 +135,21 @@ describe('build process', () => {
           message?: string;
         };
         const stdout =
-          typeof execError.stdout === 'string'
+          typeof execError.stdout === "string"
             ? execError.stdout
-            : execError.stdout?.toString() || '';
+            : execError.stdout?.toString() || "";
         const stderr =
-          typeof execError.stderr === 'string'
+          typeof execError.stderr === "string"
             ? execError.stderr
-            : execError.stderr?.toString() || '';
+            : execError.stderr?.toString() || "";
         throw new Error(
           `Installation failed with status ${execError.status}:
-Message: ${execError.message || 'none'}
+Message: ${execError.message || "none"}
 STDOUT:
-${stdout || '(empty)'}
+${stdout || "(empty)"}
 
 STDERR:
-${stderr || '(empty)'}`,
+${stderr || "(empty)"}`,
         );
       }
       throw error;
@@ -161,8 +161,8 @@ ${stderr || '(empty)'}`,
     }
   });
 
-  describe('skill bundling', () => {
-    it('should find and bundle all paid skill scripts', () => {
+  describe("skill bundling", () => {
+    it("should find and bundle all paid skill scripts", () => {
       // This test verifies that the bundle-skills.ts script correctly discovers
       // all paid skill script.js files in tier-specific mixin directories.
       //
@@ -171,7 +171,7 @@ ${stderr || '(empty)'}`,
       // - paid-read-noridoc, paid-write-noridoc, paid-list-noridocs, paid-sync-noridocs (in _docs-paid)
 
       const pluginDir = process.cwd();
-      const buildDir = path.join(pluginDir, 'build');
+      const buildDir = path.join(pluginDir, "build");
 
       // Verify build directory exists
       expect(fs.existsSync(buildDir)).toBe(true);
@@ -180,11 +180,11 @@ ${stderr || '(empty)'}`,
       const mixinDirs = [
         path.join(
           buildDir,
-          'src/installer/features/profiles/config/_mixins/_paid/skills',
+          "src/installer/features/profiles/config/_mixins/_paid/skills",
         ),
         path.join(
           buildDir,
-          'src/installer/features/profiles/config/_mixins/_docs-paid/skills',
+          "src/installer/features/profiles/config/_mixins/_docs-paid/skills",
         ),
       ];
 
@@ -195,13 +195,13 @@ ${stderr || '(empty)'}`,
         if (fs.existsSync(skillsDir)) {
           const skills = fs.readdirSync(skillsDir);
           for (const skill of skills) {
-            if (!skill.startsWith('paid-')) continue;
+            if (!skill.startsWith("paid-")) continue;
 
             const skillPath = path.join(skillsDir, skill);
             const stat = fs.statSync(skillPath);
             if (!stat.isDirectory()) continue;
 
-            const scriptPath = path.join(skillPath, 'script.js');
+            const scriptPath = path.join(skillPath, "script.js");
             if (fs.existsSync(scriptPath)) {
               totalScripts++;
               scriptPaths.push(scriptPath);
@@ -220,17 +220,17 @@ ${stderr || '(empty)'}`,
       }
     });
 
-    it('should bundle scripts to be standalone (no import statements)', () => {
+    it("should bundle scripts to be standalone (no import statements)", () => {
       // This test verifies that bundled scripts have all dependencies inlined
       // and don't contain any import/require statements that would fail at runtime.
 
       const pluginDir = process.cwd();
-      const buildDir = path.join(pluginDir, 'build');
+      const buildDir = path.join(pluginDir, "build");
 
       // Find all paid skill script.js files in the _mixins/_paid directory
       const paidSkillsDir = path.join(
         buildDir,
-        'src/installer/features/profiles/config/_mixins/_paid/skills',
+        "src/installer/features/profiles/config/_mixins/_paid/skills",
       );
 
       const scriptPaths: Array<string> = [];
@@ -238,13 +238,13 @@ ${stderr || '(empty)'}`,
       if (fs.existsSync(paidSkillsDir)) {
         const skills = fs.readdirSync(paidSkillsDir);
         for (const skill of skills) {
-          if (!skill.startsWith('paid-')) continue;
+          if (!skill.startsWith("paid-")) continue;
 
           const skillPath = path.join(paidSkillsDir, skill);
           const stat = fs.statSync(skillPath);
           if (!stat.isDirectory()) continue;
 
-          const scriptPath = path.join(skillPath, 'script.js');
+          const scriptPath = path.join(skillPath, "script.js");
           if (fs.existsSync(scriptPath)) {
             scriptPaths.push(scriptPath);
           }
@@ -256,7 +256,7 @@ ${stderr || '(empty)'}`,
 
       // Check each bundled script
       for (const scriptPath of scriptPaths) {
-        const content = fs.readFileSync(scriptPath, 'utf-8');
+        const content = fs.readFileSync(scriptPath, "utf-8");
 
         // Bundled scripts should NOT contain import statements
         // (except for built-in Node.js modules if needed)
@@ -279,18 +279,18 @@ ${stderr || '(empty)'}`,
       }
     });
 
-    it('should make bundled scripts executable', () => {
+    it("should make bundled scripts executable", () => {
       // This test verifies that bundled scripts have:
       // 1. Execute permissions (chmod +x)
       // 2. A shebang line (#!/usr/bin/env node)
 
       const pluginDir = process.cwd();
-      const buildDir = path.join(pluginDir, 'build');
+      const buildDir = path.join(pluginDir, "build");
 
       // Find all paid skill script.js files in the _mixins/_paid directory
       const paidSkillsDir = path.join(
         buildDir,
-        'src/installer/features/profiles/config/_mixins/_paid/skills',
+        "src/installer/features/profiles/config/_mixins/_paid/skills",
       );
 
       const scriptPaths: Array<string> = [];
@@ -298,13 +298,13 @@ ${stderr || '(empty)'}`,
       if (fs.existsSync(paidSkillsDir)) {
         const skills = fs.readdirSync(paidSkillsDir);
         for (const skill of skills) {
-          if (!skill.startsWith('paid-')) continue;
+          if (!skill.startsWith("paid-")) continue;
 
           const skillPath = path.join(paidSkillsDir, skill);
           const stat = fs.statSync(skillPath);
           if (!stat.isDirectory()) continue;
 
-          const scriptPath = path.join(skillPath, 'script.js');
+          const scriptPath = path.join(skillPath, "script.js");
           if (fs.existsSync(scriptPath)) {
             scriptPaths.push(scriptPath);
           }
@@ -324,8 +324,8 @@ ${stderr || '(empty)'}`,
         expect(isExecutable).toBe(true);
 
         // Check for shebang
-        const content = fs.readFileSync(scriptPath, 'utf-8');
-        const firstLine = content.split('\n')[0];
+        const content = fs.readFileSync(scriptPath, "utf-8");
+        const firstLine = content.split("\n")[0];
         expect(firstLine).toMatch(/^#!.*node/);
       }
     });
@@ -336,27 +336,27 @@ ${stderr || '(empty)'}`,
 
       const pluginDir = process.cwd();
 
-      let stdout = '';
+      let stdout = "";
       try {
-        stdout = execSync('npm run build', {
+        stdout = execSync("npm run build", {
           cwd: pluginDir,
-          encoding: 'utf-8',
-          env: { ...process.env, FORCE_COLOR: '0' },
+          encoding: "utf-8",
+          env: { ...process.env, FORCE_COLOR: "0" },
         });
       } catch (error: unknown) {
-        if (error && typeof error === 'object') {
+        if (error && typeof error === "object") {
           const execError = error as { stdout?: string };
-          stdout = execError.stdout || '';
+          stdout = execError.stdout || "";
         }
         throw error;
       }
 
       // Should NOT contain the warning about no scripts found
-      expect(stdout).not.toContain('No paid skill scripts found to bundle');
-      expect(stdout).not.toContain('No scripts found to bundle');
+      expect(stdout).not.toContain("No paid skill scripts found to bundle");
+      expect(stdout).not.toContain("No scripts found to bundle");
 
       // Should contain success message about bundling
-      expect(stdout).toContain('Bundling Paid Skill Scripts and Hook Scripts');
+      expect(stdout).toContain("Bundling Paid Skill Scripts and Hook Scripts");
       expect(stdout).toMatch(/Successfully bundled \d+ script\(s\)/);
     });
   });

@@ -3,22 +3,22 @@
  * Installs skill configuration files to ~/.claude/nori/skills/
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-import type { Config } from '@/installer/config.js';
-import type {
-  Loader,
-  ValidationResult,
-} from '@/installer/features/loaderRegistry.js';
+import * as fs from "fs/promises";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 import {
   CLAUDE_DIR,
   CLAUDE_SKILLS_DIR,
   CLAUDE_SETTINGS_FILE,
-} from '@/installer/env.js';
-import { success, info, warn } from '@/installer/logger.js';
+} from "@/installer/env.js";
+import { success, info, warn } from "@/installer/logger.js";
+
+import type { Config } from "@/installer/config.js";
+import type {
+  Loader,
+  ValidationResult,
+} from "@/installer/features/loaderRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
@@ -34,7 +34,7 @@ const __dirname = path.dirname(__filename);
  */
 const getConfigDir = (args: { profileName: string }): string => {
   const { profileName } = args;
-  return path.join(CLAUDE_DIR, 'profiles', profileName, 'skills');
+  return path.join(CLAUDE_DIR, "profiles", profileName, "skills");
 };
 
 /**
@@ -44,10 +44,10 @@ const getConfigDir = (args: { profileName: string }): string => {
  */
 const installSkills = async (args: { config: Config }): Promise<void> => {
   const { config } = args;
-  info({ message: 'Installing Nori skills...' });
+  info({ message: "Installing Nori skills..." });
 
   // Get profile name from config (default to senior-swe)
-  const profileName = config.profile?.baseProfile || 'senior-swe';
+  const profileName = config.profile?.baseProfile || "senior-swe";
   const configDir = getConfigDir({ profileName });
 
   // Remove existing skills directory if it exists
@@ -80,10 +80,10 @@ const installSkills = async (args: { config: Config }): Promise<void> => {
     //
     // @see scripts/bundle-skills.ts - The bundler that creates standalone scripts
     // @see mcp/src/installer/features/skills/config/paid-recall/script.ts - Bundling docs
-    if (entry.name.startsWith('paid-')) {
-      if (config.installType === 'paid') {
+    if (entry.name.startsWith("paid-")) {
+      if (config.installType === "paid") {
         // Strip paid- prefix when copying
-        const destName = entry.name.replace(/^paid-/, '');
+        const destName = entry.name.replace(/^paid-/, "");
         const destPath = path.join(CLAUDE_SKILLS_DIR, destName);
         await fs.cp(sourcePath, destPath, { recursive: true });
       }
@@ -95,7 +95,7 @@ const installSkills = async (args: { config: Config }): Promise<void> => {
     }
   }
 
-  success({ message: '✓ Installed skills' });
+  success({ message: "✓ Installed skills" });
 
   // Configure permissions for skills directory
   await configureSkillsPermissions();
@@ -106,7 +106,7 @@ const installSkills = async (args: { config: Config }): Promise<void> => {
  * Adds skills directory to permissions.additionalDirectories in settings.json
  */
 const configureSkillsPermissions = async (): Promise<void> => {
-  info({ message: 'Configuring permissions for skills directory...' });
+  info({ message: "Configuring permissions for skills directory..." });
 
   // Create .claude directory if it doesn't exist
   await fs.mkdir(path.dirname(CLAUDE_SETTINGS_FILE), { recursive: true });
@@ -114,11 +114,11 @@ const configureSkillsPermissions = async (): Promise<void> => {
   // Read or initialize settings
   let settings: any = {};
   try {
-    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, "utf-8");
     settings = JSON.parse(content);
   } catch {
     settings = {
-      $schema: 'https://json.schemastore.org/claude-code-settings.json',
+      $schema: "https://json.schemastore.org/claude-code-settings.json",
     };
   }
 
@@ -147,15 +147,15 @@ const configureSkillsPermissions = async (): Promise<void> => {
  * Uninstall skills
  */
 const uninstallSkills = async (): Promise<void> => {
-  info({ message: 'Removing Nori skills...' });
+  info({ message: "Removing Nori skills..." });
 
   try {
     await fs.access(CLAUDE_SKILLS_DIR);
     await fs.rm(CLAUDE_SKILLS_DIR, { recursive: true, force: true });
-    success({ message: '✓ Removed skills directory' });
+    success({ message: "✓ Removed skills directory" });
   } catch {
     info({
-      message: 'Skills directory not found (may not have been installed)',
+      message: "Skills directory not found (may not have been installed)",
     });
   }
 
@@ -168,10 +168,10 @@ const uninstallSkills = async (): Promise<void> => {
  * Removes skills directory from permissions.additionalDirectories in settings.json
  */
 const removeSkillsPermissions = async (): Promise<void> => {
-  info({ message: 'Removing skills directory permissions...' });
+  info({ message: "Removing skills directory permissions..." });
 
   try {
-    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, "utf-8");
     const settings = JSON.parse(content);
 
     if (settings.permissions?.additionalDirectories) {
@@ -193,9 +193,9 @@ const removeSkillsPermissions = async (): Promise<void> => {
         CLAUDE_SETTINGS_FILE,
         JSON.stringify(settings, null, 2),
       );
-      success({ message: '✓ Removed skills directory permissions' });
+      success({ message: "✓ Removed skills directory permissions" });
     } else {
-      info({ message: 'No permissions found in settings.json' });
+      info({ message: "No permissions found in settings.json" });
     }
   } catch (err) {
     warn({ message: `Could not remove permissions: ${err}` });
@@ -223,13 +223,13 @@ const validate = async (args: {
     errors.push('Run "nori-ai install" to install skills');
     return {
       valid: false,
-      message: 'Skills directory not found',
+      message: "Skills directory not found",
       errors,
     };
   }
 
   // Verify expected skills exist based on tier
-  const profileName = config.profile?.baseProfile || 'senior-swe';
+  const profileName = config.profile?.baseProfile || "senior-swe";
   const configDir = getConfigDir({ profileName });
   const sourceEntries = await fs.readdir(configDir, { withFileTypes: true });
 
@@ -239,9 +239,9 @@ const validate = async (args: {
     }
 
     // For paid-prefixed skills, check if they exist without prefix (paid tier only)
-    if (entry.name.startsWith('paid-')) {
-      if (config.installType === 'paid') {
-        const destName = entry.name.replace(/^paid-/, '');
+    if (entry.name.startsWith("paid-")) {
+      if (config.installType === "paid") {
+        const destName = entry.name.replace(/^paid-/, "");
         try {
           await fs.access(path.join(CLAUDE_SKILLS_DIR, destName));
         } catch {
@@ -262,41 +262,41 @@ const validate = async (args: {
     errors.push('Run "nori-ai install" to reinstall skills');
     return {
       valid: false,
-      message: 'Skills directory incomplete',
+      message: "Skills directory incomplete",
       errors,
     };
   }
 
   // Check if permissions are configured in settings.json
   try {
-    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, "utf-8");
     const settings = JSON.parse(content);
 
     if (
       !settings.permissions?.additionalDirectories?.includes(CLAUDE_SKILLS_DIR)
     ) {
       errors.push(
-        'Skills directory not configured in permissions.additionalDirectories',
+        "Skills directory not configured in permissions.additionalDirectories",
       );
       errors.push('Run "nori-ai install" to configure permissions');
       return {
         valid: false,
-        message: 'Skills permissions not configured',
+        message: "Skills permissions not configured",
         errors,
       };
     }
   } catch {
-    errors.push('Could not read or parse settings.json');
+    errors.push("Could not read or parse settings.json");
     return {
       valid: false,
-      message: 'Settings file error',
+      message: "Settings file error",
       errors,
     };
   }
 
   return {
     valid: true,
-    message: 'Skills are properly installed',
+    message: "Skills are properly installed",
     errors: null,
   };
 };
@@ -305,8 +305,8 @@ const validate = async (args: {
  * Skills feature loader
  */
 export const skillsLoader: Loader = {
-  name: 'skills',
-  description: 'Install skill configuration files',
+  name: "skills",
+  description: "Install skill configuration files",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installSkills({ config });

@@ -9,14 +9,14 @@
  * @see mcp/src/installer/features/skills/config/paid-recall/script.ts - Full bundling documentation
  */
 
-import { execSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { execSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-import minimist from 'minimist';
+import minimist from "minimist";
 
-import { apiClient } from '@/api/index.js';
-import { loadDiskConfig, generateConfig } from '@/installer/config.js';
+import { apiClient } from "@/api/index.js";
+import { loadDiskConfig, generateConfig } from "@/installer/config.js";
 
 /**
  * Interface for a found docs.md file
@@ -108,9 +108,9 @@ const extractPath = (args: { content: string }): string | null => {
 const getGitRemoteUrl = (args: { cwd: string }): string | null => {
   const { cwd } = args;
   try {
-    const output = execSync('git remote get-url origin', {
+    const output = execSync("git remote get-url origin", {
       cwd,
-      encoding: 'utf-8',
+      encoding: "utf-8",
     });
     return output.trim() || null;
   } catch {
@@ -137,17 +137,17 @@ const findDocsFiles = async (args: {
     // Use git ls-files to find all tracked docs.md files
     const output = execSync('git ls-files "**/docs.md" "docs.md"', {
       cwd,
-      encoding: 'utf-8',
+      encoding: "utf-8",
     });
 
     const files = output
       .trim()
-      .split('\n')
+      .split("\n")
       .filter((f) => f.length > 0);
 
     for (const relativePath of files) {
       const absolutePath = join(cwd, relativePath);
-      const content = await readFile(absolutePath, 'utf-8');
+      const content = await readFile(absolutePath, "utf-8");
       const filePath = extractPath({ content });
 
       results.push({
@@ -161,7 +161,7 @@ const findDocsFiles = async (args: {
     if (error instanceof Error) {
       throw new Error(
         `Failed to find Git-tracked docs.md files: ${error.message}. ` +
-          'Make sure you are in a Git repository.',
+          "Make sure you are in a Git repository.",
       );
     }
     throw error;
@@ -188,22 +188,22 @@ export const serializeError = (args: { error: unknown }): string => {
 
   // Handle null/undefined
   if (error == null) {
-    return 'Unknown error (null)';
+    return "Unknown error (null)";
   }
 
   // Handle strings
-  if (typeof error === 'string') {
+  if (typeof error === "string") {
     return error;
   }
 
   // Handle objects - try to extract useful info
-  if (typeof error === 'object') {
+  if (typeof error === "object") {
     try {
       // Try to format as JSON
       const jsonStr = JSON.stringify(error, null, 2);
       // If it's just "{}", try to be more helpful
-      if (jsonStr === '{}') {
-        return 'Unknown error (empty object)';
+      if (jsonStr === "{}") {
+        return "Unknown error (empty object)";
       }
       return jsonStr;
     } catch {
@@ -235,7 +235,7 @@ const syncFile = async (args: {
     return {
       file: file.absolutePath,
       success: false,
-      error: 'Missing Path: field in file header',
+      error: "Missing Path: field in file header",
     };
   }
 
@@ -280,9 +280,9 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
   const config = generateConfig({ diskConfig });
 
-  if (config.installType !== 'paid') {
-    console.error('Error: This feature requires a paid Nori subscription.');
-    console.error('Please configure your credentials in ~/nori-config.json');
+  if (config.installType !== "paid") {
+    console.error("Error: This feature requires a paid Nori subscription.");
+    console.error("Please configure your credentials in ~/nori-config.json");
     process.exit(1);
   }
 
@@ -306,13 +306,13 @@ export const main = async (): Promise<void> => {
   }
 
   // 3. Find all Git-tracked docs.md files
-  console.log('Searching for Git-tracked docs.md files...');
+  console.log("Searching for Git-tracked docs.md files...");
   const files = await findDocsFiles({ cwd });
 
   console.log(`Found ${files.length} docs.md file(s)\n`);
 
   if (files.length === 0) {
-    console.log('No docs.md files found to sync');
+    console.log("No docs.md files found to sync");
     return;
   }
 
@@ -346,14 +346,14 @@ export const main = async (): Promise<void> => {
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
 
-  console.log('\n' + '='.repeat(50));
-  console.log('Sync Summary:');
+  console.log("\n" + "=".repeat(50));
+  console.log("Sync Summary:");
   console.log(`  Total files: ${files.length}`);
   console.log(`  Successful: ${successful}`);
   console.log(`  Failed: ${failed}`);
 
   if (failed > 0) {
-    console.log('\nFailed files:');
+    console.log("\nFailed files:");
     results
       .filter((r) => !r.success)
       .forEach((r) => {
@@ -362,7 +362,7 @@ export const main = async (): Promise<void> => {
       });
   }
 
-  console.log('='.repeat(50));
+  console.log("=".repeat(50));
 
   // Exit with error code if any failed
   if (failed > 0) {

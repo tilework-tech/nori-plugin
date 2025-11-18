@@ -1,6 +1,6 @@
-import type { Artifact, ArtifactType } from '@/api/artifacts.js';
+import { apiRequest } from "@/api/base.js";
 
-import { apiRequest } from '@/api/base.js';
+import type { Artifact, ArtifactType } from "@/api/artifacts.js";
 
 export type QueryRequest = {
   query: string;
@@ -24,15 +24,15 @@ export const queryApi = {
     const { query, limit, fuzzySearch, vectorSearch, type } = args;
 
     return apiRequest<QueryResponse>({
-      path: '/query',
-      method: 'POST',
+      path: "/query",
+      method: "POST",
       body: {
         query,
         limit,
         fuzzySearch,
         vectorSearch,
         type,
-        actor: 'claude-code', // MCP always acts as agent
+        actor: "claude-code", // MCP always acts as agent
       },
     });
   },

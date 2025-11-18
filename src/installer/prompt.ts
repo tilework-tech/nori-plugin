@@ -3,7 +3,7 @@
  * Shared functions for prompting user for input
  */
 
-import * as readline from 'readline';
+import * as readline from "readline";
 
 /**
  * Prompt user for input
@@ -31,25 +31,25 @@ export const promptUser = async (args: {
 
     // THEN enter raw mode
     (stdin as any).setRawMode?.(true);
-    stdin.setEncoding('utf8');
+    stdin.setEncoding("utf8");
 
-    let password = '';
+    let password = "";
 
     return new Promise((resolve) => {
       const onData = (char: string) => {
-        if (char === '\r' || char === '\n') {
+        if (char === "\r" || char === "\n") {
           // Enter - clean up and resolve
-          stdin.removeListener('data', onData);
+          stdin.removeListener("data", onData);
           (stdin as any).setRawMode?.(false);
           stdin.pause();
-          process.stdout.write('\n');
+          process.stdout.write("\n");
           resolve(password);
-        } else if (char === '\u0003') {
+        } else if (char === "\u0003") {
           // Ctrl+C - clean up and exit
-          stdin.removeListener('data', onData);
+          stdin.removeListener("data", onData);
           (stdin as any).setRawMode?.(false);
           process.exit(1);
-        } else if (char === '\u007f') {
+        } else if (char === "\u007f") {
           // Backspace - remove last character (no visual feedback)
           password = password.slice(0, -1);
         } else {
@@ -58,7 +58,7 @@ export const promptUser = async (args: {
         }
       };
 
-      stdin.on('data', onData);
+      stdin.on("data", onData);
     });
   } else {
     // Normal input - use readline

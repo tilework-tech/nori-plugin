@@ -7,9 +7,9 @@
  * It summarizes the conversation context and stores it using the backend API.
  */
 
-import { apiClient, ConfigManager } from '@/api/index.js';
-import { loadDiskConfig } from '@/installer/config.js';
-import { debug, error } from '@/installer/logger.js';
+import { apiClient, ConfigManager } from "@/api/index.js";
+import { loadDiskConfig } from "@/installer/config.js";
+import { debug, error } from "@/installer/logger.js";
 
 type TranscriptMessage = {
   type: string;
@@ -35,7 +35,7 @@ const parseTranscript = (args: {
   content: string;
 }): Array<TranscriptMessage> => {
   const { content } = args;
-  const lines = content.trim().split('\n');
+  const lines = content.trim().split("\n");
   const messages: Array<TranscriptMessage> = [];
 
   for (const line of lines) {
@@ -48,7 +48,7 @@ const parseTranscript = (args: {
       // Skip invalid JSON lines (but log in debug mode)
       debug({
         message: `Failed to parse transcript line: ${
-          parseError instanceof Error ? parseError.message : 'Unknown error'
+          parseError instanceof Error ? parseError.message : "Unknown error"
         }`,
       });
     }
@@ -74,13 +74,13 @@ const hasContent = (args: {
 
   if (!content) return false;
 
-  if (typeof content === 'string') {
+  if (typeof content === "string") {
     return content.trim().length > 0;
   }
 
   if (Array.isArray(content)) {
     return content.some((item) => {
-      if (item.type === 'text' && (item as { text?: string }).text) {
+      if (item.type === "text" && (item as { text?: string }).text) {
         return (item as { text?: string }).text!.trim().length > 0;
       }
       return false;
@@ -111,7 +111,7 @@ export const isEmptyTranscript = (args: { content: string }): boolean => {
   // Only user messages count as meaningful - assistant messages, tool use, hooks do not
   const hasUserMessages = messages.some((msg) => {
     // Only check for user messages
-    if (msg.type === 'user' && msg.message) {
+    if (msg.type === "user" && msg.message) {
       return hasContent({ content: msg.message.content });
     }
 
@@ -132,8 +132,8 @@ const readTranscript = async (args: {
   transcriptPath: string;
 }): Promise<string> => {
   const { transcriptPath } = args;
-  const fs = await import('fs/promises');
-  const content = await fs.readFile(transcriptPath, 'utf-8');
+  const fs = await import("fs/promises");
+  const content = await fs.readFile(transcriptPath, "utf-8");
   return content;
 };
 
@@ -151,22 +151,22 @@ const summarizeConversation = async (args: {
   if (!ConfigManager.isConfigured()) {
     error({
       message:
-        'Nori hook: Not configured. Skipping memorization. Set credentials in ~/nori-config.json',
+        "Nori hook: Not configured. Skipping memorization. Set credentials in ~/nori-config.json",
     });
     return;
   }
 
   // Check if session transcripts are enabled
   const diskConfig = await loadDiskConfig();
-  if (diskConfig?.sendSessionTranscript === 'disabled') {
+  if (diskConfig?.sendSessionTranscript === "disabled") {
     console.log(
       JSON.stringify({
         systemMessage:
-          'Session Transcript disabled. Use /nori-toggle-session-transcripts to reenable',
+          "Session Transcript disabled. Use /nori-toggle-session-transcripts to reenable",
       }),
     );
     debug({
-      message: 'Session transcripts disabled in config, skipping',
+      message: "Session transcripts disabled in config, skipping",
     });
     return;
   }
@@ -192,7 +192,7 @@ const summarizeConversation = async (args: {
   }
 
   if (!transcriptContent) {
-    error({ message: 'Nori hook: No transcript content available' });
+    error({ message: "Nori hook: No transcript content available" });
     return;
   }
 
@@ -200,7 +200,7 @@ const summarizeConversation = async (args: {
   if (isEmptyTranscript({ content: transcriptContent })) {
     debug({
       message:
-        'Nori hook: Transcript is empty (no user messages), skipping memorization',
+        "Nori hook: Transcript is empty (no user messages), skipping memorization",
     });
     return;
   }
@@ -212,7 +212,7 @@ const summarizeConversation = async (args: {
     });
   } catch (err) {
     error({
-      message: 'Nori hook: Failed to summarize conversation (non-fatal)',
+      message: "Nori hook: Failed to summarize conversation (non-fatal)",
     });
     if (err instanceof Error) {
       error({ message: `  ${err.message}` });
@@ -227,22 +227,22 @@ const summarizeConversation = async (args: {
  * Main entry point
  */
 const main = async (): Promise<void> => {
-  debug({ message: '=== Hook execution started ===' });
+  debug({ message: "=== Hook execution started ===" });
 
   // Get event type from command line arguments
   const eventType = process.argv[2];
 
   if (!eventType) {
-    debug({ message: 'ERROR: Event type is required' });
-    error({ message: 'Nori hook: Event type is required' });
+    debug({ message: "ERROR: Event type is required" });
+    error({ message: "Nori hook: Event type is required" });
     error({
       message:
-        'Usage: summarize.ts <SessionEnd|PreCompact> [conversation-data]',
+        "Usage: summarize.ts <SessionEnd|PreCompact> [conversation-data]",
     });
     return;
   }
 
-  if (eventType !== 'SessionEnd' && eventType !== 'PreCompact') {
+  if (eventType !== "SessionEnd" && eventType !== "PreCompact") {
     debug({
       message: `ERROR: Invalid event type "${eventType}"`,
     });
@@ -255,19 +255,19 @@ const main = async (): Promise<void> => {
   debug({ message: `Event type: ${eventType}` });
 
   // Read conversation data from stdin or command line
-  let conversationData = process.argv[3] || '';
+  let conversationData = process.argv[3] || "";
 
   if (!conversationData) {
     // Read from stdin if no argument provided
-    debug({ message: 'Reading conversation data from stdin' });
+    debug({ message: "Reading conversation data from stdin" });
     const chunks: Array<Buffer> = [];
     for await (const chunk of process.stdin) {
       chunks.push(chunk);
     }
-    conversationData = Buffer.concat(chunks).toString('utf-8');
+    conversationData = Buffer.concat(chunks).toString("utf-8");
   } else {
     debug({
-      message: 'Using conversation data from command line argument',
+      message: "Using conversation data from command line argument",
     });
   }
 
@@ -276,18 +276,18 @@ const main = async (): Promise<void> => {
   });
 
   if (!conversationData.trim()) {
-    debug({ message: 'ERROR: No conversation data provided' });
+    debug({ message: "ERROR: No conversation data provided" });
     error({
       message:
-        'Nori hook: No conversation data provided, skipping memorization',
+        "Nori hook: No conversation data provided, skipping memorization",
     });
     return;
   }
 
   await summarizeConversation({ conversationData });
 
-  debug({ message: 'Exit code: 0' });
-  debug({ message: '=== Hook execution completed ===' });
+  debug({ message: "Exit code: 0" });
+  debug({ message: "=== Hook execution completed ===" });
 };
 
 // Run if executed directly
@@ -296,7 +296,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(JSON.stringify({ async: true }));
 
   main().catch((err) => {
-    error({ message: 'Nori hook: Unhandled error (non-fatal):' });
+    error({ message: "Nori hook: Unhandled error (non-fatal):" });
     error({ message: `Error name: ${err?.name}` });
     error({ message: `Error message: ${err?.message}` });
     error({ message: `Error stack: ${err?.stack}` });

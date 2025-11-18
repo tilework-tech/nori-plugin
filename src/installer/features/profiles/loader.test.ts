@@ -3,55 +3,55 @@
  * Verifies install, uninstall, and validate operations
  */
 
-import * as fs from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type { Config } from '@/installer/config.js';
+import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
-let mockClaudeDir = '';
+let mockClaudeDir = "";
 
-vi.mock('@/installer/env.js', () => ({
+vi.mock("@/installer/env.js", () => ({
   get CLAUDE_DIR() {
     return mockClaudeDir;
   },
   get CLAUDE_MD_FILE() {
-    return path.join(mockClaudeDir, 'CLAUDE.md');
+    return path.join(mockClaudeDir, "CLAUDE.md");
   },
   get CLAUDE_SETTINGS_FILE() {
-    return path.join(mockClaudeDir, 'settings.json');
+    return path.join(mockClaudeDir, "settings.json");
   },
   get CLAUDE_AGENTS_DIR() {
-    return path.join(mockClaudeDir, 'agents');
+    return path.join(mockClaudeDir, "agents");
   },
   get CLAUDE_COMMANDS_DIR() {
-    return path.join(mockClaudeDir, 'commands');
+    return path.join(mockClaudeDir, "commands");
   },
   get CLAUDE_SKILLS_DIR() {
-    return path.join(mockClaudeDir, 'skills');
+    return path.join(mockClaudeDir, "skills");
   },
   get CLAUDE_PROFILES_DIR() {
-    return path.join(mockClaudeDir, 'profiles');
+    return path.join(mockClaudeDir, "profiles");
   },
-  MCP_ROOT: '/mock/mcp/root',
+  MCP_ROOT: "/mock/mcp/root",
 }));
 
 // Import loader after mocking env
-import { profilesLoader, _testing } from './loader.js';
+import { profilesLoader, _testing } from "./loader.js";
 
-describe('profilesLoader', () => {
+describe("profilesLoader", () => {
   let tempDir: string;
   let claudeDir: string;
   let profilesDir: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'profiles-test-'));
-    claudeDir = path.join(tempDir, '.claude');
-    profilesDir = path.join(claudeDir, 'profiles');
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "profiles-test-"));
+    claudeDir = path.join(tempDir, ".claude");
+    profilesDir = path.join(claudeDir, "profiles");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
@@ -68,9 +68,9 @@ describe('profilesLoader', () => {
     vi.clearAllMocks();
   });
 
-  describe('run', () => {
-    it('should create profiles directory and copy profile templates for free installation', async () => {
-      const config: Config = { installType: 'free' };
+  describe("run", () => {
+    it("should create profiles directory and copy profile templates for free installation", async () => {
+      const config: Config = { installType: "free" };
 
       await profilesLoader.run({ config });
 
@@ -85,20 +85,20 @@ describe('profilesLoader', () => {
       // Verify profile directories were copied (but not _base)
       const files = await fs.readdir(profilesDir);
       expect(files.length).toBeGreaterThan(0);
-      expect(files).toContain('senior-swe');
-      expect(files).toContain('amol');
-      expect(files).toContain('product-manager');
-      expect(files).toContain('none');
-      expect(files).not.toContain('_base'); // _base is never installed
+      expect(files).toContain("senior-swe");
+      expect(files).toContain("amol");
+      expect(files).toContain("product-manager");
+      expect(files).toContain("none");
+      expect(files).not.toContain("_base"); // _base is never installed
     });
 
-    it('should install none profile with only base mixin and empty CLAUDE.md', async () => {
-      const config: Config = { installType: 'free' };
+    it("should install none profile with only base mixin and empty CLAUDE.md", async () => {
+      const config: Config = { installType: "free" };
 
       await profilesLoader.run({ config });
 
       // Verify none profile exists
-      const nonePath = path.join(profilesDir, 'none');
+      const nonePath = path.join(profilesDir, "none");
       const noneExists = await fs
         .access(nonePath)
         .then(() => true)
@@ -106,30 +106,30 @@ describe('profilesLoader', () => {
       expect(noneExists).toBe(true);
 
       // Verify profile.json exists and has only base mixin
-      const profileJsonPath = path.join(nonePath, 'profile.json');
+      const profileJsonPath = path.join(nonePath, "profile.json");
       const profileJson = JSON.parse(
-        await fs.readFile(profileJsonPath, 'utf-8'),
+        await fs.readFile(profileJsonPath, "utf-8"),
       );
-      expect(profileJson.name).toBe('none');
+      expect(profileJson.name).toBe("none");
       expect(profileJson.mixins).toEqual({ base: {} });
 
       // Verify CLAUDE.md exists and is empty or minimal
-      const claudeMdPath = path.join(nonePath, 'CLAUDE.md');
-      const claudeMdContent = await fs.readFile(claudeMdPath, 'utf-8');
-      expect(claudeMdContent.trim()).toBe('');
+      const claudeMdPath = path.join(nonePath, "CLAUDE.md");
+      const claudeMdContent = await fs.readFile(claudeMdPath, "utf-8");
+      expect(claudeMdContent.trim()).toBe("");
 
       // Verify only base mixin content is present
-      const skillsDir = path.join(nonePath, 'skills');
+      const skillsDir = path.join(nonePath, "skills");
       const skills = await fs.readdir(skillsDir);
 
       // Should only have using-skills from base mixin
-      expect(skills).toContain('using-skills');
-      expect(skills).not.toContain('test-driven-development'); // from swe mixin
-      expect(skills).not.toContain('updating-noridocs'); // from docs mixin
+      expect(skills).toContain("using-skills");
+      expect(skills).not.toContain("test-driven-development"); // from swe mixin
+      expect(skills).not.toContain("updating-noridocs"); // from docs mixin
     });
 
-    it('should create profiles directory and copy profile templates for paid installation', async () => {
-      const config: Config = { installType: 'paid' };
+    it("should create profiles directory and copy profile templates for paid installation", async () => {
+      const config: Config = { installType: "paid" };
 
       await profilesLoader.run({ config });
 
@@ -144,23 +144,23 @@ describe('profilesLoader', () => {
       // Verify profile directories were copied (but not _base)
       const files = await fs.readdir(profilesDir);
       expect(files.length).toBeGreaterThan(0);
-      expect(files).toContain('senior-swe');
-      expect(files).toContain('amol');
-      expect(files).toContain('product-manager');
-      expect(files).toContain('none');
-      expect(files).not.toContain('_base'); // _base is never installed
+      expect(files).toContain("senior-swe");
+      expect(files).toContain("amol");
+      expect(files).toContain("product-manager");
+      expect(files).toContain("none");
+      expect(files).not.toContain("_base"); // _base is never installed
     });
 
-    it('should copy profile directories with complete structure', async () => {
+    it("should copy profile directories with complete structure", async () => {
       const config: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'senior-swe' },
+        installType: "free",
+        profile: { baseProfile: "senior-swe" },
       };
 
       await profilesLoader.run({ config });
 
       // Verify _base is NOT installed (it's only for composition)
-      const basePath = path.join(profilesDir, '_base');
+      const basePath = path.join(profilesDir, "_base");
       const baseExists = await fs
         .access(basePath)
         .then(() => true)
@@ -168,7 +168,7 @@ describe('profilesLoader', () => {
       expect(baseExists).toBe(false);
 
       // Verify senior-swe profile exists and is fully composed
-      const seniorSwePath = path.join(profilesDir, 'senior-swe');
+      const seniorSwePath = path.join(profilesDir, "senior-swe");
       const seniorSweExists = await fs
         .access(seniorSwePath)
         .then(() => true)
@@ -176,14 +176,14 @@ describe('profilesLoader', () => {
       expect(seniorSweExists).toBe(true);
 
       // Verify it has CLAUDE.md and profile.json
-      const claudeMdPath = path.join(seniorSwePath, 'CLAUDE.md');
+      const claudeMdPath = path.join(seniorSwePath, "CLAUDE.md");
       const claudeMdExists = await fs
         .access(claudeMdPath)
         .then(() => true)
         .catch(() => false);
       expect(claudeMdExists).toBe(true);
 
-      const profileJsonPath = path.join(seniorSwePath, 'profile.json');
+      const profileJsonPath = path.join(seniorSwePath, "profile.json");
       const profileJsonExists = await fs
         .access(profileJsonPath)
         .then(() => true)
@@ -191,9 +191,9 @@ describe('profilesLoader', () => {
       expect(profileJsonExists).toBe(true);
 
       // Verify it has composed content from _base (skills, subagents, slashcommands)
-      const skillsDir = path.join(seniorSwePath, 'skills');
-      const subagentsDir = path.join(seniorSwePath, 'subagents');
-      const slashcommandsDir = path.join(seniorSwePath, 'slashcommands');
+      const skillsDir = path.join(seniorSwePath, "skills");
+      const subagentsDir = path.join(seniorSwePath, "subagents");
+      const slashcommandsDir = path.join(seniorSwePath, "slashcommands");
 
       expect(
         await fs
@@ -215,8 +215,8 @@ describe('profilesLoader', () => {
       ).toBe(true);
     });
 
-    it('should handle reinstallation (update scenario)', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle reinstallation (update scenario)", async () => {
+      const config: Config = { installType: "free" };
 
       // First installation
       await profilesLoader.run({ config });
@@ -231,15 +231,15 @@ describe('profilesLoader', () => {
       // Verify directories still exist after update
       files = await fs.readdir(profilesDir);
       expect(files.length).toBeGreaterThan(0);
-      expect(files).toContain('senior-swe');
-      expect(files).toContain('amol');
-      expect(files).toContain('product-manager');
+      expect(files).toContain("senior-swe");
+      expect(files).toContain("amol");
+      expect(files).toContain("product-manager");
     });
   });
 
-  describe('uninstall', () => {
-    it('should remove built-in profiles for free installation', async () => {
-      const config: Config = { installType: 'free' };
+  describe("uninstall", () => {
+    it("should remove built-in profiles for free installation", async () => {
+      const config: Config = { installType: "free" };
 
       // First install profiles
       await profilesLoader.run({ config });
@@ -251,7 +251,7 @@ describe('profilesLoader', () => {
 
       // Verify built-in profiles exist
       const seniorSweExists = await fs
-        .access(path.join(profilesDir, 'senior-swe'))
+        .access(path.join(profilesDir, "senior-swe"))
         .then(() => true)
         .catch(() => false);
       expect(seniorSweExists).toBe(true);
@@ -261,20 +261,20 @@ describe('profilesLoader', () => {
 
       // Verify built-in profiles were removed
       const seniorSweExistsAfter = await fs
-        .access(path.join(profilesDir, 'senior-swe'))
+        .access(path.join(profilesDir, "senior-swe"))
         .then(() => true)
         .catch(() => false);
       expect(seniorSweExistsAfter).toBe(false);
 
       const amolExistsAfter = await fs
-        .access(path.join(profilesDir, 'amol'))
+        .access(path.join(profilesDir, "amol"))
         .then(() => true)
         .catch(() => false);
       expect(amolExistsAfter).toBe(false);
     });
 
-    it('should remove built-in profiles for paid installation', async () => {
-      const config: Config = { installType: 'paid' };
+    it("should remove built-in profiles for paid installation", async () => {
+      const config: Config = { installType: "paid" };
 
       // First install profiles
       await profilesLoader.run({ config });
@@ -286,7 +286,7 @@ describe('profilesLoader', () => {
 
       // Verify built-in profiles exist
       const seniorSweExists = await fs
-        .access(path.join(profilesDir, 'senior-swe'))
+        .access(path.join(profilesDir, "senior-swe"))
         .then(() => true)
         .catch(() => false);
       expect(seniorSweExists).toBe(true);
@@ -296,54 +296,52 @@ describe('profilesLoader', () => {
 
       // Verify built-in profiles were removed
       const seniorSweExistsAfter = await fs
-        .access(path.join(profilesDir, 'senior-swe'))
+        .access(path.join(profilesDir, "senior-swe"))
         .then(() => true)
         .catch(() => false);
       expect(seniorSweExistsAfter).toBe(false);
 
       const amolExistsAfter = await fs
-        .access(path.join(profilesDir, 'amol'))
+        .access(path.join(profilesDir, "amol"))
         .then(() => true)
         .catch(() => false);
       expect(amolExistsAfter).toBe(false);
     });
 
-    it('should not throw if profiles directory does not exist', async () => {
-      const config: Config = { installType: 'free' };
+    it("should not throw if profiles directory does not exist", async () => {
+      const config: Config = { installType: "free" };
 
       // Uninstall without installing first
-      await expect(
-        profilesLoader.uninstall({ config }),
-      ).resolves.not.toThrow();
+      await expect(profilesLoader.uninstall({ config })).resolves.not.toThrow();
     });
 
-    it('should preserve custom user profiles during uninstall', async () => {
-      const config: Config = { installType: 'free' };
+    it("should preserve custom user profiles during uninstall", async () => {
+      const config: Config = { installType: "free" };
 
       // Install built-in profiles
       await profilesLoader.run({ config });
 
       // Create a custom profile (no "builtin": true field)
-      const customProfileDir = path.join(profilesDir, 'my-custom-profile');
+      const customProfileDir = path.join(profilesDir, "my-custom-profile");
       await fs.mkdir(customProfileDir, { recursive: true });
       await fs.writeFile(
-        path.join(customProfileDir, 'profile.json'),
+        path.join(customProfileDir, "profile.json"),
         JSON.stringify({
-          name: 'my-custom-profile',
-          description: 'My custom profile',
+          name: "my-custom-profile",
+          description: "My custom profile",
           mixins: { base: {} },
         }),
       );
       await fs.writeFile(
-        path.join(customProfileDir, 'CLAUDE.md'),
-        '# My Custom Profile\n',
+        path.join(customProfileDir, "CLAUDE.md"),
+        "# My Custom Profile\n",
       );
 
       // Verify built-in and custom profiles exist before uninstall
       const filesBeforeUninstall = await fs.readdir(profilesDir);
-      expect(filesBeforeUninstall).toContain('senior-swe');
-      expect(filesBeforeUninstall).toContain('amol');
-      expect(filesBeforeUninstall).toContain('my-custom-profile');
+      expect(filesBeforeUninstall).toContain("senior-swe");
+      expect(filesBeforeUninstall).toContain("amol");
+      expect(filesBeforeUninstall).toContain("my-custom-profile");
 
       // Uninstall profiles
       await profilesLoader.uninstall({ config });
@@ -357,13 +355,13 @@ describe('profilesLoader', () => {
 
       // Verify built-in profiles are removed
       const seniorSweExists = await fs
-        .access(path.join(profilesDir, 'senior-swe'))
+        .access(path.join(profilesDir, "senior-swe"))
         .then(() => true)
         .catch(() => false);
       expect(seniorSweExists).toBe(false);
 
       const amolExists = await fs
-        .access(path.join(profilesDir, 'amol'))
+        .access(path.join(profilesDir, "amol"))
         .then(() => true)
         .catch(() => false);
       expect(amolExists).toBe(false);
@@ -377,9 +375,9 @@ describe('profilesLoader', () => {
     });
   });
 
-  describe('validate', () => {
-    it('should pass validation when all required profiles are installed', async () => {
-      const config: Config = { installType: 'free' };
+  describe("validate", () => {
+    it("should pass validation when all required profiles are installed", async () => {
+      const config: Config = { installType: "free" };
 
       // Install profiles
       await profilesLoader.run({ config });
@@ -391,8 +389,8 @@ describe('profilesLoader', () => {
       expect(result.errors).toBeNull();
     });
 
-    it('should fail validation when profiles directory does not exist', async () => {
-      const config: Config = { installType: 'free' };
+    it("should fail validation when profiles directory does not exist", async () => {
+      const config: Config = { installType: "free" };
 
       // Validate without installing
       const result = await profilesLoader.validate!({ config });
@@ -402,8 +400,8 @@ describe('profilesLoader', () => {
       expect(result.errors!.length).toBeGreaterThan(0);
     });
 
-    it('should fail validation when required profiles are missing', async () => {
-      const config: Config = { installType: 'free' };
+    it("should fail validation when required profiles are missing", async () => {
+      const config: Config = { installType: "free" };
 
       // Create profiles directory but don't copy profiles
       await fs.mkdir(profilesDir, { recursive: true });
@@ -416,16 +414,16 @@ describe('profilesLoader', () => {
       expect(result.errors!.length).toBeGreaterThan(0);
     });
 
-    it('should fail validation when only some required profiles are present', async () => {
-      const config: Config = { installType: 'free' };
+    it("should fail validation when only some required profiles are present", async () => {
+      const config: Config = { installType: "free" };
 
       // Create profiles directory and only one profile (senior-swe)
       await fs.mkdir(profilesDir, { recursive: true });
-      const seniorSwePath = path.join(profilesDir, 'senior-swe');
+      const seniorSwePath = path.join(profilesDir, "senior-swe");
       await fs.mkdir(seniorSwePath, { recursive: true });
       await fs.writeFile(
-        path.join(seniorSwePath, 'CLAUDE.md'),
-        '# Senior SWE Profile\n\nTest content',
+        path.join(seniorSwePath, "CLAUDE.md"),
+        "# Senior SWE Profile\n\nTest content",
       );
 
       // Validate (should fail because amol and product-manager are missing)
@@ -435,32 +433,32 @@ describe('profilesLoader', () => {
       expect(result.errors).toBeDefined();
       expect(
         result.errors!.some(
-          (err) => err.includes('amol') || err.includes('product-manager'),
+          (err) => err.includes("amol") || err.includes("product-manager"),
         ),
       ).toBe(true);
     });
   });
 
-  describe('profile.json parsing', () => {
-    it('should parse valid profile.json with extends field', async () => {
+  describe("profile.json parsing", () => {
+    it("should parse valid profile.json with extends field", async () => {
       const tempTestDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), 'profile-json-test-'),
+        path.join(os.tmpdir(), "profile-json-test-"),
       );
 
       const profileJson = {
-        extends: '_base',
-        name: 'test-profile',
-        description: 'Test profile description',
+        extends: "_base",
+        name: "test-profile",
+        description: "Test profile description",
       };
 
-      const profilePath = path.join(tempTestDir, 'test-profile');
+      const profilePath = path.join(tempTestDir, "test-profile");
       await fs.mkdir(profilePath, { recursive: true });
       await fs.writeFile(
-        path.join(profilePath, 'profile.json'),
+        path.join(profilePath, "profile.json"),
         JSON.stringify(profileJson, null, 2),
       );
 
-      const { readProfileMetadata } = await import('./types.js');
+      const { readProfileMetadata } = await import("./types.js");
       const result = await readProfileMetadata({ profileDir: profilePath });
 
       expect(result).toEqual(profileJson);
@@ -469,10 +467,10 @@ describe('profilesLoader', () => {
     });
   });
 
-  describe('permissions configuration', () => {
-    it('should configure permissions.additionalDirectories in settings.json', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+  describe("permissions configuration", () => {
+    it("should configure permissions.additionalDirectories in settings.json", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Install profiles
       await profilesLoader.run({ config });
@@ -485,28 +483,26 @@ describe('profilesLoader', () => {
       expect(exists).toBe(true);
 
       // Verify permissions are configured
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       expect(settings.permissions).toBeDefined();
       expect(settings.permissions.additionalDirectories).toBeDefined();
-      expect(settings.permissions.additionalDirectories).toContain(
-        profilesDir,
-      );
+      expect(settings.permissions.additionalDirectories).toContain(profilesDir);
     });
 
-    it('should preserve existing settings when adding permissions', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+    it("should preserve existing settings when adding permissions", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Create settings.json with existing fields
       await fs.writeFile(
         settingsPath,
         JSON.stringify(
           {
-            $schema: 'https://json.schemastore.org/claude-code-settings.json',
-            model: 'sonnet',
-            existingField: 'should-be-preserved',
+            $schema: "https://json.schemastore.org/claude-code-settings.json",
+            model: "sonnet",
+            existingField: "should-be-preserved",
           },
           null,
           2,
@@ -517,26 +513,24 @@ describe('profilesLoader', () => {
       await profilesLoader.run({ config });
 
       // Verify existing fields are preserved
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
-      expect(settings.model).toBe('sonnet');
-      expect(settings.existingField).toBe('should-be-preserved');
-      expect(settings.permissions.additionalDirectories).toContain(
-        profilesDir,
-      );
+      expect(settings.model).toBe("sonnet");
+      expect(settings.existingField).toBe("should-be-preserved");
+      expect(settings.permissions.additionalDirectories).toContain(profilesDir);
     });
 
-    it('should not duplicate profiles directory in additionalDirectories', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+    it("should not duplicate profiles directory in additionalDirectories", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Install profiles twice
       await profilesLoader.run({ config });
       await profilesLoader.run({ config });
 
       // Verify no duplicates
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       const count = settings.permissions.additionalDirectories.filter(
@@ -546,18 +540,18 @@ describe('profilesLoader', () => {
       expect(count).toBe(1);
     });
 
-    it('should preserve existing additionalDirectories when adding profiles directory', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+    it("should preserve existing additionalDirectories when adding profiles directory", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Create settings.json with existing additionalDirectories
       await fs.writeFile(
         settingsPath,
         JSON.stringify(
           {
-            $schema: 'https://json.schemastore.org/claude-code-settings.json',
+            $schema: "https://json.schemastore.org/claude-code-settings.json",
             permissions: {
-              additionalDirectories: ['/existing/path1', '/existing/path2'],
+              additionalDirectories: ["/existing/path1", "/existing/path2"],
             },
           },
           null,
@@ -569,40 +563,36 @@ describe('profilesLoader', () => {
       await profilesLoader.run({ config });
 
       // Verify existing directories are preserved
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       expect(settings.permissions.additionalDirectories).toContain(
-        '/existing/path1',
+        "/existing/path1",
       );
       expect(settings.permissions.additionalDirectories).toContain(
-        '/existing/path2',
+        "/existing/path2",
       );
-      expect(settings.permissions.additionalDirectories).toContain(
-        profilesDir,
-      );
+      expect(settings.permissions.additionalDirectories).toContain(profilesDir);
       expect(settings.permissions.additionalDirectories.length).toBe(3);
     });
 
-    it('should remove permissions on uninstall', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+    it("should remove permissions on uninstall", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Install first
       await profilesLoader.run({ config });
 
       // Verify permissions are configured
-      let content = await fs.readFile(settingsPath, 'utf-8');
+      let content = await fs.readFile(settingsPath, "utf-8");
       let settings = JSON.parse(content);
-      expect(settings.permissions.additionalDirectories).toContain(
-        profilesDir,
-      );
+      expect(settings.permissions.additionalDirectories).toContain(profilesDir);
 
       // Uninstall
       await profilesLoader.uninstall({ config });
 
       // Verify permissions are removed
-      content = await fs.readFile(settingsPath, 'utf-8');
+      content = await fs.readFile(settingsPath, "utf-8");
       settings = JSON.parse(content);
 
       expect(
@@ -610,18 +600,18 @@ describe('profilesLoader', () => {
       ).toBeFalsy();
     });
 
-    it('should preserve other additionalDirectories on uninstall', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+    it("should preserve other additionalDirectories on uninstall", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Create settings.json with existing additionalDirectories
       await fs.writeFile(
         settingsPath,
         JSON.stringify(
           {
-            $schema: 'https://json.schemastore.org/claude-code-settings.json',
+            $schema: "https://json.schemastore.org/claude-code-settings.json",
             permissions: {
-              additionalDirectories: ['/existing/path1', '/existing/path2'],
+              additionalDirectories: ["/existing/path1", "/existing/path2"],
             },
           },
           null,
@@ -634,14 +624,14 @@ describe('profilesLoader', () => {
       await profilesLoader.uninstall({ config });
 
       // Verify existing directories are preserved
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       expect(settings.permissions.additionalDirectories).toContain(
-        '/existing/path1',
+        "/existing/path1",
       );
       expect(settings.permissions.additionalDirectories).toContain(
-        '/existing/path2',
+        "/existing/path2",
       );
       expect(
         settings.permissions.additionalDirectories.includes(profilesDir),
@@ -649,16 +639,14 @@ describe('profilesLoader', () => {
       expect(settings.permissions.additionalDirectories.length).toBe(2);
     });
 
-    it('should handle missing settings.json on uninstall gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle missing settings.json on uninstall gracefully", async () => {
+      const config: Config = { installType: "free" };
 
-      await expect(
-        profilesLoader.uninstall({ config }),
-      ).resolves.not.toThrow();
+      await expect(profilesLoader.uninstall({ config })).resolves.not.toThrow();
     });
 
-    it('should validate permissions configuration', async () => {
-      const config: Config = { installType: 'free' };
+    it("should validate permissions configuration", async () => {
+      const config: Config = { installType: "free" };
 
       // Install
       await profilesLoader.run({ config });
@@ -670,14 +658,14 @@ describe('profilesLoader', () => {
       expect(result.errors).toBeNull();
     });
 
-    it('should return invalid when permissions are not configured', async () => {
-      const config: Config = { installType: 'free' };
-      const settingsPath = path.join(claudeDir, 'settings.json');
+    it("should return invalid when permissions are not configured", async () => {
+      const config: Config = { installType: "free" };
+      const settingsPath = path.join(claudeDir, "settings.json");
 
       // Install profiles but manually remove permissions
       await profilesLoader.run({ config });
 
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
       delete settings.permissions;
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
@@ -687,15 +675,15 @@ describe('profilesLoader', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors).not.toBeNull();
-      expect(result.errors?.some((e) => e.includes('permissions'))).toBe(true);
+      expect(result.errors?.some((e) => e.includes("permissions"))).toBe(true);
     });
   });
 
-  describe('injectConditionalMixins', () => {
-    it('should inject paid mixin for paid user', () => {
+  describe("injectConditionalMixins", () => {
+    it("should inject paid mixin for paid user", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           docs: {},
@@ -704,26 +692,26 @@ describe('profilesLoader', () => {
 
       const config: Config = {
         auth: {
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://org.example.com',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://org.example.com",
         },
-        installType: 'paid',
+        installType: "paid",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
-      expect(result.mixins).toHaveProperty('paid');
-      expect(result.mixins).toHaveProperty('docs-paid');
+      expect(result.mixins).toHaveProperty("paid");
+      expect(result.mixins).toHaveProperty("docs-paid");
     });
 
-    it('should inject docs-paid mixin for paid user with docs category', () => {
+    it("should inject docs-paid mixin for paid user with docs category", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           docs: {},
@@ -732,32 +720,32 @@ describe('profilesLoader', () => {
 
       const config: Config = {
         auth: {
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://org.example.com',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://org.example.com",
         },
-        installType: 'paid',
+        installType: "paid",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
-      expect(result.mixins).toHaveProperty('paid');
-      expect(result.mixins).toHaveProperty('docs-paid');
+      expect(result.mixins).toHaveProperty("paid");
+      expect(result.mixins).toHaveProperty("docs-paid");
       expect(Object.keys(result.mixins).sort()).toEqual([
-        'base',
-        'docs',
-        'docs-paid',
-        'paid',
+        "base",
+        "docs",
+        "docs-paid",
+        "paid",
       ]);
     });
 
-    it('should inject swe-paid mixin for paid user with swe category', () => {
+    it("should inject swe-paid mixin for paid user with swe category", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           swe: {},
@@ -766,32 +754,32 @@ describe('profilesLoader', () => {
 
       const config: Config = {
         auth: {
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://org.example.com',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://org.example.com",
         },
-        installType: 'paid',
+        installType: "paid",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
-      expect(result.mixins).toHaveProperty('paid');
-      expect(result.mixins).toHaveProperty('swe-paid');
+      expect(result.mixins).toHaveProperty("paid");
+      expect(result.mixins).toHaveProperty("swe-paid");
       expect(Object.keys(result.mixins).sort()).toEqual([
-        'base',
-        'paid',
-        'swe',
-        'swe-paid',
+        "base",
+        "paid",
+        "swe",
+        "swe-paid",
       ]);
     });
 
-    it('should inject multiple tier-specific mixins for paid user with multiple categories', () => {
+    it("should inject multiple tier-specific mixins for paid user with multiple categories", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           docs: {},
@@ -801,35 +789,35 @@ describe('profilesLoader', () => {
 
       const config: Config = {
         auth: {
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://org.example.com',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://org.example.com",
         },
-        installType: 'paid',
+        installType: "paid",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
-      expect(result.mixins).toHaveProperty('paid');
-      expect(result.mixins).toHaveProperty('docs-paid');
-      expect(result.mixins).toHaveProperty('swe-paid');
+      expect(result.mixins).toHaveProperty("paid");
+      expect(result.mixins).toHaveProperty("docs-paid");
+      expect(result.mixins).toHaveProperty("swe-paid");
       expect(Object.keys(result.mixins).sort()).toEqual([
-        'base',
-        'docs',
-        'docs-paid',
-        'paid',
-        'swe',
-        'swe-paid',
+        "base",
+        "docs",
+        "docs-paid",
+        "paid",
+        "swe",
+        "swe-paid",
       ]);
     });
 
-    it('should not inject tier-specific mixins for free user', () => {
+    it("should not inject tier-specific mixins for free user", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           docs: {},
@@ -839,61 +827,61 @@ describe('profilesLoader', () => {
 
       const config: Config = {
         auth: null,
-        installType: 'free',
+        installType: "free",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
-      expect(result.mixins).not.toHaveProperty('paid');
-      expect(result.mixins).not.toHaveProperty('docs-paid');
-      expect(result.mixins).not.toHaveProperty('swe-paid');
+      expect(result.mixins).not.toHaveProperty("paid");
+      expect(result.mixins).not.toHaveProperty("docs-paid");
+      expect(result.mixins).not.toHaveProperty("swe-paid");
       expect(Object.keys(result.mixins).sort()).toEqual([
-        'base',
-        'docs',
-        'swe',
+        "base",
+        "docs",
+        "swe",
       ]);
     });
 
-    it('should not duplicate tier-specific mixin if already present', () => {
+    it("should not duplicate tier-specific mixin if already present", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           docs: {},
-          'docs-paid': {}, // Already present
+          "docs-paid": {}, // Already present
         },
       };
 
       const config: Config = {
         auth: {
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://org.example.com',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://org.example.com",
         },
-        installType: 'paid',
+        installType: "paid",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
-      expect(result.mixins).toHaveProperty('paid');
-      expect(result.mixins).toHaveProperty('docs-paid');
+      expect(result.mixins).toHaveProperty("paid");
+      expect(result.mixins).toHaveProperty("docs-paid");
       // Should only have one docs-paid entry
       expect(
-        Object.keys(result.mixins).filter((k) => k === 'docs-paid'),
+        Object.keys(result.mixins).filter((k) => k === "docs-paid"),
       ).toHaveLength(1);
     });
 
-    it('should not inject tier mixins for base or paid categories', () => {
+    it("should not inject tier mixins for base or paid categories", () => {
       const metadata = {
-        name: 'test-profile',
-        description: 'Test profile',
+        name: "test-profile",
+        description: "Test profile",
         mixins: {
           base: {},
           paid: {},
@@ -902,22 +890,22 @@ describe('profilesLoader', () => {
 
       const config: Config = {
         auth: {
-          username: 'test@example.com',
-          password: 'password',
-          organizationUrl: 'https://org.example.com',
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://org.example.com",
         },
-        installType: 'paid',
+        installType: "paid",
         profile: {
-          baseProfile: 'test-profile',
+          baseProfile: "test-profile",
         },
       };
 
       const result = _testing.injectConditionalMixins({ metadata, config });
 
       // Should not create base-paid or paid-paid
-      expect(result.mixins).not.toHaveProperty('base-paid');
-      expect(result.mixins).not.toHaveProperty('paid-paid');
-      expect(Object.keys(result.mixins).sort()).toEqual(['base', 'paid']);
+      expect(result.mixins).not.toHaveProperty("base-paid");
+      expect(result.mixins).not.toHaveProperty("paid-paid");
+      expect(Object.keys(result.mixins).sort()).toEqual(["base", "paid"]);
     });
   });
 });

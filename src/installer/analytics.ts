@@ -3,8 +3,8 @@
  * Proxies events through the backend to keep GA4 secrets secure
  */
 
-import { analyticsApi } from '@/api/analytics.js';
-import { loadDiskConfig } from '@/installer/config.js';
+import { analyticsApi } from "@/api/analytics.js";
+import { loadDiskConfig } from "@/installer/config.js";
 
 /**
  * Track analytics event
@@ -25,7 +25,7 @@ export const trackEvent = async (args: {
 
     // Send to backend analytics proxy (fire and forget)
     await analyticsApi.trackEvent({
-      clientId: 'plugin-installer',
+      clientId: "plugin-installer",
       userId: currentUserEmail,
       eventName,
       eventParams: {

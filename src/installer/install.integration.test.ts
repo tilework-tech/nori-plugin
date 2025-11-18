@@ -1,21 +1,21 @@
-import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs";
+import * as fsPromises from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type * as childProcess from 'child_process';
+import type * as childProcess from "child_process";
 
-import { getConfigPath } from './config.js';
-import { main as installMain } from './install.js';
-import { getInstalledVersion } from './version.js';
+import { getConfigPath } from "./config.js";
+import { main as installMain } from "./install.js";
+import { getInstalledVersion } from "./version.js";
 
 // Track which version of npx uninstall was called
 let uninstallCalledWith: string | null = null;
 
 // Mock child_process to intercept npx calls
-vi.mock('child_process', async (importOriginal) => {
+vi.mock("child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof childProcess>();
   return {
     ...actual,
@@ -30,12 +30,12 @@ vi.mock('child_process', async (importOriginal) => {
 
         // Simulate version-specific uninstall behavior
         // When uninstalling v12.0.0, remove the marker file
-        if (version === '12.0.0') {
+        if (version === "12.0.0") {
           try {
             // Compute marker path using current HOME (which will be mocked in tests)
             const markerPath = path.join(
-              process.env.HOME || '~',
-              '.nori-test-installation-marker',
+              process.env.HOME || "~",
+              ".nori-test-installation-marker",
             );
             fs.unlinkSync(markerPath);
           } catch {
@@ -54,39 +54,39 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 // Mock env module to use test directory
-vi.mock('./env.js', () => {
-  const testRoot = '/tmp/install-integration-test-mcp-root';
+vi.mock("./env.js", () => {
+  const testRoot = "/tmp/install-integration-test-mcp-root";
   return {
     MCP_ROOT: testRoot,
-    CLAUDE_DIR: '/tmp/install-integration-test-claude',
-    CLAUDE_SETTINGS_FILE: '/tmp/install-integration-test-claude/settings.json',
-    CLAUDE_AGENTS_DIR: '/tmp/install-integration-test-claude/agents',
-    CLAUDE_COMMANDS_DIR: '/tmp/install-integration-test-claude/commands',
-    CLAUDE_MD_FILE: '/tmp/install-integration-test-claude/CLAUDE.md',
-    CLAUDE_SKILLS_DIR: '/tmp/install-integration-test-claude/skills',
-    CLAUDE_PROFILES_DIR: '/tmp/install-integration-test-claude/profiles',
+    CLAUDE_DIR: "/tmp/install-integration-test-claude",
+    CLAUDE_SETTINGS_FILE: "/tmp/install-integration-test-claude/settings.json",
+    CLAUDE_AGENTS_DIR: "/tmp/install-integration-test-claude/agents",
+    CLAUDE_COMMANDS_DIR: "/tmp/install-integration-test-claude/commands",
+    CLAUDE_MD_FILE: "/tmp/install-integration-test-claude/CLAUDE.md",
+    CLAUDE_SKILLS_DIR: "/tmp/install-integration-test-claude/skills",
+    CLAUDE_PROFILES_DIR: "/tmp/install-integration-test-claude/profiles",
   };
 });
 
 // Mock analytics to prevent tracking during tests
-vi.mock('./analytics.js', () => ({
+vi.mock("./analytics.js", () => ({
   initializeAnalytics: vi.fn(),
   trackEvent: vi.fn(),
 }));
 
-describe('install integration test', () => {
+describe("install integration test", () => {
   let tempHomeDir: string;
   let originalHome: string | undefined;
   let VERSION_FILE_PATH: string;
   let MARKER_FILE_PATH: string;
 
-  const TEST_MCP_ROOT = '/tmp/install-integration-test-mcp-root';
-  const TEST_CLAUDE_DIR = '/tmp/install-integration-test-claude';
+  const TEST_MCP_ROOT = "/tmp/install-integration-test-mcp-root";
+  const TEST_CLAUDE_DIR = "/tmp/install-integration-test-claude";
 
   beforeEach(async () => {
     // Create temp HOME directory
     tempHomeDir = await fsPromises.mkdtemp(
-      path.join(os.tmpdir(), 'install-test-home-'),
+      path.join(os.tmpdir(), "install-test-home-"),
     );
 
     // Mock HOME environment variable
@@ -94,11 +94,8 @@ describe('install integration test', () => {
     process.env.HOME = tempHomeDir;
 
     // Now paths point to temp HOME
-    VERSION_FILE_PATH = path.join(tempHomeDir, '.nori-installed-version');
-    MARKER_FILE_PATH = path.join(
-      tempHomeDir,
-      '.nori-test-installation-marker',
-    );
+    VERSION_FILE_PATH = path.join(tempHomeDir, ".nori-installed-version");
+    MARKER_FILE_PATH = path.join(tempHomeDir, ".nori-test-installation-marker");
 
     // Reset tracking variable
     uninstallCalledWith = null;
@@ -121,10 +118,10 @@ describe('install integration test', () => {
 
     // Create mock package.json for getCurrentPackageVersion
     fs.writeFileSync(
-      path.join(TEST_MCP_ROOT, 'package.json'),
+      path.join(TEST_MCP_ROOT, "package.json"),
       JSON.stringify({
-        name: 'nori-ai',
-        version: '13.0.0',
+        name: "nori-ai",
+        version: "13.0.0",
       }),
     );
   });
@@ -151,15 +148,15 @@ describe('install integration test', () => {
     } catch {}
   });
 
-  it('should track version across installation upgrade flow', async () => {
+  it("should track version across installation upgrade flow", async () => {
     // STEP 1: Simulate existing installation at version 12.0.0
     // Write old version file
-    fs.writeFileSync(VERSION_FILE_PATH, '12.0.0');
+    fs.writeFileSync(VERSION_FILE_PATH, "12.0.0");
     // Create a marker file that simulates something from the old installation
-    fs.writeFileSync(MARKER_FILE_PATH, 'installed by v12.0.0');
+    fs.writeFileSync(MARKER_FILE_PATH, "installed by v12.0.0");
 
     // Verify initial state
-    expect(getInstalledVersion()).toBe('12.0.0');
+    expect(getInstalledVersion()).toBe("12.0.0");
     expect(fs.existsSync(MARKER_FILE_PATH)).toBe(true);
 
     // STEP 2: Run installation (simulating upgrade to 13.0.0)
@@ -174,30 +171,30 @@ describe('install integration test', () => {
 
     // CRITICAL: Verify that `npx nori-ai@12.0.0 uninstall` was called
     // This is the core requirement - we must uninstall at the OLD version
-    expect(uninstallCalledWith).toBe('12.0.0');
+    expect(uninstallCalledWith).toBe("12.0.0");
 
     // Verify the marker file was removed by the version-specific uninstall
     expect(fs.existsSync(MARKER_FILE_PATH)).toBe(false);
 
     // Version file should be updated to new version
     expect(fs.existsSync(VERSION_FILE_PATH)).toBe(true);
-    const newVersion = fs.readFileSync(VERSION_FILE_PATH, 'utf-8');
-    expect(newVersion).toBe('13.0.0');
+    const newVersion = fs.readFileSync(VERSION_FILE_PATH, "utf-8");
+    expect(newVersion).toBe("13.0.0");
 
     // getInstalledVersion should now return the new version
-    expect(getInstalledVersion()).toBe('13.0.0');
+    expect(getInstalledVersion()).toBe("13.0.0");
   });
 
-  it('should install paid features for paid users with auth credentials', async () => {
+  it("should install paid features for paid users with auth credentials", async () => {
     const CONFIG_PATH = getConfigPath();
 
     // STEP 1: Create config with auth credentials (paid user)
     const paidConfig = {
-      username: 'test@example.com',
-      password: 'testpass',
-      organizationUrl: 'http://localhost:3000',
+      username: "test@example.com",
+      password: "testpass",
+      organizationUrl: "http://localhost:3000",
       profile: {
-        baseProfile: 'senior-swe',
+        baseProfile: "senior-swe",
       },
     };
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(paidConfig, null, 2));
@@ -207,29 +204,27 @@ describe('install integration test', () => {
 
     // STEP 3: Verify paid features are installed
     // Check that paid skills exist in the profile (WITH 'paid-' prefix from mixin)
-    const profileDir = path.join(TEST_CLAUDE_DIR, 'profiles', 'senior-swe');
-    const skillsDir = path.join(profileDir, 'skills');
+    const profileDir = path.join(TEST_CLAUDE_DIR, "profiles", "senior-swe");
+    const skillsDir = path.join(profileDir, "skills");
 
     // Paid skills are copied from mixin with their original names (paid- prefix)
-    expect(fs.existsSync(path.join(skillsDir, 'paid-recall'))).toBe(true);
-    expect(fs.existsSync(path.join(skillsDir, 'paid-memorize'))).toBe(true);
-    expect(fs.existsSync(path.join(skillsDir, 'paid-write-noridoc'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-recall"))).toBe(true);
+    expect(fs.existsSync(path.join(skillsDir, "paid-memorize"))).toBe(true);
+    expect(fs.existsSync(path.join(skillsDir, "paid-write-noridoc"))).toBe(
       true,
     );
-    expect(fs.existsSync(path.join(skillsDir, 'paid-read-noridoc'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-read-noridoc"))).toBe(true);
+    expect(fs.existsSync(path.join(skillsDir, "paid-list-noridocs"))).toBe(
       true,
     );
-    expect(fs.existsSync(path.join(skillsDir, 'paid-list-noridocs'))).toBe(
-      true,
-    );
-    expect(fs.existsSync(path.join(skillsDir, 'paid-prompt-analysis'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-prompt-analysis"))).toBe(
       true,
     );
 
     // Check that paid subagents exist (as .md files)
-    const subagentsDir = path.join(profileDir, 'subagents');
+    const subagentsDir = path.join(profileDir, "subagents");
     expect(
-      fs.existsSync(path.join(subagentsDir, 'nori-knowledge-researcher.md')),
+      fs.existsSync(path.join(subagentsDir, "nori-knowledge-researcher.md")),
     ).toBe(true);
 
     // Clean up
@@ -238,13 +233,13 @@ describe('install integration test', () => {
     } catch {}
   });
 
-  it('should NOT install paid features for free users without auth credentials', async () => {
+  it("should NOT install paid features for free users without auth credentials", async () => {
     const CONFIG_PATH = getConfigPath();
 
     // STEP 1: Create config WITHOUT auth credentials (free user)
     const freeConfig = {
       profile: {
-        baseProfile: 'senior-swe',
+        baseProfile: "senior-swe",
       },
     };
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(freeConfig, null, 2));
@@ -253,29 +248,29 @@ describe('install integration test', () => {
     await installMain({ nonInteractive: true });
 
     // STEP 3: Verify paid features are NOT installed
-    const profileDir = path.join(TEST_CLAUDE_DIR, 'profiles', 'senior-swe');
-    const skillsDir = path.join(profileDir, 'skills');
+    const profileDir = path.join(TEST_CLAUDE_DIR, "profiles", "senior-swe");
+    const skillsDir = path.join(profileDir, "skills");
 
     // Paid skills should NOT exist for free users (check with paid- prefix)
-    expect(fs.existsSync(path.join(skillsDir, 'paid-recall'))).toBe(false);
-    expect(fs.existsSync(path.join(skillsDir, 'paid-memorize'))).toBe(false);
-    expect(fs.existsSync(path.join(skillsDir, 'paid-write-noridoc'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-recall"))).toBe(false);
+    expect(fs.existsSync(path.join(skillsDir, "paid-memorize"))).toBe(false);
+    expect(fs.existsSync(path.join(skillsDir, "paid-write-noridoc"))).toBe(
       false,
     );
-    expect(fs.existsSync(path.join(skillsDir, 'paid-read-noridoc'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-read-noridoc"))).toBe(
       false,
     );
-    expect(fs.existsSync(path.join(skillsDir, 'paid-list-noridocs'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-list-noridocs"))).toBe(
       false,
     );
-    expect(fs.existsSync(path.join(skillsDir, 'paid-prompt-analysis'))).toBe(
+    expect(fs.existsSync(path.join(skillsDir, "paid-prompt-analysis"))).toBe(
       false,
     );
 
     // Paid subagents should NOT exist
-    const subagentsDir = path.join(profileDir, 'subagents');
+    const subagentsDir = path.join(profileDir, "subagents");
     expect(
-      fs.existsSync(path.join(subagentsDir, 'nori-knowledge-researcher.md')),
+      fs.existsSync(path.join(subagentsDir, "nori-knowledge-researcher.md")),
     ).toBe(false);
 
     // Clean up
@@ -284,7 +279,7 @@ describe('install integration test', () => {
     } catch {}
   });
 
-  it('should skip uninstall for first-time installation', async () => {
+  it("should skip uninstall for first-time installation", async () => {
     // Ensure no existing installation
     expect(fs.existsSync(VERSION_FILE_PATH)).toBe(false);
     const CONFIG_PATH = getConfigPath();
@@ -300,17 +295,17 @@ describe('install integration test', () => {
 
     // Verify installation completed and version was saved
     expect(fs.existsSync(VERSION_FILE_PATH)).toBe(true);
-    const version = fs.readFileSync(VERSION_FILE_PATH, 'utf-8');
-    expect(version).toBe('13.0.0');
+    const version = fs.readFileSync(VERSION_FILE_PATH, "utf-8");
+    expect(version).toBe("13.0.0");
   });
 
-  it('should skip uninstall when skipUninstall is true', async () => {
+  it("should skip uninstall when skipUninstall is true", async () => {
     // STEP 1: Simulate existing installation at version 12.0.0
-    fs.writeFileSync(VERSION_FILE_PATH, '12.0.0');
-    fs.writeFileSync(MARKER_FILE_PATH, 'installed by v12.0.0');
+    fs.writeFileSync(VERSION_FILE_PATH, "12.0.0");
+    fs.writeFileSync(MARKER_FILE_PATH, "installed by v12.0.0");
 
     // Verify initial state
-    expect(getInstalledVersion()).toBe('12.0.0');
+    expect(getInstalledVersion()).toBe("12.0.0");
     expect(fs.existsSync(MARKER_FILE_PATH)).toBe(true);
 
     // STEP 2: Run installation with skipUninstall=true
@@ -324,14 +319,14 @@ describe('install integration test', () => {
 
     // Version file should be updated to new version
     expect(fs.existsSync(VERSION_FILE_PATH)).toBe(true);
-    const newVersion = fs.readFileSync(VERSION_FILE_PATH, 'utf-8');
-    expect(newVersion).toBe('13.0.0');
+    const newVersion = fs.readFileSync(VERSION_FILE_PATH, "utf-8");
+    expect(newVersion).toBe("13.0.0");
   });
 
-  it('should never delete real user config file', () => {
+  it("should never delete real user config file", () => {
     // This test verifies that process.env.HOME is mocked and tests never touch the real config file
     // Get what the real config path WOULD be (using originalHome from beforeEach)
-    const realConfigPath = path.join(originalHome || '~', 'nori-config.json');
+    const realConfigPath = path.join(originalHome || "~", "nori-config.json");
 
     // Check if real config exists before test
     let existedBefore = false;
@@ -351,8 +346,8 @@ describe('install integration test', () => {
 
     // Verify the test HOME is actually different from real HOME
     // (We expect process.env.HOME to be a temp directory like /tmp/install-test-home-XXXXXX)
-    expect(process.env.HOME).toContain('/tmp/');
-    expect(process.env.HOME).toContain('install-test-home-');
+    expect(process.env.HOME).toContain("/tmp/");
+    expect(process.env.HOME).toContain("install-test-home-");
 
     // Verify real config still exists (if it existed before)
     if (existedBefore) {

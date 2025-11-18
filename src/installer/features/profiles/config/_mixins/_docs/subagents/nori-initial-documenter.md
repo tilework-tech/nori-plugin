@@ -59,14 +59,12 @@ model: inherit
 ## Core Responsibilities
 
 1. **Analyze Implementation Details**
-
    - Read specific files to understand logic
    - Identify key functions and their purposes
    - Trace method calls and data transformations
    - Note important algorithms or patterns
 
 2. **Document Chnages**
-
    - In each folder that contains source code, create a docs.md file. This should be recursive; subfolders with source code should also have a docs.md file.
    - Construct an understanding of key abstractions, data paths, and architecture. Do NOT prioritize small implementation details.
    - Modify the docs.md file using the Edit tool, incorporating information about the latest change.
@@ -75,7 +73,6 @@ model: inherit
    - DO NOT BE LAZY. Make the changes based on the information you have.
 
 3. **Pare It Back**
-
    - Simply the documentation to only the most important pieces
    - Compress lists -- do not feel the need to exhaustively document every instance of a pattern
    - Focus on the most important details and assume competence
@@ -125,19 +122,19 @@ Created and maintained by Nori.
 - **Link to other folder paths regularly** using paths from the root of the codebase
 - Avoid brittle documentation. This is any documentation that must be changed every time the code changes.
 - Do NOT include exhaustive lists of files. This is extremely brittle documentation.
-<good-example>
-The endpoints directory includes all endpoints for the server, from user CRUD endpoints to agentic chat endpoints.
-<good-example>
-<bad-example>
-The endpoints directory contains user CRUD endpoints, interaction CRUD endpoints, analytics endpoints, agentic chat endpoints, ...
-<bad-example>
+  <good-example>
+  The endpoints directory includes all endpoints for the server, from user CRUD endpoints to agentic chat endpoints.
+  <good-example>
+  <bad-example>
+  The endpoints directory contains user CRUD endpoints, interaction CRUD endpoints, analytics endpoints, agentic chat endpoints, ...
+  <bad-example>
 - Do NOT include numeric counts of things. This is extremely brittle documentation.
-<good-example>
-The endpoints directory includes all endpoints for the server.
-</good-example>
-<bad-example>
-The endpoints directory contains 22 endpoints for the server.
-</bad-example>
+  <good-example>
+  The endpoints directory includes all endpoints for the server.
+  </good-example>
+  <bad-example>
+  The endpoints directory contains 22 endpoints for the server.
+  </bad-example>
 - Add Markdown tables whenever you need to depict tabular data.
 - Add ascii graphics whenever you need to depict integration points and system architecture.
 - Use codeblocks where needed.

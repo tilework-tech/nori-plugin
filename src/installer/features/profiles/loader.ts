@@ -3,32 +3,32 @@
  * Installs profile templates to ~/.claude/profiles/
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import * as fs from "fs/promises";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
-import type { Config } from '@/installer/config.js';
-import type {
-  Loader,
-  ValidationResult,
-} from '@/installer/features/loaderRegistry.js';
-
-import { CLAUDE_PROFILES_DIR, CLAUDE_SETTINGS_FILE } from '@/installer/env.js';
+import { CLAUDE_PROFILES_DIR, CLAUDE_SETTINGS_FILE } from "@/installer/env.js";
 import {
   readProfileMetadata,
   type ProfileMetadata,
-} from '@/installer/features/profiles/types.js';
-import { success, info, warn } from '@/installer/logger.js';
+} from "@/installer/features/profiles/types.js";
+import { success, info, warn } from "@/installer/logger.js";
+
+import type { Config } from "@/installer/config.js";
+import type {
+  Loader,
+  ValidationResult,
+} from "@/installer/features/loaderRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Profile templates config directory (relative to this loader)
-const PROFILE_TEMPLATES_DIR = path.join(__dirname, 'config');
+const PROFILE_TEMPLATES_DIR = path.join(__dirname, "config");
 
 // Mixins directory (contains reusable profile components)
-const MIXINS_DIR = path.join(PROFILE_TEMPLATES_DIR, '_mixins');
+const MIXINS_DIR = path.join(PROFILE_TEMPLATES_DIR, "_mixins");
 
 /**
  * Check if user is a paid tier user
@@ -39,7 +39,7 @@ const MIXINS_DIR = path.join(PROFILE_TEMPLATES_DIR, '_mixins');
  */
 const isPaidUser = (args: { config: Config }): boolean => {
   const { config } = args;
-  return config.auth != null && config.installType === 'paid';
+  return config.auth != null && config.installType === "paid";
 };
 
 /**
@@ -73,7 +73,7 @@ const injectConditionalMixins = (args: {
   const newMixins = { ...metadata.mixins };
 
   // Inject cross-category paid mixin if not already present
-  if (!('paid' in newMixins)) {
+  if (!("paid" in newMixins)) {
     newMixins.paid = {};
   }
 
@@ -83,7 +83,7 @@ const injectConditionalMixins = (args: {
   // 2. The corresponding tier-specific mixin is not already present (e.g., 'docs-paid')
 
   const categories = Object.keys(metadata.mixins).filter(
-    (name) => !name.endsWith('-paid') && name !== 'base' && name !== 'paid',
+    (name) => !name.endsWith("-paid") && name !== "base" && name !== "paid",
   );
 
   for (const category of categories) {
@@ -130,7 +130,7 @@ const getMixinPaths = (args: { metadata: ProfileMetadata }): Array<string> => {
 const installProfiles = async (args: { config: Config }): Promise<void> => {
   const { config: _config } = args;
 
-  info({ message: 'Installing Nori profiles...' });
+  info({ message: "Installing Nori profiles..." });
 
   // Create profiles directory if it doesn't exist
   await fs.mkdir(CLAUDE_PROFILES_DIR, { recursive: true });
@@ -146,7 +146,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
   // Install user-facing profiles with composition
   // Internal profiles (like _base) are NEVER installed - they only exist for composition
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name.startsWith('_')) {
+    if (!entry.isDirectory() || entry.name.startsWith("_")) {
       continue; // Skip non-directories and internal profiles
     }
 
@@ -155,14 +155,14 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
 
     try {
       // User-facing profile - must have CLAUDE.md
-      const claudeMdPath = path.join(profileSrcDir, 'CLAUDE.md');
+      const claudeMdPath = path.join(profileSrcDir, "CLAUDE.md");
       await fs.access(claudeMdPath);
 
       // Remove existing profile directory if it exists (ensures built-ins stay updated)
       await fs.rm(profileDestDir, { recursive: true, force: true });
 
       // Read profile metadata and inject paid mixin if applicable
-      const profileJsonPath = path.join(profileSrcDir, 'profile.json');
+      const profileJsonPath = path.join(profileSrcDir, "profile.json");
       let metadata: ProfileMetadata | null = null;
 
       try {
@@ -186,7 +186,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
         const mixinNames = Object.keys(metadata.mixins).sort();
 
         info({
-          message: `  Composing from mixins: ${mixinNames.join(', ')}`,
+          message: `  Composing from mixins: ${mixinNames.join(", ")}`,
         });
 
         // Copy content from each mixin in order
@@ -251,7 +251,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
   if (installedCount > 0) {
     success({
       message: `Successfully installed ${installedCount} profile${
-        installedCount === 1 ? '' : 's'
+        installedCount === 1 ? "" : "s"
       }`,
     });
     info({ message: `Profiles directory: ${CLAUDE_PROFILES_DIR}` });
@@ -259,7 +259,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
   if (skippedCount > 0) {
     warn({
       message: `Skipped ${skippedCount} profile${
-        skippedCount === 1 ? '' : 's'
+        skippedCount === 1 ? "" : "s"
       } (not found or invalid)`,
     });
   }
@@ -273,7 +273,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
  * Adds profiles directory to permissions.additionalDirectories in settings.json
  */
 const configureProfilesPermissions = async (): Promise<void> => {
-  info({ message: 'Configuring permissions for profiles directory...' });
+  info({ message: "Configuring permissions for profiles directory..." });
 
   // Create .claude directory if it doesn't exist
   await fs.mkdir(path.dirname(CLAUDE_SETTINGS_FILE), { recursive: true });
@@ -281,11 +281,11 @@ const configureProfilesPermissions = async (): Promise<void> => {
   // Read or initialize settings
   let settings: any = {};
   try {
-    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, "utf-8");
     settings = JSON.parse(content);
   } catch {
     settings = {
-      $schema: 'https://json.schemastore.org/claude-code-settings.json',
+      $schema: "https://json.schemastore.org/claude-code-settings.json",
     };
   }
 
@@ -320,7 +320,7 @@ const configureProfilesPermissions = async (): Promise<void> => {
 const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
   const { config: _config } = args;
 
-  info({ message: 'Removing built-in Nori profiles...' });
+  info({ message: "Removing built-in Nori profiles..." });
 
   try {
     await fs.access(CLAUDE_PROFILES_DIR);
@@ -340,11 +340,11 @@ const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
       }
 
       const profileDir = path.join(CLAUDE_PROFILES_DIR, entry.name);
-      const profileJsonPath = path.join(profileDir, 'profile.json');
+      const profileJsonPath = path.join(profileDir, "profile.json");
 
       try {
         // Read profile.json to check if it's a built-in profile
-        const content = await fs.readFile(profileJsonPath, 'utf-8');
+        const content = await fs.readFile(profileJsonPath, "utf-8");
         const profileData = JSON.parse(content);
 
         if (profileData.builtin === true) {
@@ -364,19 +364,19 @@ const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
     if (removedCount > 0) {
       success({
         message: `✓ Removed ${removedCount} built-in profile${
-          removedCount === 1 ? '' : 's'
+          removedCount === 1 ? "" : "s"
         }`,
       });
     }
     if (preservedCount > 0) {
       info({
         message: `  Preserved ${preservedCount} custom profile${
-          preservedCount === 1 ? '' : 's'
+          preservedCount === 1 ? "" : "s"
         }`,
       });
     }
   } catch {
-    info({ message: 'Profiles directory not found (may not be installed)' });
+    info({ message: "Profiles directory not found (may not be installed)" });
   }
 
   // Remove permissions configuration
@@ -388,10 +388,10 @@ const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
  * Removes profiles directory from permissions.additionalDirectories in settings.json
  */
 const removeProfilesPermissions = async (): Promise<void> => {
-  info({ message: 'Removing profiles directory permissions...' });
+  info({ message: "Removing profiles directory permissions..." });
 
   try {
-    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, "utf-8");
     const settings = JSON.parse(content);
 
     if (settings.permissions?.additionalDirectories) {
@@ -413,9 +413,9 @@ const removeProfilesPermissions = async (): Promise<void> => {
         CLAUDE_SETTINGS_FILE,
         JSON.stringify(settings, null, 2),
       );
-      success({ message: '✓ Removed profiles directory permissions' });
+      success({ message: "✓ Removed profiles directory permissions" });
     } else {
-      info({ message: 'No permissions found in settings.json' });
+      info({ message: "No permissions found in settings.json" });
     }
   } catch (err) {
     warn({ message: `Could not remove permissions: ${err}` });
@@ -444,7 +444,7 @@ const validate = async (args: {
     errors.push('Run "nori-ai install" to create the profiles directory');
     return {
       valid: false,
-      message: 'Profiles directory not found',
+      message: "Profiles directory not found",
       errors,
     };
   }
@@ -453,18 +453,18 @@ const validate = async (args: {
   // Note: _base is NOT checked here because it's never installed to ~/.claude/profiles/
   // It only exists in source templates for composition
   const requiredProfiles = [
-    'senior-swe',
-    'amol',
-    'product-manager',
-    'documenter',
-    'none',
+    "senior-swe",
+    "amol",
+    "product-manager",
+    "documenter",
+    "none",
   ];
   const missingProfiles: Array<string> = [];
 
   for (const profile of requiredProfiles) {
     const profileDir = path.join(CLAUDE_PROFILES_DIR, profile);
-    const claudeMdPath = path.join(profileDir, 'CLAUDE.md');
-    const profileJsonPath = path.join(profileDir, 'profile.json');
+    const claudeMdPath = path.join(profileDir, "CLAUDE.md");
+    const profileJsonPath = path.join(profileDir, "profile.json");
 
     try {
       await fs.access(claudeMdPath);
@@ -478,7 +478,7 @@ const validate = async (args: {
     errors.push(
       `Missing ${
         missingProfiles.length
-      } required profile(s): ${missingProfiles.join(', ')}`,
+      } required profile(s): ${missingProfiles.join(", ")}`,
     );
     errors.push('Run "nori-ai install" to install missing profiles');
   }
@@ -486,14 +486,14 @@ const validate = async (args: {
   if (errors.length > 0) {
     return {
       valid: false,
-      message: 'Some required profiles or base components are not installed',
+      message: "Some required profiles or base components are not installed",
       errors,
     };
   }
 
   // Check if permissions are configured in settings.json
   try {
-    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
+    const content = await fs.readFile(CLAUDE_SETTINGS_FILE, "utf-8");
     const settings = JSON.parse(content);
 
     if (
@@ -502,20 +502,20 @@ const validate = async (args: {
       )
     ) {
       errors.push(
-        'Profiles directory not configured in permissions.additionalDirectories',
+        "Profiles directory not configured in permissions.additionalDirectories",
       );
       errors.push('Run "nori-ai install" to configure permissions');
       return {
         valid: false,
-        message: 'Profiles permissions not configured',
+        message: "Profiles permissions not configured",
         errors,
       };
     }
   } catch {
-    errors.push('Could not read or parse settings.json');
+    errors.push("Could not read or parse settings.json");
     return {
       valid: false,
-      message: 'Settings file error',
+      message: "Settings file error",
       errors,
     };
   }
@@ -531,8 +531,8 @@ const validate = async (args: {
  * Profiles feature loader
  */
 export const profilesLoader: Loader = {
-  name: 'profiles',
-  description: 'Install Nori profile templates to ~/.claude/profiles/',
+  name: "profiles",
+  description: "Install Nori profile templates to ~/.claude/profiles/",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installProfiles({ config });

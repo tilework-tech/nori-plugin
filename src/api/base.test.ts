@@ -1,12 +1,12 @@
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync } from "fs";
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { ConfigManager } from './base.js';
+import { ConfigManager } from "./base.js";
 
-vi.mock('fs');
+vi.mock("fs");
 
-describe('ConfigManager', () => {
+describe("ConfigManager", () => {
   const mockExistsSync = vi.mocked(existsSync);
   const mockReadFileSync = vi.mocked(readFileSync);
 
@@ -14,7 +14,7 @@ describe('ConfigManager', () => {
     vi.clearAllMocks();
   });
 
-  it('should return empty object when config file does not exist', () => {
+  it("should return empty object when config file does not exist", () => {
     mockExistsSync.mockReturnValue(false);
 
     const result = ConfigManager.loadConfig();
@@ -24,20 +24,20 @@ describe('ConfigManager', () => {
 
   // Race condition scenarios: these test cases cover situations where
   // analytics code calls loadConfig() before/during config file creation
-  it('should return empty object when config file is empty (race condition)', () => {
+  it("should return empty object when config file is empty (race condition)", () => {
     // Simulates reading the file after creation but before write completes
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue('');
+    mockReadFileSync.mockReturnValue("");
 
     const result = ConfigManager.loadConfig();
 
     expect(result).toEqual({});
   });
 
-  it('should return empty object when config file contains whitespace only (race condition)', () => {
+  it("should return empty object when config file contains whitespace only (race condition)", () => {
     // Simulates partial file write during race condition
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue('   \n  \t  ');
+    mockReadFileSync.mockReturnValue("   \n  \t  ");
 
     const result = ConfigManager.loadConfig();
 
@@ -45,9 +45,9 @@ describe('ConfigManager', () => {
   });
 
   // Unexpected error scenarios: truly malformed content should still be caught
-  it('should return empty object when config file contains invalid JSON', () => {
+  it("should return empty object when config file contains invalid JSON", () => {
     mockExistsSync.mockReturnValue(true);
-    mockReadFileSync.mockReturnValue('{invalid json}');
+    mockReadFileSync.mockReturnValue("{invalid json}");
 
     const result = ConfigManager.loadConfig();
 
@@ -55,22 +55,22 @@ describe('ConfigManager', () => {
   });
 
   // Happy path: normal config loading
-  it('should parse and return valid config', () => {
+  it("should parse and return valid config", () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(
       JSON.stringify({
-        username: 'test@example.com',
-        password: 'test123',
-        organizationUrl: 'https://example.com',
+        username: "test@example.com",
+        password: "test123",
+        organizationUrl: "https://example.com",
       }),
     );
 
     const result = ConfigManager.loadConfig();
 
     expect(result).toEqual({
-      username: 'test@example.com',
-      password: 'test123',
-      organizationUrl: 'https://example.com',
+      username: "test@example.com",
+      password: "test123",
+      organizationUrl: "https://example.com",
     });
   });
 });

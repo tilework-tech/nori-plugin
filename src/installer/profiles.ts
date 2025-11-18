@@ -3,12 +3,12 @@
  * Handles profile listing, loading, and switching
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as path from "path";
 
-import { loadDiskConfig, saveDiskConfig } from '@/installer/config.js';
-import { CLAUDE_PROFILES_DIR } from '@/installer/env.js';
-import { success, info } from '@/installer/logger.js';
+import { loadDiskConfig, saveDiskConfig } from "@/installer/config.js";
+import { CLAUDE_PROFILES_DIR } from "@/installer/env.js";
+import { success, info } from "@/installer/logger.js";
 
 /**
  * List all available profiles from ~/.claude/profiles/
@@ -32,7 +32,7 @@ export const listProfiles = async (): Promise<Array<string>> => {
         const claudeMdPath = path.join(
           CLAUDE_PROFILES_DIR,
           entry.name,
-          'CLAUDE.md',
+          "CLAUDE.md",
         );
         try {
           await fs.access(claudeMdPath);
@@ -65,7 +65,7 @@ export const switchProfile = async (args: {
   // 1. Verify profile exists by checking for CLAUDE.md in profile directory
   const profileDir = path.join(CLAUDE_PROFILES_DIR, profileName);
   try {
-    const claudeMdPath = path.join(profileDir, 'CLAUDE.md');
+    const claudeMdPath = path.join(profileDir, "CLAUDE.md");
     await fs.access(claudeMdPath);
   } catch {
     throw new Error(

@@ -8,7 +8,7 @@
  * is being saved to Nori Agent Brain (while the async summarize hook runs in background).
  */
 
-import { loadDiskConfig } from '@/installer/config.js';
+import { loadDiskConfig } from "@/installer/config.js";
 
 /**
  * Main entry point
@@ -18,15 +18,15 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
 
   let output;
-  if (diskConfig?.sendSessionTranscript === 'disabled') {
+  if (diskConfig?.sendSessionTranscript === "disabled") {
     output = {
       systemMessage:
-        'Session transcripts disabled. Use /nori-toggle-session-transcripts to enable...\n\n',
+        "Session transcripts disabled. Use /nori-toggle-session-transcripts to enable...\n\n",
     };
   } else {
     // Default to enabled behavior (backward compatible)
     output = {
-      systemMessage: 'Saving transcript to nori...\n\n',
+      systemMessage: "Saving transcript to nori...\n\n",
     };
   }
 

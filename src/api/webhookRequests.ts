@@ -1,10 +1,10 @@
-import { apiRequest } from '@/api/base.js';
+import { apiRequest } from "@/api/base.js";
 
 export type WebhookRequest = {
   id: number;
   webhookId: string | null;
   sourceIp: string;
-  status: 'success' | 'invalid_key' | 'test' | 'invalid_payload';
+  status: "success" | "invalid_key" | "test" | "invalid_payload";
   requestBody: string;
   errorMessage: string | null;
   createdAt: string;
@@ -12,7 +12,7 @@ export type WebhookRequest = {
 
 export type ListWebhookRequestsParams = {
   webhookId?: string;
-  status?: Array<'success' | 'invalid_key' | 'test' | 'invalid_payload'>;
+  status?: Array<"success" | "invalid_key" | "test" | "invalid_payload">;
   startDate?: string;
   endDate?: string;
   limit?: number;
@@ -33,7 +33,7 @@ export const webhookRequestsApi = {
     if (args?.offset) queryParams.offset = args.offset.toString();
 
     return apiRequest<Array<WebhookRequest>>({
-      path: '/webhook-requests',
+      path: "/webhook-requests",
       queryParams:
         Object.keys(queryParams).length > 0 ? queryParams : undefined,
     });
@@ -52,7 +52,7 @@ export const webhookRequestsApi = {
 
     return apiRequest<{ success: boolean }>({
       path: `/webhook-requests/${id}`,
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 };

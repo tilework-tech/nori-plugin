@@ -16,6 +16,7 @@ First, let me show you all available profiles you can clone from:
 !`cat ~/.claude/profiles/*/profile.json`
 
 Parse the JSON output above and display each profile in a clear, readable format showing:
+
 - Profile name
 - Description
 
@@ -28,6 +29,7 @@ Ask the user which profile they want to clone. Present the profile names as opti
 Ask the user for the name of the new profile.
 
 **Important validation rules:**
+
 - Name must be lowercase alphanumeric with hyphens only (no spaces, no special characters except hyphen)
 - Name must not be an existing profile (check `~/.claude/profiles/` directory)
 - Suggest a format like: `my-custom-profile` or `team-name-profile`
@@ -79,6 +81,7 @@ If yes, ask what changes they want to make and apply them to `~/.claude/profiles
 Ask: "Would you like to add or remove any skills from your new profile?"
 
 If yes:
+
 - Show the current skills in `~/.claude/profiles/<new-profile-name>/skills/`
 - Ask what changes they want (add new skills, remove existing skills)
 - Help them make the changes
@@ -90,6 +93,7 @@ If yes:
 Ask: "Would you like to add or remove any subagents from your new profile?"
 
 If yes:
+
 - Show the current subagents in `~/.claude/profiles/<new-profile-name>/subagents/`
 - Ask what changes they want (add new subagents, remove existing subagents)
 - Help them make the changes
@@ -101,6 +105,7 @@ If yes:
 Ask: "Would you like to add or remove any slash commands from your new profile?"
 
 If yes:
+
 - Show the current slash commands in `~/.claude/profiles/<new-profile-name>/slashcommands/`
 - Ask what changes they want (add new commands, remove existing commands)
 - Help them make the changes

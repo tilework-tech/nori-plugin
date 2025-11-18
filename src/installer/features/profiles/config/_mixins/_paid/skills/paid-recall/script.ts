@@ -22,12 +22,12 @@
  * @see mcp/src/installer/features/skills/loader.ts - Installation to ~/.claude/skills/
  */
 
-import minimist from 'minimist';
+import minimist from "minimist";
 
-import type { Artifact } from '@/api/index.js';
+import { apiClient } from "@/api/index.js";
+import { loadDiskConfig, generateConfig } from "@/installer/config.js";
 
-import { apiClient } from '@/api/index.js';
-import { loadDiskConfig, generateConfig } from '@/installer/config.js';
+import type { Artifact } from "@/api/index.js";
 
 /**
  * Show usage information
@@ -76,7 +76,7 @@ const formatArtifact = (args: {
    Updated: ${new Date(artifact.updatedAt).toLocaleString()}
    Content: ${
      artifact.content.length > 200
-       ? artifact.content.substring(0, 200) + '...'
+       ? artifact.content.substring(0, 200) + "..."
        : artifact.content
    }`;
 };
@@ -89,9 +89,9 @@ export const main = async (): Promise<void> => {
   const diskConfig = await loadDiskConfig();
   const config = generateConfig({ diskConfig });
 
-  if (config.installType !== 'paid') {
-    console.error('Error: This feature requires a paid Nori subscription.');
-    console.error('Please configure your credentials in ~/nori-config.json');
+  if (config.installType !== "paid") {
+    console.error("Error: This feature requires a paid Nori subscription.");
+    console.error("Please configure your credentials in ~/nori-config.json");
     process.exit(1);
   }
 
@@ -99,8 +99,8 @@ export const main = async (): Promise<void> => {
   const args = minimist(process.argv.slice(2));
 
   if (args.query == null) {
-    console.error('Error: --query parameter is required');
-    console.error('');
+    console.error("Error: --query parameter is required");
+    console.error("");
     showUsage();
     process.exit(1);
   }
@@ -124,9 +124,9 @@ export const main = async (): Promise<void> => {
 
   const formattedResults = result.results
     .map((artifact, index) => formatArtifact({ artifact, index }))
-    .join('\n\n');
+    .join("\n\n");
 
-  let sourcesInfo = '';
+  let sourcesInfo = "";
   if (result.sources) {
     const sources = [];
     if (result.sources.keywordSearch.length > 0) {
@@ -139,7 +139,7 @@ export const main = async (): Promise<void> => {
       sources.push(`Vector: ${result.sources.vectorSearch.length}`);
     }
     if (sources.length > 0) {
-      sourcesInfo = `\n\nSearch sources: ${sources.join(', ')}`;
+      sourcesInfo = `\n\nSearch sources: ${sources.join(", ")}`;
     }
   }
 

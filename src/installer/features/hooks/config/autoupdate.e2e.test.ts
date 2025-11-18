@@ -2,13 +2,15 @@
  * E2E tests for autoupdate hook - testing real spawn behavior
  */
 
-import { execSync } from 'child_process';
+import { execSync } from "child_process";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+import type * as childProcess from "child_process";
 
 // Mock only what we need to - let spawn be real
-vi.mock('child_process', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('child_process')>();
+vi.mock("child_process", async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof childProcess;
   return {
     ...actual,
     execSync: vi.fn(), // Mock execSync to control npm version check
@@ -16,26 +18,26 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 // Mock logger to suppress output
-vi.mock('@/installer/logger.js', () => ({
+vi.mock("@/installer/logger.js", () => ({
   error: vi.fn(),
 }));
 
 // Mock analytics
-vi.mock('@/installer/analytics.js', () => ({
+vi.mock("@/installer/analytics.js", () => ({
   trackEvent: vi.fn(),
 }));
 
 // Mock config to provide install_type
-vi.mock('@/installer/config.js', () => ({
+vi.mock("@/installer/config.js", () => ({
   loadDiskConfig: vi.fn(),
 }));
 
 // Mock version utilities
-vi.mock('@/installer/version.js', () => ({
+vi.mock("@/installer/version.js", () => ({
   getInstalledVersion: vi.fn(),
 }));
 
-describe('autoupdate E2E real spawn tests', () => {
+describe("autoupdate E2E real spawn tests", () => {
   let tempBinDir: string;
   let tempHomeDir: string;
   let originalPath: string;
@@ -43,16 +45,16 @@ describe('autoupdate E2E real spawn tests', () => {
 
   beforeEach(async () => {
     // Import real fs and os modules
-    const fs = await import('fs');
-    const os = await import('os');
-    const path = await import('path');
+    const fs = await import("fs");
+    const os = await import("os");
+    const path = await import("path");
 
     // Create temp directories using real fs
-    tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-bin-'));
-    tempHomeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-home-'));
+    tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), "test-bin-"));
+    tempHomeDir = fs.mkdtempSync(path.join(os.tmpdir(), "test-home-"));
 
     // Save originals
-    originalPath = process.env.PATH || '';
+    originalPath = process.env.PATH || "";
     originalHome = process.env.HOME;
 
     // Mock environment - prepend temp bin to PATH so fake npx is found first
@@ -60,8 +62,8 @@ describe('autoupdate E2E real spawn tests', () => {
     process.env.HOME = tempHomeDir;
 
     // Create fake npx executable that logs when called
-    const fakeNpxPath = path.join(tempBinDir, 'npx');
-    const callLogPath = path.join(tempBinDir, 'npx-calls.log');
+    const fakeNpxPath = path.join(tempBinDir, "npx");
+    const callLogPath = path.join(tempBinDir, "npx-calls.log");
     const fakeNpxScript = `#!/bin/bash
 echo "npx called with: $@" >> "${callLogPath}"
 exit 0
@@ -80,62 +82,62 @@ exit 0
     }
 
     // Cleanup temp directories using real fs
-    const fsPromises = await import('fs/promises');
+    const fsPromises = await import("fs/promises");
     await fsPromises.rm(tempBinDir, { recursive: true, force: true });
     await fsPromises.rm(tempHomeDir, { recursive: true, force: true });
   });
 
-  it('should spawn real npx process when update available', async () => {
+  it("should spawn real npx process when update available", async () => {
     // Use real fs for this test
-    const fs = await import('fs');
-    const path = await import('path');
+    const fs = await import("fs");
+    const path = await import("path");
 
     // Setup: Create version file with old version
-    const versionFilePath = path.join(tempHomeDir, '.nori-installed-version');
-    fs.writeFileSync(versionFilePath, '1.0.0', 'utf-8');
+    const versionFilePath = path.join(tempHomeDir, ".nori-installed-version");
+    fs.writeFileSync(versionFilePath, "1.0.0", "utf-8");
 
     // Setup: Create notifications log file
-    const logPath = path.join(tempHomeDir, '.nori-notifications.log');
-    fs.writeFileSync(logPath, '', 'utf-8');
+    const logPath = path.join(tempHomeDir, ".nori-notifications.log");
+    fs.writeFileSync(logPath, "", "utf-8");
 
     // Mock npm registry to return newer version (still need to mock execSync)
     const mockExecSync = vi.mocked(execSync);
-    mockExecSync.mockReturnValue('14.2.0\n');
+    mockExecSync.mockReturnValue("14.2.0\n");
 
     // Mock getInstalledVersion to return old version
-    const { getInstalledVersion } = await import('@/installer/version.js');
+    const { getInstalledVersion } = await import("@/installer/version.js");
     const mockGetInstalledVersion = vi.mocked(getInstalledVersion);
-    mockGetInstalledVersion.mockReturnValue('1.0.0');
+    mockGetInstalledVersion.mockReturnValue("1.0.0");
 
     // Mock loadDiskConfig
-    const { loadDiskConfig } = await import('@/installer/config.js');
+    const { loadDiskConfig } = await import("@/installer/config.js");
     const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
     mockLoadDiskConfig.mockResolvedValue(null);
 
     // Mock trackEvent
-    const { trackEvent } = await import('@/installer/analytics.js');
+    const { trackEvent } = await import("@/installer/analytics.js");
     const mockTrackEvent = vi.mocked(trackEvent);
     mockTrackEvent.mockResolvedValue();
 
     // Spy on console.log
     const consoleLogSpy = vi
-      .spyOn(console, 'log')
+      .spyOn(console, "log")
       .mockImplementation(() => undefined);
 
     // Import and run the REAL autoupdate (with real spawn)
-    const autoupdate = await import('./autoupdate.js');
+    const autoupdate = await import("./autoupdate.js");
     await autoupdate.main();
 
     // Wait for spawned process to complete
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Verify: Check that fake npx was actually called
-    const callLogPath = path.join(tempBinDir, 'npx-calls.log');
-    const callLog = fs.readFileSync(callLogPath, 'utf-8');
+    const callLogPath = path.join(tempBinDir, "npx-calls.log");
+    const callLog = fs.readFileSync(callLogPath, "utf-8");
 
-    expect(callLog).toContain('nori-ai@14.2.0');
-    expect(callLog).toContain('install');
-    expect(callLog).toContain('--non-interactive');
+    expect(callLog).toContain("nori-ai@14.2.0");
+    expect(callLog).toContain("install");
+    expect(callLog).toContain("--non-interactive");
 
     consoleLogSpy.mockRestore();
   });

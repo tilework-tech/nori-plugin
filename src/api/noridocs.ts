@@ -1,6 +1,6 @@
-import type { Artifact } from '@/api/artifacts.js';
+import { apiRequest } from "@/api/base.js";
 
-import { apiRequest } from '@/api/base.js';
+import type { Artifact } from "@/api/artifacts.js";
 
 /**
  * Noridoc is just an artifact with type='noridoc'
@@ -45,7 +45,7 @@ export type ListNoridocsRequest = {
   limit?: number | null;
   offset?: number | null;
   orderBy?: string | null;
-  order?: 'ASC' | 'DESC' | null;
+  order?: "ASC" | "DESC" | null;
   repository?: string | null;
 };
 
@@ -62,13 +62,13 @@ export const noridocsApi = {
     const { filePath, content, gitRepoUrl } = args;
 
     return apiRequest<Noridoc>({
-      path: '/noridocs',
-      method: 'POST',
+      path: "/noridocs",
+      method: "POST",
       body: {
         filePath,
         content,
         gitRepoUrl,
-        actor: 'claude-code', // MCP always acts as claude-code
+        actor: "claude-code", // MCP always acts as claude-code
       },
     });
   },
@@ -78,9 +78,9 @@ export const noridocsApi = {
 
     return apiRequest<Noridoc>({
       path: `/noridocs/${id}`,
-      method: 'GET',
+      method: "GET",
       queryParams: {
-        actor: 'claude-code',
+        actor: "claude-code",
       },
     });
   },
@@ -90,10 +90,10 @@ export const noridocsApi = {
 
     // List all noridocs and filter by sourceUrl (which stores filePath)
     const noridocs = await apiRequest<Array<Noridoc>>({
-      path: '/noridocs',
-      method: 'GET',
+      path: "/noridocs",
+      method: "GET",
       queryParams: {
-        actor: 'claude-code',
+        actor: "claude-code",
       },
     });
 
@@ -114,10 +114,10 @@ export const noridocsApi = {
 
     return apiRequest<Noridoc>({
       path: `/noridocs/${id}`,
-      method: 'PUT',
+      method: "PUT",
       body: {
         ...data,
-        actor: 'claude-code',
+        actor: "claude-code",
       },
     });
   },
@@ -127,13 +127,13 @@ export const noridocsApi = {
 
     await apiRequest<void>({
       path: `/noridocs/${id}`,
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   list: async (args?: ListNoridocsRequest | null): Promise<Array<Noridoc>> => {
     const queryParams: Record<string, string> = {
-      actor: 'claude-code',
+      actor: "claude-code",
     };
 
     if (args?.limit != null) {
@@ -153,8 +153,8 @@ export const noridocsApi = {
     }
 
     return apiRequest<Array<Noridoc>>({
-      path: '/noridocs',
-      method: 'GET',
+      path: "/noridocs",
+      method: "GET",
       queryParams,
     });
   },
@@ -176,7 +176,7 @@ export const noridocsApi = {
 
     return apiRequest<Array<NoridocVersion>>({
       path: `/noridocs/${id}/versions`,
-      method: 'GET',
+      method: "GET",
       queryParams,
     });
   },
@@ -189,7 +189,7 @@ export const noridocsApi = {
 
     return apiRequest<NoridocVersion>({
       path: `/noridocs/${id}/versions/${version}`,
-      method: 'GET',
+      method: "GET",
     });
   },
 };

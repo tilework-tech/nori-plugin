@@ -20,7 +20,14 @@
     "dev": "tsc && tsc-alias && node build/index.js",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "lint": "concurrently npm:lint:*",
+    "lint:eslint": "eslint . --max-warnings=0",
+    "lint:prettier": "prettier . --check",
+    "lint:types": "tsc --noEmit",
+    "format": "npm run format:prettier && npm run format:eslint",
+    "format:prettier": "prettier . --write",
+    "format:eslint": "eslint . --fix"
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -33,7 +40,20 @@
   "devDependencies": {
     "@types/minimist": "^1.2.5",
     "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.28.0",
+    "@typescript-eslint/parser": "^5.28.0",
+    "concurrently": "^7.6.0",
     "esbuild": "^0.25.11",
+    "eslint": "^8.35.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-import-resolver-typescript": "^3.5.3",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-jsdoc": "^46.4.5",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-vue": "^9.10.0",
+    "prettier": "^3.6.2",
     "tsc-alias": "^1.8.16",
     "typescript": "^5.7.3",
     "vitest": "^2.1.0"

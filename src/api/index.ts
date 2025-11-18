@@ -1,13 +1,13 @@
-import { analyticsApi } from '@/api/analytics.js';
-import { artifactsApi } from '@/api/artifacts.js';
-import { apiRequest } from '@/api/base.js';
-import { conversationApi } from '@/api/conversation.js';
-import { heartbeatsApi } from '@/api/heartbeats.js';
-import { noridocsApi } from '@/api/noridocs.js';
-import { promptAnalysisApi } from '@/api/promptAnalysis.js';
-import { queryApi } from '@/api/query.js';
-import { webhookRequestsApi } from '@/api/webhookRequests.js';
-import { webhooksApi } from '@/api/webhooks.js';
+import { analyticsApi } from "@/api/analytics.js";
+import { artifactsApi } from "@/api/artifacts.js";
+import { apiRequest } from "@/api/base.js";
+import { conversationApi } from "@/api/conversation.js";
+import { heartbeatsApi } from "@/api/heartbeats.js";
+import { noridocsApi } from "@/api/noridocs.js";
+import { promptAnalysisApi } from "@/api/promptAnalysis.js";
+import { queryApi } from "@/api/query.js";
+import { webhookRequestsApi } from "@/api/webhookRequests.js";
+import { webhooksApi } from "@/api/webhooks.js";
 
 /**
  * Response from handshake endpoint
@@ -24,8 +24,8 @@ export type HandshakeResponse = {
  */
 export const handshake = async (): Promise<HandshakeResponse> => {
   return await apiRequest<HandshakeResponse>({
-    path: '/auth/handshake',
-    method: 'POST',
+    path: "/auth/handshake",
+    method: "POST",
   });
 };
 
@@ -47,21 +47,21 @@ export type {
   GenerateDailyReportResponse,
   GenerateUserReportRequest,
   GenerateUserReportResponse,
-} from '@/api/analytics.js';
-export type { Artifact, ReplaceInArtifactRequest } from '@/api/artifacts.js';
-export type { Heartbeat, ListHeartbeatsParams } from '@/api/heartbeats.js';
-export type { QueryResponse, QueryRequest } from '@/api/query.js';
+} from "@/api/analytics.js";
+export type { Artifact, ReplaceInArtifactRequest } from "@/api/artifacts.js";
+export type { Heartbeat, ListHeartbeatsParams } from "@/api/heartbeats.js";
+export type { QueryResponse, QueryRequest } from "@/api/query.js";
 export type {
   SummarizeRequest,
   SummarizeResponse,
-} from '@/api/conversation.js';
+} from "@/api/conversation.js";
 export type {
   AnalyzePromptRequest,
   AnalyzePromptResponse,
   FeedbackItem,
-} from '@/api/promptAnalysis.js';
-export type { Webhook } from '@/api/webhooks.js';
-export type { WebhookRequest } from '@/api/webhookRequests.js';
+} from "@/api/promptAnalysis.js";
+export type { Webhook } from "@/api/webhooks.js";
+export type { WebhookRequest } from "@/api/webhookRequests.js";
 export type {
   Noridoc,
   NoridocVersion,
@@ -69,5 +69,5 @@ export type {
   UpdateNoridocRequest,
   ListNoridocsRequest,
   ListVersionsRequest,
-} from '@/api/noridocs.js';
-export { ConfigManager } from '@/api/base.js';
+} from "@/api/noridocs.js";
+export { ConfigManager } from "@/api/base.js";

@@ -3,12 +3,12 @@
  * Functional library for loading and managing disk-based configuration
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as path from "path";
 
-import Ajv from 'ajv';
+import Ajv from "ajv";
 
-import { normalizeUrl } from '@/utils/url.js';
+import { normalizeUrl } from "@/utils/url.js";
 
 /**
  * Configuration stored on disk containing authentication credentials and profile selection
@@ -22,14 +22,14 @@ export type DiskConfig = {
   profile?: {
     baseProfile: string;
   } | null;
-  sendSessionTranscript?: 'enabled' | 'disabled' | null;
+  sendSessionTranscript?: "enabled" | "disabled" | null;
 };
 
 /**
  * Runtime configuration derived from disk config
  */
 export type Config = {
-  installType: 'free' | 'paid';
+  installType: "free" | "paid";
   nonInteractive?: boolean | null;
   auth?: {
     username: string;
@@ -46,7 +46,7 @@ export type Config = {
  * @returns The absolute path to nori-config.json
  */
 export const getConfigPath = (): string => {
-  return path.join(process.env.HOME || '~', 'nori-config.json');
+  return path.join(process.env.HOME || "~", "nori-config.json");
 };
 
 /**
@@ -55,7 +55,7 @@ export const getConfigPath = (): string => {
  */
 export const getDefaultProfile = (): { baseProfile: string } => {
   return {
-    baseProfile: 'senior-swe',
+    baseProfile: "senior-swe",
   };
 };
 
@@ -68,11 +68,11 @@ export const loadDiskConfig = async (): Promise<DiskConfig | null> => {
 
   try {
     await fs.access(configPath);
-    const content = await fs.readFile(configPath, 'utf-8');
+    const content = await fs.readFile(configPath, "utf-8");
     const config = JSON.parse(content);
 
     // Validate that the config has the expected structure
-    if (config && typeof config === 'object') {
+    if (config && typeof config === "object") {
       const result: DiskConfig = {
         auth: null,
         profile: null,
@@ -83,9 +83,9 @@ export const loadDiskConfig = async (): Promise<DiskConfig | null> => {
         config.username &&
         config.password &&
         config.organizationUrl &&
-        typeof config.username === 'string' &&
-        typeof config.password === 'string' &&
-        typeof config.organizationUrl === 'string'
+        typeof config.username === "string" &&
+        typeof config.password === "string" &&
+        typeof config.organizationUrl === "string"
       ) {
         result.auth = {
           username: config.username,
@@ -95,10 +95,10 @@ export const loadDiskConfig = async (): Promise<DiskConfig | null> => {
       }
 
       // Check if profile exists
-      if (config.profile && typeof config.profile === 'object') {
+      if (config.profile && typeof config.profile === "object") {
         if (
           config.profile.baseProfile &&
-          typeof config.profile.baseProfile === 'string'
+          typeof config.profile.baseProfile === "string"
         ) {
           result.profile = {
             baseProfile: config.profile.baseProfile,
@@ -108,12 +108,12 @@ export const loadDiskConfig = async (): Promise<DiskConfig | null> => {
 
       // Check if sendSessionTranscript exists, default to 'enabled'
       if (
-        config.sendSessionTranscript === 'enabled' ||
-        config.sendSessionTranscript === 'disabled'
+        config.sendSessionTranscript === "enabled" ||
+        config.sendSessionTranscript === "disabled"
       ) {
         result.sendSessionTranscript = config.sendSessionTranscript;
       } else {
-        result.sendSessionTranscript = 'enabled'; // Default value
+        result.sendSessionTranscript = "enabled"; // Default value
       }
 
       // Return result if we have at least auth, profile, or sendSessionTranscript
@@ -146,7 +146,7 @@ export const saveDiskConfig = async (args: {
   password: string | null;
   organizationUrl: string | null;
   profile?: { baseProfile: string } | null;
-  sendSessionTranscript?: 'enabled' | 'disabled' | null;
+  sendSessionTranscript?: "enabled" | "disabled" | null;
 }): Promise<void> => {
   const {
     username,
@@ -195,7 +195,7 @@ export const generateConfig = (args: {
   const { diskConfig } = args;
 
   // If we have valid auth credentials, use paid installation
-  const installType = diskConfig?.auth ? 'paid' : 'free';
+  const installType = diskConfig?.auth ? "paid" : "free";
 
   // Use profile from diskConfig, or default if not present
   const profile = diskConfig?.profile || getDefaultProfile();
@@ -218,14 +218,14 @@ export type ConfigValidationResult = {
 
 // JSON schema for nori-config.json
 const configSchema = {
-  type: 'object',
+  type: "object",
   properties: {
-    username: { type: 'string' },
-    password: { type: 'string' },
-    organizationUrl: { type: 'string' },
+    username: { type: "string" },
+    password: { type: "string" },
+    organizationUrl: { type: "string" },
     sendSessionTranscript: {
-      type: 'string',
-      enum: ['enabled', 'disabled'],
+      type: "string",
+      enum: ["enabled", "disabled"],
     },
   },
   additionalProperties: false,
@@ -235,128 +235,127 @@ const configSchema = {
  * Validate disk configuration
  * @returns Validation result with details
  */
-export const validateDiskConfig =
-  async (): Promise<ConfigValidationResult> => {
-    const configPath = getConfigPath();
-    const errors: Array<string> = [];
+export const validateDiskConfig = async (): Promise<ConfigValidationResult> => {
+  const configPath = getConfigPath();
+  const errors: Array<string> = [];
 
-    // Check if config file exists
-    try {
-      await fs.access(configPath);
-    } catch {
-      return {
-        valid: false,
-        message: 'No nori-config.json found',
-        errors: [
-          `Config file not found at ${configPath}`,
-          'Run "nori-ai install" to create configuration',
-        ],
-      };
-    }
+  // Check if config file exists
+  try {
+    await fs.access(configPath);
+  } catch {
+    return {
+      valid: false,
+      message: "No nori-config.json found",
+      errors: [
+        `Config file not found at ${configPath}`,
+        'Run "nori-ai install" to create configuration',
+      ],
+    };
+  }
 
-    // Try to load config
-    let content: string;
-    try {
-      content = await fs.readFile(configPath, 'utf-8');
-    } catch (err) {
-      return {
-        valid: false,
-        message: 'Unable to read nori-config.json',
-        errors: [`Failed to read config file: ${err}`],
-      };
-    }
+  // Try to load config
+  let content: string;
+  try {
+    content = await fs.readFile(configPath, "utf-8");
+  } catch (err) {
+    return {
+      valid: false,
+      message: "Unable to read nori-config.json",
+      errors: [`Failed to read config file: ${err}`],
+    };
+  }
 
-    // Try to parse JSON
-    let config: any;
-    try {
-      config = JSON.parse(content);
-    } catch (err) {
-      return {
-        valid: false,
-        message: 'Invalid JSON in nori-config.json',
-        errors: [`Config file contains invalid JSON: ${err}`],
-      };
-    }
+  // Try to parse JSON
+  let config: any;
+  try {
+    config = JSON.parse(content);
+  } catch (err) {
+    return {
+      valid: false,
+      message: "Invalid JSON in nori-config.json",
+      errors: [`Config file contains invalid JSON: ${err}`],
+    };
+  }
 
-    // Check if all required fields are present for paid mode
-    const hasUsername = config.username && typeof config.username === 'string';
-    const hasPassword = config.password && typeof config.password === 'string';
-    const hasOrgUrl =
-      config.organizationUrl && typeof config.organizationUrl === 'string';
+  // Check if all required fields are present for paid mode
+  const hasUsername = config.username && typeof config.username === "string";
+  const hasPassword = config.password && typeof config.password === "string";
+  const hasOrgUrl =
+    config.organizationUrl && typeof config.organizationUrl === "string";
 
-    const credentialsProvided = [hasUsername, hasPassword, hasOrgUrl];
-    const someProvided = credentialsProvided.some((v) => v);
-    const allProvided = credentialsProvided.every((v) => v);
+  const credentialsProvided = [hasUsername, hasPassword, hasOrgUrl];
+  const someProvided = credentialsProvided.some((v) => v);
+  const allProvided = credentialsProvided.every((v) => v);
 
-    // If some credentials are provided but not all, that's an error
-    if (someProvided && !allProvided) {
-      if (!hasUsername) {
-        errors.push(
-          'Missing "username" field (required when credentials are provided)',
-        );
-      }
-      if (!hasPassword) {
-        errors.push(
-          'Missing "password" field (required when credentials are provided)',
-        );
-      }
-      if (!hasOrgUrl) {
-        errors.push(
-          'Missing "organizationUrl" field (required when credentials are provided)',
-        );
-      }
-      return {
-        valid: false,
-        message: 'Partial credentials provided - all fields are required',
-        errors,
-      };
-    }
-
-    // If no credentials provided, it's free mode
-    if (!someProvided) {
-      return {
-        valid: true,
-        message: 'Config is valid for free mode (no credentials provided)',
-        errors: null,
-      };
-    }
-
-    // All credentials provided - validate with JSON schema
-    const ajv = new Ajv({ allErrors: true });
-    const validate = ajv.compile(configSchema);
-    const valid = validate(config);
-
-    // If schema validation failed, collect errors
-    if (!valid && validate.errors) {
+  // If some credentials are provided but not all, that's an error
+  if (someProvided && !allProvided) {
+    if (!hasUsername) {
       errors.push(
-        `~/nori-config.json Validation Error: ${JSON.stringify(
-          validate.errors,
-          null,
-          2,
-        )}`,
+        'Missing "username" field (required when credentials are provided)',
       );
     }
-
-    // Additional URL format validation
-    try {
-      new URL(config.organizationUrl);
-    } catch {
+    if (!hasPassword) {
       errors.push(
-        `Invalid URL format for organizationUrl: ${config.organizationUrl}`,
+        'Missing "password" field (required when credentials are provided)',
       );
     }
-
-    if (errors.length > 0) {
-      return {
-        valid: false,
-        message: 'Config has validation errors',
-        errors,
-      };
+    if (!hasOrgUrl) {
+      errors.push(
+        'Missing "organizationUrl" field (required when credentials are provided)',
+      );
     }
+    return {
+      valid: false,
+      message: "Partial credentials provided - all fields are required",
+      errors,
+    };
+  }
 
+  // If no credentials provided, it's free mode
+  if (!someProvided) {
     return {
       valid: true,
-      message: 'Config is valid for paid mode',
+      message: "Config is valid for free mode (no credentials provided)",
       errors: null,
     };
+  }
+
+  // All credentials provided - validate with JSON schema
+  const ajv = new Ajv({ allErrors: true });
+  const validate = ajv.compile(configSchema);
+  const valid = validate(config);
+
+  // If schema validation failed, collect errors
+  if (!valid && validate.errors) {
+    errors.push(
+      `~/nori-config.json Validation Error: ${JSON.stringify(
+        validate.errors,
+        null,
+        2,
+      )}`,
+    );
+  }
+
+  // Additional URL format validation
+  try {
+    new URL(config.organizationUrl);
+  } catch {
+    errors.push(
+      `Invalid URL format for organizationUrl: ${config.organizationUrl}`,
+    );
+  }
+
+  if (errors.length > 0) {
+    return {
+      valid: false,
+      message: "Config has validation errors",
+      errors,
+    };
+  }
+
+  return {
+    valid: true,
+    message: "Config is valid for paid mode",
+    errors: null,
   };
+};

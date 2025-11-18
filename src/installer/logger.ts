@@ -5,24 +5,24 @@
 
 // ANSI color codes for output
 const colors = {
-  RED: '\x1b[0;31m',
-  GREEN: '\x1b[0;32m',
-  YELLOW: '\x1b[1;33m',
-  BLUE: '\x1b[36m',
-  NC: '\x1b[0m', // No Color
+  RED: "\x1b[0;31m",
+  GREEN: "\x1b[0;32m",
+  YELLOW: "\x1b[1;33m",
+  BLUE: "\x1b[36m",
+  NC: "\x1b[0m", // No Color
 };
 
 // Additional formatting colors for enhanced output
 const formatColors = {
-  BRIGHT_CYAN: '\x1b[96m',
-  BOLD_WHITE: '\x1b[1;37m',
-  GRAY: '\x1b[90m',
-  BOLD: '\x1b[1m',
-  DIM: '\x1b[2m',
+  BRIGHT_CYAN: "\x1b[96m",
+  BOLD_WHITE: "\x1b[1;37m",
+  GRAY: "\x1b[90m",
+  BOLD: "\x1b[1m",
+  DIM: "\x1b[2m",
 };
 
 // Log file path for installer debugging
-const LOG_FILE = '/tmp/nori-installer.log';
+const LOG_FILE = "/tmp/nori-installer.log";
 
 /**
  * Append message to log file
@@ -36,7 +36,7 @@ const appendToLogFile = async (args: {
 }): Promise<void> => {
   const { message, level } = args;
   try {
-    const fs = await import('fs/promises');
+    const fs = await import("fs/promises");
     const timestamp = new Date().toISOString();
     await fs.appendFile(LOG_FILE, `[${timestamp}] [${level}] ${message}\n`);
   } catch {
@@ -53,7 +53,7 @@ export const error = (args: { message: string }): void => {
   const { message } = args;
   console.error(`${colors.RED}Error: ${message}${colors.NC}`);
   // Log to file asynchronously (don't await)
-  appendToLogFile({ message, level: 'ERROR' });
+  appendToLogFile({ message, level: "ERROR" });
 };
 
 /**
@@ -65,7 +65,7 @@ export const success = (args: { message: string }): void => {
   const { message } = args;
   console.log(`${colors.GREEN}${message}${colors.NC}`);
   // Log to file asynchronously (don't await)
-  appendToLogFile({ message, level: 'SUCCESS' });
+  appendToLogFile({ message, level: "SUCCESS" });
 };
 
 /**
@@ -77,7 +77,7 @@ export const info = (args: { message: string }): void => {
   const { message } = args;
   console.log(`${colors.BLUE}${message}${colors.NC}`);
   // Log to file asynchronously (don't await)
-  appendToLogFile({ message, level: 'INFO' });
+  appendToLogFile({ message, level: "INFO" });
 };
 
 /**
@@ -89,7 +89,7 @@ export const warn = (args: { message: string }): void => {
   const { message } = args;
   console.log(`${colors.YELLOW}Warning: ${message}${colors.NC}`);
   // Log to file asynchronously (don't await)
-  appendToLogFile({ message, level: 'WARN' });
+  appendToLogFile({ message, level: "WARN" });
 };
 
 /**
@@ -136,7 +136,7 @@ export const gray = (args: { text: string }): string => {
 export const debug = (args: { message: string }): void => {
   const { message } = args;
   // Only log to file, no console output
-  appendToLogFile({ message, level: 'DEBUG' });
+  appendToLogFile({ message, level: "DEBUG" });
 };
 
 /**
@@ -154,9 +154,9 @@ export const wrapText = (args: {
   const { text } = args;
   const maxWidth = args.maxWidth ?? process.stdout.columns ?? 80;
 
-  const words = text.split(' ');
+  const words = text.split(" ");
   const lines: Array<string> = [];
-  let currentLine = '';
+  let currentLine = "";
 
   for (const word of words) {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
@@ -175,5 +175,5 @@ export const wrapText = (args: {
     lines.push(currentLine);
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 };

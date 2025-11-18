@@ -1,40 +1,40 @@
-import * as fs from 'fs/promises';
-import { tmpdir } from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import { tmpdir } from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock the CLAUDE_DIR before importing
 let testClaudeDir: string;
 
-vi.mock('@/installer/env.js', () => ({
+vi.mock("@/installer/env.js", () => ({
   get CLAUDE_DIR() {
     return testClaudeDir;
   },
   get CLAUDE_MD_FILE() {
-    return path.join(testClaudeDir, 'CLAUDE.md');
+    return path.join(testClaudeDir, "CLAUDE.md");
   },
   get CLAUDE_SETTINGS_FILE() {
-    return path.join(testClaudeDir, 'settings.json');
+    return path.join(testClaudeDir, "settings.json");
   },
   get CLAUDE_AGENTS_DIR() {
-    return path.join(testClaudeDir, 'agents');
+    return path.join(testClaudeDir, "agents");
   },
   get CLAUDE_COMMANDS_DIR() {
-    return path.join(testClaudeDir, 'commands');
+    return path.join(testClaudeDir, "commands");
   },
   get CLAUDE_SKILLS_DIR() {
-    return path.join(testClaudeDir, 'skills');
+    return path.join(testClaudeDir, "skills");
   },
   get CLAUDE_PROFILES_DIR() {
-    return path.join(testClaudeDir, 'profiles');
+    return path.join(testClaudeDir, "profiles");
   },
-  MCP_ROOT: '/mock/mcp/root',
+  MCP_ROOT: "/mock/mcp/root",
 }));
 
-describe('listProfiles', () => {
+describe("listProfiles", () => {
   beforeEach(async () => {
-    testClaudeDir = await fs.mkdtemp(path.join(tmpdir(), 'profiles-test-'));
+    testClaudeDir = await fs.mkdtemp(path.join(tmpdir(), "profiles-test-"));
   });
 
   afterEach(async () => {
@@ -43,24 +43,24 @@ describe('listProfiles', () => {
     }
   });
 
-  it('should list all installed profiles', async () => {
-    const profilesDir = path.join(testClaudeDir, 'profiles');
+  it("should list all installed profiles", async () => {
+    const profilesDir = path.join(testClaudeDir, "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     // Create user-facing profiles
-    for (const name of ['amol', 'senior-swe']) {
+    for (const name of ["amol", "senior-swe"]) {
       const dir = path.join(profilesDir, name);
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, 'CLAUDE.md'), `# ${name}`);
+      await fs.writeFile(path.join(dir, "CLAUDE.md"), `# ${name}`);
       await fs.writeFile(
-        path.join(dir, 'profile.json'),
-        JSON.stringify({ extends: '_base', name, description: 'Test' }),
+        path.join(dir, "profile.json"),
+        JSON.stringify({ extends: "_base", name, description: "Test" }),
       );
     }
 
-    const { listProfiles } = await import('./profiles.js');
+    const { listProfiles } = await import("./profiles.js");
     const profiles = await listProfiles();
 
-    expect(profiles).toEqual(['amol', 'senior-swe']);
+    expect(profiles).toEqual(["amol", "senior-swe"]);
   });
 });

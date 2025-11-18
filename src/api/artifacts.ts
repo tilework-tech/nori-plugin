@@ -1,14 +1,14 @@
-import { apiRequest } from '@/api/base.js';
+import { apiRequest } from "@/api/base.js";
 
 export type ArtifactType =
-  | 'transcript'
-  | 'summary'
-  | 'recipe'
-  | 'webhook'
-  | 'memory'
-  | 'noridoc'
-  | 'premortem'
-  | 'no-type';
+  | "transcript"
+  | "summary"
+  | "recipe"
+  | "webhook"
+  | "memory"
+  | "noridoc"
+  | "premortem"
+  | "no-type";
 
 export type Artifact = {
   id: string;
@@ -41,14 +41,14 @@ export const artifactsApi = {
     const { name, content, sourceUrl, type } = args;
 
     return apiRequest<Artifact>({
-      path: '/artifacts',
-      method: 'POST',
+      path: "/artifacts",
+      method: "POST",
       body: {
         name,
         content,
         sourceUrl,
         type,
-        actor: 'claude-code', // MCP always acts as claude-code
+        actor: "claude-code", // MCP always acts as claude-code
       },
     });
   },
@@ -58,11 +58,11 @@ export const artifactsApi = {
 
     return apiRequest<Artifact>({
       path: `/artifacts/${id}/replace`,
-      method: 'POST',
+      method: "POST",
       body: {
         old_string,
         new_string,
-        actor: 'claude-code', // MCP always acts as claude-code
+        actor: "claude-code", // MCP always acts as claude-code
       },
     });
   },
@@ -72,8 +72,8 @@ export const artifactsApi = {
   }): Promise<Array<string>> => {
     const { columnName } = args;
     const response = await apiRequest<{ values: Array<string> }>({
-      path: '/artifacts/distinct-column-values',
-      method: 'GET',
+      path: "/artifacts/distinct-column-values",
+      method: "GET",
       queryParams: { column: columnName },
     });
     return response.values;
@@ -81,6 +81,6 @@ export const artifactsApi = {
 
   // Convenience method for backward compatibility
   getDistinctUserEmails: async (): Promise<Array<string>> => {
-    return artifactsApi.getDistinctColumnValues({ columnName: 'userEmail' });
+    return artifactsApi.getDistinctColumnValues({ columnName: "userEmail" });
   },
 };

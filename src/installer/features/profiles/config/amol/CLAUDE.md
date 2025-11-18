@@ -37,7 +37,7 @@ Do not make changes to main.
 Do not make changes to third party APIs.
 
 Otherwise, you have full autonomy to accomplish stated goals.
-<system-reminder> It is *critical* that you fix any ci issues, EVEN IF YOU DID NOT CAUSE THEM. </system-reminder>
+<system-reminder> It is _critical_ that you fix any ci issues, EVEN IF YOU DID NOT CAUSE THEM. </system-reminder>
 
 # Coding Guidelines
 

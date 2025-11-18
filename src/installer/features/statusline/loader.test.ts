@@ -3,47 +3,47 @@
  * Verifies install and uninstall operations
  */
 
-import * as fs from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type { Config } from '@/installer/config.js';
+import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir: string;
 let mockClaudeSettingsFile: string;
 
-vi.mock('@/installer/env.js', () => ({
+vi.mock("@/installer/env.js", () => ({
   get CLAUDE_DIR() {
     return mockClaudeDir;
   },
   get CLAUDE_MD_FILE() {
-    return path.join(mockClaudeDir, 'CLAUDE.md');
+    return path.join(mockClaudeDir, "CLAUDE.md");
   },
   get CLAUDE_SETTINGS_FILE() {
     return mockClaudeSettingsFile;
   },
   get CLAUDE_AGENTS_DIR() {
-    return path.join(mockClaudeDir, 'agents');
+    return path.join(mockClaudeDir, "agents");
   },
   get CLAUDE_COMMANDS_DIR() {
-    return path.join(mockClaudeDir, 'commands');
+    return path.join(mockClaudeDir, "commands");
   },
   get CLAUDE_NORI_DIR() {
-    return path.join(mockClaudeDir, 'nori-deprecated');
+    return path.join(mockClaudeDir, "nori-deprecated");
   },
   get CLAUDE_ABILITIES_DIR() {
-    return path.join(mockClaudeDir, 'nori', 'abilities');
+    return path.join(mockClaudeDir, "nori", "abilities");
   },
-  MCP_ROOT: '/mock/mcp/root',
+  MCP_ROOT: "/mock/mcp/root",
 }));
 
 // Import loader after mocking env
-import { statuslineLoader } from './loader.js';
+import { statuslineLoader } from "./loader.js";
 
-describe('statuslineLoader', () => {
+describe("statuslineLoader", () => {
   let tempDir: string;
   let claudeDir: string;
   let settingsPath: string;
@@ -51,9 +51,9 @@ describe('statuslineLoader', () => {
 
   beforeEach(async () => {
     // Create temp directory for testing
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'statusline-test-'));
-    claudeDir = path.join(tempDir, '.claude');
-    settingsPath = path.join(claudeDir, 'settings.json');
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "statusline-test-"));
+    claudeDir = path.join(tempDir, ".claude");
+    settingsPath = path.join(claudeDir, "settings.json");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
@@ -80,9 +80,9 @@ describe('statuslineLoader', () => {
     vi.clearAllMocks();
   });
 
-  describe('run', () => {
-    it('should create settings.json with statusLine configuration', async () => {
-      const config: Config = { installType: 'free' };
+  describe("run", () => {
+    it("should create settings.json with statusLine configuration", async () => {
+      const config: Config = { installType: "free" };
 
       await statuslineLoader.run({ config });
 
@@ -95,23 +95,23 @@ describe('statuslineLoader', () => {
       expect(exists).toBe(true);
 
       // Read and parse settings
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       // Verify statusLine is configured
       expect(settings.statusLine).toBeDefined();
-      expect(settings.statusLine.type).toBe('command');
+      expect(settings.statusLine.type).toBe("command");
       expect(settings.statusLine.command).toBeDefined();
       expect(settings.statusLine.padding).toBeDefined();
     });
 
-    it('should preserve existing settings when adding statusLine', async () => {
-      const config: Config = { installType: 'free' };
+    it("should preserve existing settings when adding statusLine", async () => {
+      const config: Config = { installType: "free" };
 
       // Create settings.json with existing content
       const existingSettings = {
-        $schema: 'https://json.schemastore.org/claude-code-settings.json',
-        someOtherSetting: 'value',
+        $schema: "https://json.schemastore.org/claude-code-settings.json",
+        someOtherSetting: "value",
       };
       await fs.writeFile(
         settingsPath,
@@ -121,21 +121,21 @@ describe('statuslineLoader', () => {
       await statuslineLoader.run({ config });
 
       // Read and parse settings
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       // Verify existing settings are preserved
-      expect(settings.someOtherSetting).toBe('value');
+      expect(settings.someOtherSetting).toBe("value");
       expect(settings.$schema).toBe(
-        'https://json.schemastore.org/claude-code-settings.json',
+        "https://json.schemastore.org/claude-code-settings.json",
       );
 
       // Verify statusLine is added
       expect(settings.statusLine).toBeDefined();
     });
 
-    it('should update statusLine if already configured', async () => {
-      const config: Config = { installType: 'free' };
+    it("should update statusLine if already configured", async () => {
+      const config: Config = { installType: "free" };
 
       // First installation
       await statuslineLoader.run({ config });
@@ -144,37 +144,37 @@ describe('statuslineLoader', () => {
       await statuslineLoader.run({ config });
 
       // Read updated statusLine
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);
 
       // Verify statusLine still exists
       expect(settings.statusLine).toBeDefined();
-      expect(settings.statusLine.type).toBe('command');
+      expect(settings.statusLine.type).toBe("command");
     });
   });
 
-  describe('statusline script', () => {
-    it('should include profile name in output when nori-config.json exists', async () => {
-      const config: Config = { installType: 'free' };
+  describe("statusline script", () => {
+    it("should include profile name in output when nori-config.json exists", async () => {
+      const config: Config = { installType: "free" };
 
       // Install statusline
       await statuslineLoader.run({ config });
 
       // Create mock nori-config.json with profile in temp directory
-      const noriConfigPath = path.join(tempDir, 'nori-config.json');
+      const noriConfigPath = path.join(tempDir, "nori-config.json");
       const noriConfigContent = JSON.stringify({
-        profile: { baseProfile: 'amol' },
+        profile: { baseProfile: "amol" },
       });
       await fs.writeFile(noriConfigPath, noriConfigContent);
 
       try {
         // Read settings to get the statusLine command
-        const content = await fs.readFile(settingsPath, 'utf-8');
+        const content = await fs.readFile(settingsPath, "utf-8");
         const settings = JSON.parse(content);
         const statusLineCommand = settings.statusLine.command;
 
         // Execute the statusline script with mock input
-        const { execSync } = await import('child_process');
+        const { execSync } = await import("child_process");
         const mockInput = JSON.stringify({
           cwd: tempDir,
           cost: {
@@ -182,40 +182,40 @@ describe('statuslineLoader', () => {
             total_lines_added: 10,
             total_lines_removed: 5,
           },
-          transcript_path: '',
+          transcript_path: "",
         });
 
         const output = execSync(statusLineCommand, {
           input: mockInput,
-          encoding: 'utf-8',
+          encoding: "utf-8",
         });
 
         // Verify output contains profile name
-        expect(output).toContain('Profile: amol');
+        expect(output).toContain("Profile: amol");
       } finally {
         // Clean up nori-config.json
         await fs.rm(noriConfigPath, { force: true });
       }
     });
 
-    it('should not show profile when nori-config.json does not exist', async () => {
-      const config: Config = { installType: 'free' };
+    it("should not show profile when nori-config.json does not exist", async () => {
+      const config: Config = { installType: "free" };
 
       // Install statusline
       await statuslineLoader.run({ config });
 
       // Ensure nori-config.json does not exist in temp directory
-      const noriConfigPath = path.join(tempDir, 'nori-config.json');
+      const noriConfigPath = path.join(tempDir, "nori-config.json");
       await fs.rm(noriConfigPath, { force: true });
 
       try {
         // Read settings to get the statusLine command
-        const content = await fs.readFile(settingsPath, 'utf-8');
+        const content = await fs.readFile(settingsPath, "utf-8");
         const settings = JSON.parse(content);
         const statusLineCommand = settings.statusLine.command;
 
         // Execute the statusline script with mock input
-        const { execSync } = await import('child_process');
+        const { execSync } = await import("child_process");
         const mockInput = JSON.stringify({
           cwd: tempDir,
           cost: {
@@ -223,16 +223,16 @@ describe('statuslineLoader', () => {
             total_lines_added: 10,
             total_lines_removed: 5,
           },
-          transcript_path: '',
+          transcript_path: "",
         });
 
         const output = execSync(statusLineCommand, {
           input: mockInput,
-          encoding: 'utf-8',
+          encoding: "utf-8",
         });
 
         // Verify output does not contain profile
-        expect(output).not.toContain('Profile:');
+        expect(output).not.toContain("Profile:");
       } finally {
         // Restore nori-config.json if it existed
         // (No cleanup needed as we're in test environment)
@@ -240,15 +240,15 @@ describe('statuslineLoader', () => {
     });
   });
 
-  describe('uninstall', () => {
-    it('should remove statusLine from settings.json', async () => {
-      const config: Config = { installType: 'free' };
+  describe("uninstall", () => {
+    it("should remove statusLine from settings.json", async () => {
+      const config: Config = { installType: "free" };
 
       // Install first
       await statuslineLoader.run({ config });
 
       // Verify statusLine exists
-      let content = await fs.readFile(settingsPath, 'utf-8');
+      let content = await fs.readFile(settingsPath, "utf-8");
       let settings = JSON.parse(content);
       expect(settings.statusLine).toBeDefined();
 
@@ -256,34 +256,34 @@ describe('statuslineLoader', () => {
       await statuslineLoader.uninstall({ config });
 
       // Verify statusLine is removed
-      content = await fs.readFile(settingsPath, 'utf-8');
+      content = await fs.readFile(settingsPath, "utf-8");
       settings = JSON.parse(content);
       expect(settings.statusLine).toBeUndefined();
     });
 
-    it('should preserve other settings when removing statusLine', async () => {
-      const config: Config = { installType: 'free' };
+    it("should preserve other settings when removing statusLine", async () => {
+      const config: Config = { installType: "free" };
 
       // Create settings with statusLine and other content
       await statuslineLoader.run({ config });
 
-      let content = await fs.readFile(settingsPath, 'utf-8');
+      let content = await fs.readFile(settingsPath, "utf-8");
       let settings = JSON.parse(content);
-      settings.someOtherSetting = 'preserved value';
+      settings.someOtherSetting = "preserved value";
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 
       // Uninstall
       await statuslineLoader.uninstall({ config });
 
       // Verify other settings are preserved
-      content = await fs.readFile(settingsPath, 'utf-8');
+      content = await fs.readFile(settingsPath, "utf-8");
       settings = JSON.parse(content);
-      expect(settings.someOtherSetting).toBe('preserved value');
+      expect(settings.someOtherSetting).toBe("preserved value");
       expect(settings.statusLine).toBeUndefined();
     });
 
-    it('should handle missing settings.json gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle missing settings.json gracefully", async () => {
+      const config: Config = { installType: "free" };
 
       // Uninstall without installing first
       await expect(
@@ -291,12 +291,12 @@ describe('statuslineLoader', () => {
       ).resolves.not.toThrow();
     });
 
-    it('should handle settings.json without statusLine gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle settings.json without statusLine gracefully", async () => {
+      const config: Config = { installType: "free" };
 
       // Create settings.json without statusLine
       const settings = {
-        $schema: 'https://json.schemastore.org/claude-code-settings.json',
+        $schema: "https://json.schemastore.org/claude-code-settings.json",
       };
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 
@@ -306,10 +306,10 @@ describe('statuslineLoader', () => {
       ).resolves.not.toThrow();
 
       // Verify settings.json still exists and is unchanged
-      const content = await fs.readFile(settingsPath, 'utf-8');
+      const content = await fs.readFile(settingsPath, "utf-8");
       const updatedSettings = JSON.parse(content);
       expect(updatedSettings.$schema).toBe(
-        'https://json.schemastore.org/claude-code-settings.json',
+        "https://json.schemastore.org/claude-code-settings.json",
       );
     });
   });

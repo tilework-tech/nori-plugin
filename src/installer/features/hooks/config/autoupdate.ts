@@ -7,16 +7,16 @@
  * It checks npm registry for updates and installs them in the background.
  */
 
-import { execSync, spawn } from 'child_process';
-import { appendFileSync, openSync, closeSync } from 'fs';
-import { join } from 'path';
+import { execSync, spawn } from "child_process";
+import { appendFileSync, openSync, closeSync } from "fs";
+import { join } from "path";
 
-import { trackEvent } from '@/installer/analytics.js';
-import { loadDiskConfig } from '@/installer/config.js';
-import { error } from '@/installer/logger.js';
-import { getInstalledVersion } from '@/installer/version.js';
+import { trackEvent } from "@/installer/analytics.js";
+import { loadDiskConfig } from "@/installer/config.js";
+import { error } from "@/installer/logger.js";
+import { getInstalledVersion } from "@/installer/version.js";
 
-const PACKAGE_NAME = 'nori-ai';
+const PACKAGE_NAME = "nori-ai";
 
 /**
  * Get the latest version from npm registry
@@ -25,8 +25,8 @@ const PACKAGE_NAME = 'nori-ai';
 const getLatestVersion = async (): Promise<string | null> => {
   try {
     const output = execSync(`npm view ${PACKAGE_NAME} version`, {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
     });
     return output.trim();
   } catch {
@@ -43,32 +43,32 @@ const installUpdate = (args: { version: string }): void => {
   const { version } = args;
 
   // Log to notifications file
-  const logPath = join(process.env.HOME || '~', '.nori-notifications.log');
+  const logPath = join(process.env.HOME || "~", ".nori-notifications.log");
   const logHeader = `\n=== Nori Autoupdate: ${new Date().toISOString()} ===\nInstalling v${version}...\nCommand: npx nori-ai@${version} install --non-interactive\n`;
   appendFileSync(logPath, logHeader);
 
   // Use openSync to get file descriptor for spawn stdio
-  const logFd = openSync(logPath, 'a');
+  const logFd = openSync(logPath, "a");
 
   // Spawn background process with output redirected to log
   // Use npx to install the new version AND run the install script non-interactively
   const child = spawn(
-    'npx',
-    [`${PACKAGE_NAME}@${version}`, 'install', '--non-interactive'],
+    "npx",
+    [`${PACKAGE_NAME}@${version}`, "install", "--non-interactive"],
     {
       detached: true,
-      stdio: ['ignore', logFd, logFd],
+      stdio: ["ignore", logFd, logFd],
     },
   );
 
   // Listen for spawn errors
-  child.on('error', (err) => {
+  child.on("error", (err) => {
     appendFileSync(logPath, `\nSpawn error: ${err.message}\n`);
     error({ message: `Autoupdate spawn failed: ${err.message}` });
   });
 
   // Close file descriptor when process exits to prevent leak
-  child.on('exit', () => {
+  child.on("exit", () => {
     try {
       closeSync(logFd);
     } catch {
@@ -105,7 +105,7 @@ const main = async (): Promise<void> => {
 
     // Load disk config to determine install_type
     const diskConfig = await loadDiskConfig();
-    const installType = diskConfig?.auth ? 'paid' : 'free';
+    const installType = diskConfig?.auth ? "paid" : "free";
 
     // Check for updates
     const latestVersion = await getLatestVersion();
@@ -114,7 +114,7 @@ const main = async (): Promise<void> => {
 
     // Track session start (fire and forget - non-blocking)
     trackEvent({
-      eventName: 'nori_session_started',
+      eventName: "nori_session_started",
       eventParams: {
         installed_version: installedVersion,
         update_available: updateAvailable,

@@ -1,7 +1,7 @@
-import { apiRequest } from '@/api/base.js';
+import { apiRequest } from "@/api/base.js";
 
 export type FeedbackItem = {
-  category: 'good' | 'warning' | 'critical';
+  category: "good" | "warning" | "critical";
   message: string;
 };
 
@@ -20,8 +20,8 @@ export const promptAnalysisApi = {
     const { prompt } = args;
 
     return apiRequest<AnalyzePromptResponse>({
-      path: '/prompt-analysis',
-      method: 'POST',
+      path: "/prompt-analysis",
+      method: "POST",
       body: {
         prompt,
       },

@@ -1,8 +1,8 @@
-import { apiRequest } from '@/api/base.js';
+import { apiRequest } from "@/api/base.js";
 
 export type SummarizeRequest = {
   content: string;
-  actor?: 'claude-code';
+  actor?: "claude-code";
 };
 
 export type SummarizeResponse = {
@@ -17,11 +17,11 @@ export const conversationApi = {
     const { content } = args;
 
     return apiRequest<SummarizeResponse>({
-      path: '/conversation/summarize',
-      method: 'POST',
+      path: "/conversation/summarize",
+      method: "POST",
       body: {
         content,
-        actor: 'claude-code', // MCP always acts as claude-code
+        actor: "claude-code", // MCP always acts as claude-code
       },
     });
   },

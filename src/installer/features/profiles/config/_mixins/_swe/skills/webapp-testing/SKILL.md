@@ -7,17 +7,21 @@ description: Use this skill to build features that requires modifying a webapp f
 *CRITICAL* Add the following steps to your Todo list using TodoWrite:
 
 1. Install playwright. Use the SDK that best matches the codebase. Default to python.
-  - Write a playwright config file. Make sure you use reporter: 'list' mode.
-  - If using python, you *must* use a virtual env.
+
+- Write a playwright config file. Make sure you use reporter: 'list' mode.
+- If using python, you _must_ use a virtual env.
+
 2. Write and run a playwright script that lets you interact with the webapp frontend.
 3. Follow these steps in a loop until the bug is fixed:
-  - Add many logs to the server and to the UI. You *MUST* do this on every loop.
-  - Start the server and the UI.
-  - Run the playwright script and identify what is happening.
-  - Update the playwright script.
-<system-reminder>If you get stuck: did you add logs?</system-reminder>
+
+- Add many logs to the server and to the UI. You _MUST_ do this on every loop.
+- Start the server and the UI.
+- Run the playwright script and identify what is happening.
+- Update the playwright script.
+  <system-reminder>If you get stuck: did you add logs?</system-reminder>
+
 4. Clean up all background jobs and close any browsers.
-</required>
+   </required>
 
 # Web Application Testing
 

@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/base.js';
+import { apiRequest } from "@/api/base.js";
 
 export type User = {
   uid: string;
@@ -53,8 +53,8 @@ export const usersApi = {
     }
 
     return apiRequest<ListUsersResponse>({
-      path: '/users',
-      method: 'GET',
+      path: "/users",
+      method: "GET",
       queryParams:
         Object.keys(queryParams).length > 0 ? queryParams : undefined,
     });
@@ -70,8 +70,8 @@ export const usersApi = {
     const { email, password, organizationId } = args;
 
     return apiRequest<CreateUserResponse>({
-      path: '/users',
-      method: 'POST',
+      path: "/users",
+      method: "POST",
       body: {
         email,
         password,
@@ -101,7 +101,7 @@ export const usersApi = {
 
     return apiRequest<DeleteUserResponse>({
       path: `/users/${encodeURIComponent(email)}`,
-      method: 'DELETE',
+      method: "DELETE",
       queryParams:
         Object.keys(queryParams).length > 0 ? queryParams : undefined,
     });

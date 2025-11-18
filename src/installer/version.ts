@@ -5,20 +5,20 @@
  * before installing new versions.
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
-import { getConfigPath } from '@/installer/config.js';
-import { MCP_ROOT } from '@/installer/env.js';
+import { getConfigPath } from "@/installer/config.js";
+import { MCP_ROOT } from "@/installer/env.js";
 
-const DEFAULT_VERSION = '12.1.0';
+const DEFAULT_VERSION = "12.1.0";
 
 /**
  * Get the path to the version file
  * @returns The absolute path to .nori-installed-version
  */
 const getVersionFilePath = (): string => {
-  return join(process.env.HOME || '~', '.nori-installed-version');
+  return join(process.env.HOME || "~", ".nori-installed-version");
 };
 
 /**
@@ -42,10 +42,10 @@ export const hasExistingInstallation = (): boolean => {
  */
 export const getCurrentPackageVersion = (): string | null => {
   try {
-    const packageJsonPath = join(MCP_ROOT, 'package.json');
-    const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    const packageJsonPath = join(MCP_ROOT, "package.json");
+    const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     // Verify it's the nori-ai package
-    if (pkg.name === 'nori-ai') {
+    if (pkg.name === "nori-ai") {
       return pkg.version;
     }
     return null;
@@ -61,7 +61,7 @@ export const getCurrentPackageVersion = (): string | null => {
  */
 export const getInstalledVersion = (): string => {
   try {
-    const version = readFileSync(getVersionFilePath(), 'utf-8').trim();
+    const version = readFileSync(getVersionFilePath(), "utf-8").trim();
     if (version) {
       return version;
     }
@@ -79,5 +79,5 @@ export const getInstalledVersion = (): string => {
  */
 export const saveInstalledVersion = (args: { version: string }): void => {
   const { version } = args;
-  writeFileSync(getVersionFilePath(), version, 'utf-8');
+  writeFileSync(getVersionFilePath(), version, "utf-8");
 };

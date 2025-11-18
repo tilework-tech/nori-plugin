@@ -12,6 +12,7 @@ node ~/.claude/skills/sync-noridocs/script.js
 ```
 
 This will:
+
 - Find all docs.md files in the codebase
 - Extract the Path: field from each file
 - Sync them to the server-side noridocs system

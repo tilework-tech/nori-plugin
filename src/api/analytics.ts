@@ -1,4 +1,4 @@
-import { apiRequest } from './base.js';
+import { apiRequest } from "./base.js";
 
 export type GenerateDailyReportRequest = {
   date?: string | null;
@@ -39,8 +39,8 @@ export const analyticsApi = {
     args?: GenerateDailyReportRequest | null,
   ): Promise<GenerateDailyReportResponse> => {
     return apiRequest<GenerateDailyReportResponse>({
-      path: '/analytics/daily-report',
-      method: 'POST',
+      path: "/analytics/daily-report",
+      method: "POST",
       body: args || {},
     });
   },
@@ -49,16 +49,16 @@ export const analyticsApi = {
     args: GenerateUserReportRequest,
   ): Promise<GenerateUserReportResponse> => {
     return apiRequest<GenerateUserReportResponse>({
-      path: '/analytics/user-report',
-      method: 'POST',
+      path: "/analytics/user-report",
+      method: "POST",
       body: args,
     });
   },
 
   trackEvent: async (args: TrackEventRequest): Promise<TrackEventResponse> => {
     return apiRequest<TrackEventResponse>({
-      path: '/analytics/track',
-      method: 'POST',
+      path: "/analytics/track",
+      method: "POST",
       body: args,
     });
   },

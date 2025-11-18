@@ -3,60 +3,61 @@
  * Verifies install, uninstall, and validate operations
  */
 
-import * as fs from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type { Config } from '@/installer/config.js';
+import { profilesLoader } from "@/installer/features/profiles/loader.js";
+
+import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir: string;
 let mockClaudeCommandsDir: string;
 
-vi.mock('@/installer/env.js', () => ({
+vi.mock("@/installer/env.js", () => ({
   get CLAUDE_DIR() {
     return mockClaudeDir;
   },
   get CLAUDE_MD_FILE() {
-    return path.join(mockClaudeDir, 'CLAUDE.md');
+    return path.join(mockClaudeDir, "CLAUDE.md");
   },
   get CLAUDE_SETTINGS_FILE() {
-    return path.join(mockClaudeDir, 'settings.json');
+    return path.join(mockClaudeDir, "settings.json");
   },
   get CLAUDE_AGENTS_DIR() {
-    return path.join(mockClaudeDir, 'agents');
+    return path.join(mockClaudeDir, "agents");
   },
   get CLAUDE_COMMANDS_DIR() {
     return mockClaudeCommandsDir;
   },
   get CLAUDE_NORI_DIR() {
-    return path.join(mockClaudeDir, 'nori-deprecated');
+    return path.join(mockClaudeDir, "nori-deprecated");
   },
   get CLAUDE_ABILITIES_DIR() {
-    return path.join(mockClaudeDir, 'nori', 'abilities');
+    return path.join(mockClaudeDir, "nori", "abilities");
   },
   get CLAUDE_PROFILES_DIR() {
-    return path.join(mockClaudeDir, 'profiles');
+    return path.join(mockClaudeDir, "profiles");
   },
-  MCP_ROOT: '/mock/mcp/root',
+  MCP_ROOT: "/mock/mcp/root",
 }));
 
 // Import loaders after mocking env
-import { slashCommandsLoader } from './loader.js';
-import { profilesLoader } from '@/installer/features/profiles/loader.js';
+import { slashCommandsLoader } from "./loader.js";
 
-describe('slashCommandsLoader', () => {
+describe("slashCommandsLoader", () => {
   let tempDir: string;
   let claudeDir: string;
   let commandsDir: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'slashcmd-test-'));
-    claudeDir = path.join(tempDir, '.claude');
-    commandsDir = path.join(claudeDir, 'commands');
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "slashcmd-test-"));
+    claudeDir = path.join(tempDir, ".claude");
+    commandsDir = path.join(claudeDir, "commands");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
@@ -68,7 +69,7 @@ describe('slashCommandsLoader', () => {
     // Install profiles first to set up composed profile structure
     // Run profiles loader to populate ~/.claude/profiles/ directory
     // This is required since feature loaders now read from ~/.claude/profiles/
-    const config: Config = { installType: 'free' };
+    const config: Config = { installType: "free" };
     await profilesLoader.run({ config });
   });
 
@@ -80,9 +81,9 @@ describe('slashCommandsLoader', () => {
     vi.clearAllMocks();
   });
 
-  describe('run', () => {
-    it('should create commands directory and copy slash command files for free installation', async () => {
-      const config: Config = { installType: 'free' };
+  describe("run", () => {
+    it("should create commands directory and copy slash command files for free installation", async () => {
+      const config: Config = { installType: "free" };
 
       await slashCommandsLoader.run({ config });
 
@@ -99,8 +100,8 @@ describe('slashCommandsLoader', () => {
       expect(files.length).toBeGreaterThan(0);
     });
 
-    it('should create commands directory and copy slash command files for paid installation', async () => {
-      const config: Config = { installType: 'paid' };
+    it("should create commands directory and copy slash command files for paid installation", async () => {
+      const config: Config = { installType: "paid" };
 
       await slashCommandsLoader.run({ config });
 
@@ -117,8 +118,8 @@ describe('slashCommandsLoader', () => {
       expect(files.length).toBeGreaterThan(0);
     });
 
-    it('should handle reinstallation (update scenario)', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle reinstallation (update scenario)", async () => {
+      const config: Config = { installType: "free" };
 
       // First installation
       await slashCommandsLoader.run({ config });
@@ -134,9 +135,9 @@ describe('slashCommandsLoader', () => {
     });
   });
 
-  describe('uninstall', () => {
-    it('should remove slash command files', async () => {
-      const config: Config = { installType: 'free' };
+  describe("uninstall", () => {
+    it("should remove slash command files", async () => {
+      const config: Config = { installType: "free" };
 
       // Install first
       await slashCommandsLoader.run({ config });
@@ -159,13 +160,13 @@ describe('slashCommandsLoader', () => {
         files = await fs.readdir(commandsDir);
         // All nori slash commands should be removed
         // Check that no .md files remain
-        const mdFiles = files.filter((f) => f.endsWith('.md'));
+        const mdFiles = files.filter((f) => f.endsWith(".md"));
         expect(mdFiles.length).toBe(0);
       }
     });
 
-    it('should handle missing commands directory gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle missing commands directory gracefully", async () => {
+      const config: Config = { installType: "free" };
 
       // Uninstall without installing first
       await expect(
@@ -174,56 +175,56 @@ describe('slashCommandsLoader', () => {
     });
   });
 
-  describe('validate', () => {
-    it('should return valid for properly installed slash commands', async () => {
-      const config: Config = { installType: 'free' };
+  describe("validate", () => {
+    it("should return valid for properly installed slash commands", async () => {
+      const config: Config = { installType: "free" };
 
       // Install
       await slashCommandsLoader.run({ config });
 
       // Validate
       if (slashCommandsLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await slashCommandsLoader.validate({ config });
 
       expect(result.valid).toBe(true);
-      expect(result.message).toContain('properly installed');
+      expect(result.message).toContain("properly installed");
       expect(result.errors).toBeNull();
     });
 
-    it('should return invalid when commands directory does not exist', async () => {
-      const config: Config = { installType: 'free' };
+    it("should return invalid when commands directory does not exist", async () => {
+      const config: Config = { installType: "free" };
 
       // Validate without installing
       if (slashCommandsLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await slashCommandsLoader.validate({ config });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toContain('not found');
+      expect(result.message).toContain("not found");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
     });
 
-    it('should return invalid when slash command files are missing', async () => {
-      const config: Config = { installType: 'free' };
+    it("should return invalid when slash command files are missing", async () => {
+      const config: Config = { installType: "free" };
 
       // Create commands directory but don't install slash commands
       await fs.mkdir(commandsDir, { recursive: true });
 
       // Validate
       if (slashCommandsLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await slashCommandsLoader.validate({ config });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toContain('not installed');
+      expect(result.message).toContain("not installed");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
     });

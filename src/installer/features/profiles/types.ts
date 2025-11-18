@@ -2,8 +2,8 @@
  * Profile metadata types and utilities
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as path from "path";
 
 /**
  * Per-mixin configuration (empty for now, allows future expansion)
@@ -35,9 +35,9 @@ export const readProfileMetadata = async (args: {
   profileDir: string;
 }): Promise<ProfileMetadata> => {
   const { profileDir } = args;
-  const profileJsonPath = path.join(profileDir, 'profile.json');
+  const profileJsonPath = path.join(profileDir, "profile.json");
 
-  const content = await fs.readFile(profileJsonPath, 'utf-8');
+  const content = await fs.readFile(profileJsonPath, "utf-8");
   const metadata = JSON.parse(content) as ProfileMetadata;
 
   return metadata;

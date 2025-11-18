@@ -6,18 +6,18 @@
  * Pipeline-style installer that prompts for configuration and executes feature loaders.
  */
 
-import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync, existsSync } from 'fs';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { execSync } from "child_process";
+import { writeFileSync, unlinkSync, existsSync } from "fs";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
-import { trackEvent } from '@/installer/analytics.js';
+import { trackEvent } from "@/installer/analytics.js";
 import {
   displayNoriBanner,
   displayWelcomeBanner,
   displaySeaweedBed,
-} from '@/installer/asciiArt.js';
+} from "@/installer/asciiArt.js";
 import {
   loadDiskConfig,
   saveDiskConfig,
@@ -25,10 +25,10 @@ import {
   getConfigPath,
   type DiskConfig,
   type Config,
-} from '@/installer/config.js';
-import { CLAUDE_DIR } from '@/installer/env.js';
-import { LoaderRegistry } from '@/installer/features/loaderRegistry.js';
-import { profilesLoader } from '@/installer/features/profiles/loader.js';
+} from "@/installer/config.js";
+import { CLAUDE_DIR } from "@/installer/env.js";
+import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
+import { profilesLoader } from "@/installer/features/profiles/loader.js";
 import {
   error,
   success,
@@ -37,14 +37,14 @@ import {
   brightCyan,
   boldWhite,
   gray,
-} from '@/installer/logger.js';
-import { promptUser } from '@/installer/prompt.js';
+} from "@/installer/logger.js";
+import { promptUser } from "@/installer/prompt.js";
 import {
   getCurrentPackageVersion,
   getInstalledVersion,
   hasExistingInstallation,
   saveInstalledVersion,
-} from '@/installer/version.js';
+} from "@/installer/version.js";
 
 // Get directory of this installer file for profile loading
 const __filename = fileURLToPath(import.meta.url);
@@ -57,13 +57,13 @@ const __dirname = path.dirname(__filename);
 const promptForProfileSelection = async (): Promise<string> => {
   info({
     message: wrapText({
-      text: 'Please select a profile. Each profile contains a complete configuration with skills, subagents, and commands tailored for different use cases.',
+      text: "Please select a profile. Each profile contains a complete configuration with skills, subagents, and commands tailored for different use cases.",
     }),
   });
   console.log();
 
   // Read profiles from ~/.claude/profiles/ (populated by profiles loader)
-  const profilesDir = path.join(CLAUDE_DIR, 'profiles');
+  const profilesDir = path.join(CLAUDE_DIR, "profiles");
   const entries = await fs.readdir(profilesDir, { withFileTypes: true });
 
   // Get all directories that have a profile.json file
@@ -74,17 +74,17 @@ const promptForProfileSelection = async (): Promise<string> => {
         const profileJsonPath = path.join(
           profilesDir,
           entry.name,
-          'profile.json',
+          "profile.json",
         );
         await fs.access(profileJsonPath);
 
         // Read description from profile.json
-        const content = await fs.readFile(profileJsonPath, 'utf-8');
+        const content = await fs.readFile(profileJsonPath, "utf-8");
         const profileData = JSON.parse(content);
 
         profiles.push({
           name: entry.name,
-          description: profileData.description || 'No description available',
+          description: profileData.description || "No description available",
         });
       } catch {
         // Skip directories without profile.json
@@ -135,33 +135,33 @@ const promptForCredentials = async (): Promise<{
 } | null> => {
   info({
     message: wrapText({
-      text: 'Do you have Nori credentials? You should have gotten an email from Josh or Amol if you are on the Nori paid plan. Type in your email address to set up Nori Paid, or hit enter to skip.',
+      text: "Do you have Nori credentials? You should have gotten an email from Josh or Amol if you are on the Nori paid plan. Type in your email address to set up Nori Paid, or hit enter to skip.",
     }),
   });
   console.log();
 
   const username = await promptUser({
-    prompt: 'Email address (paid tier) or hit enter to skip (free tier): ',
+    prompt: "Email address (paid tier) or hit enter to skip (free tier): ",
   });
 
-  if (!username || username.trim() === '') {
+  if (!username || username.trim() === "") {
     return null; // Free tier
   }
 
   const password = await promptUser({
-    prompt: 'Enter your password: ',
+    prompt: "Enter your password: ",
     hidden: true,
   });
 
   const orgUrl = await promptUser({
     prompt:
-      'Enter your organization URL (e.g., http://localhost:3000 for local dev): ',
+      "Enter your organization URL (e.g., http://localhost:3000 for local dev): ",
   });
 
   if (!password || !orgUrl) {
     error({
       message:
-        'Password and organization URL are required for backend installation',
+        "Password and organization URL are required for backend installation",
     });
     process.exit(1);
   }
@@ -196,7 +196,7 @@ const promptForAuth = async (args: {
     // Display existing configuration
     info({
       message:
-        'I found an existing Nori configuration file. Do you want to keep it?',
+        "I found an existing Nori configuration file. Do you want to keep it?",
     });
     console.log();
     info({ message: `  Username: ${existingDiskConfig.auth.username}` });
@@ -211,11 +211,11 @@ const promptForAuth = async (args: {
     console.log();
 
     const useExisting = await promptUser({
-      prompt: 'Keep existing configuration? (y/n): ',
+      prompt: "Keep existing configuration? (y/n): ",
     });
 
     if (useExisting.match(/^[Yy]$/)) {
-      info({ message: 'Using existing configuration...' });
+      info({ message: "Using existing configuration..." });
       return {
         auth: existingDiskConfig.auth,
         useExistingConfig: true,
@@ -230,7 +230,7 @@ const promptForAuth = async (args: {
   const auth = await promptForCredentials();
 
   if (auth != null) {
-    info({ message: 'Installing with backend support...' });
+    info({ message: "Installing with backend support..." });
     console.log();
   } else {
     info({ message: "Great. Let's move on to selecting your profile." });
@@ -307,12 +307,9 @@ export const main = async (args?: {
 
       // Call uninstall at the PREVIOUS version
       try {
-        execSync(
-          `npx nori-ai@${previousVersion} uninstall --non-interactive`,
-          {
-            stdio: 'inherit',
-          },
-        );
+        execSync(`npx nori-ai@${previousVersion} uninstall --non-interactive`, {
+          stdio: "inherit",
+        });
       } catch (err: any) {
         // If uninstall fails, log but continue with installation
         // This handles cases where the previous version didn't have uninstall
@@ -324,12 +321,12 @@ export const main = async (args?: {
       // Skipping uninstall explicitly (e.g., for profile switching)
       info({
         message:
-          'Skipping uninstall step (preserving existing installation)...',
+          "Skipping uninstall step (preserving existing installation)...",
       });
     } else {
       // First-time installation - no cleanup needed
       info({
-        message: 'First-time installation detected. No cleanup needed.',
+        message: "First-time installation detected. No cleanup needed.",
       });
     }
 
@@ -348,14 +345,14 @@ export const main = async (args?: {
         };
       } else {
         config = {
-          installType: 'free',
+          installType: "free",
           nonInteractive: true,
-          profile: { baseProfile: 'senior-swe' },
+          profile: { baseProfile: "senior-swe" },
         };
       }
 
       // Run profile loader with the config
-      info({ message: 'Loading available profiles...' });
+      info({ message: "Loading available profiles..." });
       await profilesLoader.run({ config });
       console.log();
     } else {
@@ -378,7 +375,7 @@ export const main = async (args?: {
       config = generateConfig({ diskConfig: tempDiskConfig });
 
       // 3. Run profile loader with CORRECT config (paid if auth exists)
-      info({ message: 'Loading available profiles...' });
+      info({ message: "Loading available profiles..." });
       await profilesLoader.run({ config });
       console.log();
 
@@ -398,7 +395,7 @@ export const main = async (args?: {
 
     // Track installation start
     trackEvent({
-      eventName: 'plugin_install_started',
+      eventName: "plugin_install_started",
       eventParams: {
         install_type: config.installType,
         non_interactive: config.nonInteractive || false,
@@ -409,10 +406,10 @@ export const main = async (args?: {
     const currentVersion = getCurrentPackageVersion();
     if (currentVersion) {
       const markerPath = path.join(
-        process.env.HOME || '~',
-        '.nori-install-in-progress',
+        process.env.HOME || "~",
+        ".nori-install-in-progress",
       );
-      writeFileSync(markerPath, currentVersion, 'utf-8');
+      writeFileSync(markerPath, currentVersion, "utf-8");
     }
 
     // Save disk config if needed
@@ -431,11 +428,11 @@ export const main = async (args?: {
     const registry = LoaderRegistry.getInstance();
     const loaders = registry.getAll();
 
-    info({ message: 'Installing features...' });
+    info({ message: "Installing features..." });
     console.log();
 
     // Execute all loaders except profiles (profiles already ran above)
-    const remainingLoaders = loaders.filter((l) => l.name !== 'profiles');
+    const remainingLoaders = loaders.filter((l) => l.name !== "profiles");
     for (const loader of remainingLoaders) {
       await loader.run({ config });
     }
@@ -451,8 +448,8 @@ export const main = async (args?: {
 
     // Delete install-in-progress marker on successful completion
     const markerPath = path.join(
-      process.env.HOME || '~',
-      '.nori-install-in-progress',
+      process.env.HOME || "~",
+      ".nori-install-in-progress",
     );
     if (existsSync(markerPath)) {
       unlinkSync(markerPath);
@@ -460,7 +457,7 @@ export const main = async (args?: {
 
     // Track installation completion
     trackEvent({
-      eventName: 'plugin_install_completed',
+      eventName: "plugin_install_completed",
       eventParams: {
         install_type: config.installType,
         non_interactive: config.nonInteractive || false,
@@ -470,15 +467,15 @@ export const main = async (args?: {
     displayWelcomeBanner();
     success({
       message:
-        '======================================================================',
+        "======================================================================",
     });
     success({
       message:
-        '        Restart your Claude Code instances to get started           ',
+        "        Restart your Claude Code instances to get started           ",
     });
     success({
       message:
-        '======================================================================',
+        "======================================================================",
     });
     console.log();
     displaySeaweedBed();

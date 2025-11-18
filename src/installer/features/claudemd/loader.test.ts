@@ -3,19 +3,21 @@
  * Verifies install, uninstall, and validate operations
  */
 
-import * as fs from 'fs/promises';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type { Config } from '@/installer/config.js';
+import { profilesLoader } from "@/installer/features/profiles/loader.js";
+
+import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir: string;
 let mockClaudeMdFile: string;
 
-vi.mock('@/installer/env.js', () => ({
+vi.mock("@/installer/env.js", () => ({
   get CLAUDE_DIR() {
     return mockClaudeDir;
   },
@@ -23,40 +25,39 @@ vi.mock('@/installer/env.js', () => ({
     return mockClaudeMdFile;
   },
   get CLAUDE_SETTINGS_FILE() {
-    return path.join(mockClaudeDir, 'settings.json');
+    return path.join(mockClaudeDir, "settings.json");
   },
   get CLAUDE_AGENTS_DIR() {
-    return path.join(mockClaudeDir, 'agents');
+    return path.join(mockClaudeDir, "agents");
   },
   get CLAUDE_COMMANDS_DIR() {
-    return path.join(mockClaudeDir, 'commands');
+    return path.join(mockClaudeDir, "commands");
   },
   get CLAUDE_NORI_DIR() {
-    return path.join(mockClaudeDir, 'nori-deprecated');
+    return path.join(mockClaudeDir, "nori-deprecated");
   },
   get CLAUDE_ABILITIES_DIR() {
-    return path.join(mockClaudeDir, 'nori', 'abilities');
+    return path.join(mockClaudeDir, "nori", "abilities");
   },
   get CLAUDE_PROFILES_DIR() {
-    return path.join(mockClaudeDir, 'profiles');
+    return path.join(mockClaudeDir, "profiles");
   },
-  MCP_ROOT: '/mock/mcp/root',
+  MCP_ROOT: "/mock/mcp/root",
 }));
 
 // Import loaders after mocking env
-import { claudeMdLoader } from './loader.js';
-import { profilesLoader } from '@/installer/features/profiles/loader.js';
+import { claudeMdLoader } from "./loader.js";
 
-describe('claudeMdLoader', () => {
+describe("claudeMdLoader", () => {
   let tempDir: string;
   let claudeDir: string;
   let claudeMdPath: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'claudemd-test-'));
-    claudeDir = path.join(tempDir, '.claude');
-    claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "claudemd-test-"));
+    claudeDir = path.join(tempDir, ".claude");
+    claudeMdPath = path.join(claudeDir, "CLAUDE.md");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
@@ -67,7 +68,7 @@ describe('claudeMdLoader', () => {
 
     // Run profiles loader to populate ~/.claude/profiles/ directory with composed profiles
     // This is required since feature loaders now read from ~/.claude/profiles/
-    const config: Config = { installType: 'free' };
+    const config: Config = { installType: "free" };
     await profilesLoader.run({ config });
   });
 
@@ -79,69 +80,69 @@ describe('claudeMdLoader', () => {
     vi.clearAllMocks();
   });
 
-  describe('run', () => {
-    it('should create CLAUDE.md with managed block for free installation', async () => {
-      const config: Config = { installType: 'free' };
+  describe("run", () => {
+    it("should create CLAUDE.md with managed block for free installation", async () => {
+      const config: Config = { installType: "free" };
 
       await claudeMdLoader.run({ config });
 
       // Verify file exists
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Check for managed block markers
-      expect(content).toContain('# BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('# END NORI-AI MANAGED BLOCK');
+      expect(content).toContain("# BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("# END NORI-AI MANAGED BLOCK");
 
       // Check for core content sections from profile CLAUDE.md
-      expect(content).toContain('# Tone');
-      expect(content).toContain('# Coding Guidelines');
-      expect(content).toContain('<required>');
+      expect(content).toContain("# Tone");
+      expect(content).toContain("# Coding Guidelines");
+      expect(content).toContain("<required>");
       expect(content).toContain(
-        'ask me if I want to create a branch or a worktree',
+        "ask me if I want to create a branch or a worktree",
       );
     });
 
-    it('should create CLAUDE.md with managed block for paid installation', async () => {
-      const config: Config = { installType: 'paid' };
+    it("should create CLAUDE.md with managed block for paid installation", async () => {
+      const config: Config = { installType: "paid" };
 
       await claudeMdLoader.run({ config });
 
       // Verify file exists
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Check for managed block markers
-      expect(content).toContain('# BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('# END NORI-AI MANAGED BLOCK');
+      expect(content).toContain("# BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("# END NORI-AI MANAGED BLOCK");
 
       // Check for core content sections from profile CLAUDE.md
-      expect(content).toContain('# Tone');
-      expect(content).toContain('# Coding Guidelines');
+      expect(content).toContain("# Tone");
+      expect(content).toContain("# Coding Guidelines");
     });
 
-    it('should append managed block to existing CLAUDE.md without destroying user content', async () => {
-      const config: Config = { installType: 'free' };
+    it("should append managed block to existing CLAUDE.md without destroying user content", async () => {
+      const config: Config = { installType: "free" };
 
       // Create existing CLAUDE.md with user content
       const userContent =
-        '# My Custom Instructions\n\nUser-specific content here.\n';
+        "# My Custom Instructions\n\nUser-specific content here.\n";
       await fs.writeFile(claudeMdPath, userContent);
 
       await claudeMdLoader.run({ config });
 
       // Verify file exists
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Check that user content is preserved
-      expect(content).toContain('# My Custom Instructions');
-      expect(content).toContain('User-specific content here.');
+      expect(content).toContain("# My Custom Instructions");
+      expect(content).toContain("User-specific content here.");
 
       // Check for managed block
-      expect(content).toContain('# BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('# END NORI-AI MANAGED BLOCK');
+      expect(content).toContain("# BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("# END NORI-AI MANAGED BLOCK");
     });
 
-    it('should update existing managed block without affecting user content', async () => {
-      const config: Config = { installType: 'free' };
+    it("should update existing managed block without affecting user content", async () => {
+      const config: Config = { installType: "free" };
 
       // Create existing CLAUDE.md with managed block and user content
       const existingContent = `# User Content Before
@@ -161,65 +162,65 @@ More user instructions.
       await claudeMdLoader.run({ config });
 
       // Verify file exists
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Check that user content is preserved
-      expect(content).toContain('# User Content Before');
-      expect(content).toContain('User-specific instructions.');
-      expect(content).toContain('# User Content After');
-      expect(content).toContain('More user instructions.');
+      expect(content).toContain("# User Content Before");
+      expect(content).toContain("User-specific instructions.");
+      expect(content).toContain("# User Content After");
+      expect(content).toContain("More user instructions.");
 
       // Check that managed block is updated
-      expect(content).toContain('# BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('# END NORI-AI MANAGED BLOCK');
+      expect(content).toContain("# BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("# END NORI-AI MANAGED BLOCK");
 
       // Old content should be replaced
-      expect(content).not.toContain('Old nori instructions here.');
+      expect(content).not.toContain("Old nori instructions here.");
 
       // New content should be present (simplified structure)
-      expect(content).toContain('# Tone');
+      expect(content).toContain("# Tone");
     });
 
-    it('should handle switching from free to paid installation', async () => {
+    it("should handle switching from free to paid installation", async () => {
       // First install with senior-swe profile
       const seniorSweConfig: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'senior-swe' },
+        installType: "free",
+        profile: { baseProfile: "senior-swe" },
       };
       await claudeMdLoader.run({ config: seniorSweConfig });
 
-      const seniorSweContent = await fs.readFile(claudeMdPath, 'utf-8');
+      const seniorSweContent = await fs.readFile(claudeMdPath, "utf-8");
       expect(seniorSweContent).toContain(
-        'ask me if I want to create a branch or a worktree',
+        "ask me if I want to create a branch or a worktree",
       );
 
       // Then switch to amol profile
       const amolConfig: Config = {
-        installType: 'paid',
-        profile: { baseProfile: 'amol' },
+        installType: "paid",
+        profile: { baseProfile: "amol" },
       };
       await claudeMdLoader.run({ config: amolConfig });
 
-      const amolContent = await fs.readFile(claudeMdPath, 'utf-8');
+      const amolContent = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should have amol-specific content (profile-specific behavior)
-      expect(amolContent).toContain('automatically create a worktree');
+      expect(amolContent).toContain("automatically create a worktree");
 
       // Managed block markers should still be present
-      expect(amolContent).toContain('# BEGIN NORI-AI MANAGED BLOCK');
-      expect(amolContent).toContain('# END NORI-AI MANAGED BLOCK');
+      expect(amolContent).toContain("# BEGIN NORI-AI MANAGED BLOCK");
+      expect(amolContent).toContain("# END NORI-AI MANAGED BLOCK");
     });
   });
 
-  describe('uninstall', () => {
-    it('should remove managed block from CLAUDE.md', async () => {
-      const config: Config = { installType: 'free' };
+  describe("uninstall", () => {
+    it("should remove managed block from CLAUDE.md", async () => {
+      const config: Config = { installType: "free" };
 
       // First install
       await claudeMdLoader.run({ config });
 
       // Add some user content before uninstalling
-      let content = await fs.readFile(claudeMdPath, 'utf-8');
+      let content = await fs.readFile(claudeMdPath, "utf-8");
       content = `# My Custom Instructions\n\n${content}\n\n# More Custom Stuff\n`;
       await fs.writeFile(claudeMdPath, content);
 
@@ -227,19 +228,19 @@ More user instructions.
       await claudeMdLoader.uninstall({ config });
 
       // Verify managed block is removed
-      const finalContent = await fs.readFile(claudeMdPath, 'utf-8');
+      const finalContent = await fs.readFile(claudeMdPath, "utf-8");
 
-      expect(finalContent).not.toContain('# BEGIN NORI-AI MANAGED BLOCK');
-      expect(finalContent).not.toContain('# END NORI-AI MANAGED BLOCK');
-      expect(finalContent).not.toContain('# Tone');
+      expect(finalContent).not.toContain("# BEGIN NORI-AI MANAGED BLOCK");
+      expect(finalContent).not.toContain("# END NORI-AI MANAGED BLOCK");
+      expect(finalContent).not.toContain("# Tone");
 
       // User content should be preserved
-      expect(finalContent).toContain('# My Custom Instructions');
-      expect(finalContent).toContain('# More Custom Stuff');
+      expect(finalContent).toContain("# My Custom Instructions");
+      expect(finalContent).toContain("# More Custom Stuff");
     });
 
-    it('should delete CLAUDE.md if empty after removing managed block', async () => {
-      const config: Config = { installType: 'free' };
+    it("should delete CLAUDE.md if empty after removing managed block", async () => {
+      const config: Config = { installType: "free" };
 
       // Install (creates CLAUDE.md with only managed block)
       await claudeMdLoader.run({ config });
@@ -256,13 +257,11 @@ More user instructions.
       expect(exists).toBe(false);
     });
 
-    it('should handle missing CLAUDE.md gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle missing CLAUDE.md gracefully", async () => {
+      const config: Config = { installType: "free" };
 
       // Uninstall without installing first (no CLAUDE.md exists)
-      await expect(
-        claudeMdLoader.uninstall({ config }),
-      ).resolves.not.toThrow();
+      await expect(claudeMdLoader.uninstall({ config })).resolves.not.toThrow();
 
       // Verify file still doesn't exist
       const exists = await fs
@@ -273,180 +272,180 @@ More user instructions.
       expect(exists).toBe(false);
     });
 
-    it('should handle CLAUDE.md without managed block gracefully', async () => {
-      const config: Config = { installType: 'free' };
+    it("should handle CLAUDE.md without managed block gracefully", async () => {
+      const config: Config = { installType: "free" };
 
       // Create CLAUDE.md without managed block
-      const userContent = '# User Instructions\n\nNo nori content here.\n';
+      const userContent = "# User Instructions\n\nNo nori content here.\n";
       await fs.writeFile(claudeMdPath, userContent);
 
       // Uninstall
       await claudeMdLoader.uninstall({ config });
 
       // Verify content is unchanged
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
       expect(content).toBe(userContent);
     });
   });
 
-  describe('validate', () => {
-    it('should return valid for properly installed CLAUDE.md', async () => {
-      const config: Config = { installType: 'free' };
+  describe("validate", () => {
+    it("should return valid for properly installed CLAUDE.md", async () => {
+      const config: Config = { installType: "free" };
 
       // Install
       await claudeMdLoader.run({ config });
 
       // Validate
       if (claudeMdLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await claudeMdLoader.validate({ config });
 
       expect(result.valid).toBe(true);
-      expect(result.message).toContain('properly configured');
+      expect(result.message).toContain("properly configured");
       expect(result.errors).toBeNull();
     });
 
-    it('should return invalid when CLAUDE.md does not exist', async () => {
-      const config: Config = { installType: 'free' };
+    it("should return invalid when CLAUDE.md does not exist", async () => {
+      const config: Config = { installType: "free" };
 
       // Validate without installing
       if (claudeMdLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await claudeMdLoader.validate({ config });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toContain('not found');
+      expect(result.message).toContain("not found");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
-      expect(result.errors?.[0]).toContain('CLAUDE.md not found');
+      expect(result.errors?.[0]).toContain("CLAUDE.md not found");
     });
 
-    it('should return invalid when managed block is missing', async () => {
-      const config: Config = { installType: 'free' };
+    it("should return invalid when managed block is missing", async () => {
+      const config: Config = { installType: "free" };
 
       // Create CLAUDE.md without managed block
-      const userContent = '# User Instructions\n\nNo nori content here.\n';
+      const userContent = "# User Instructions\n\nNo nori content here.\n";
       await fs.writeFile(claudeMdPath, userContent);
 
       // Validate
       if (claudeMdLoader.validate == null) {
-        throw new Error('validate method not implemented');
+        throw new Error("validate method not implemented");
       }
 
       const result = await claudeMdLoader.validate({ config });
 
       expect(result.valid).toBe(false);
-      expect(result.message).toContain('managed block missing');
+      expect(result.message).toContain("managed block missing");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
-      expect(result.errors?.[0]).toContain('Nori managed block not found');
+      expect(result.errors?.[0]).toContain("Nori managed block not found");
     });
   });
 
-  describe('profile-based CLAUDE.md loading', () => {
-    it('should load CLAUDE.md from selected profile', async () => {
+  describe("profile-based CLAUDE.md loading", () => {
+    it("should load CLAUDE.md from selected profile", async () => {
       const config: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'senior-swe' },
+        installType: "free",
+        profile: { baseProfile: "senior-swe" },
       };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should contain content from senior-swe profile's CLAUDE.md
-      expect(content).toContain('BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('<required>');
+      expect(content).toContain("BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("<required>");
 
       // Should contain senior-swe specific instructions
       expect(content).toContain(
-        'ask me if I want to create a branch or a worktree',
+        "ask me if I want to create a branch or a worktree",
       );
     });
 
-    it('should load CLAUDE.md from amol profile when specified', async () => {
+    it("should load CLAUDE.md from amol profile when specified", async () => {
       const config: Config = {
-        installType: 'paid',
-        profile: { baseProfile: 'amol' },
+        installType: "paid",
+        profile: { baseProfile: "amol" },
       };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should contain amol profile specific instructions
-      expect(content).toContain('automatically create a worktree');
+      expect(content).toContain("automatically create a worktree");
       // Verify profile-specific behavior exists
-      expect(content).toContain('required');
-      expect(content).toContain('# Tone');
+      expect(content).toContain("required");
+      expect(content).toContain("# Tone");
     });
 
-    it('should use default profile (senior-swe) when no profile specified', async () => {
-      const config: Config = { installType: 'free' };
+    it("should use default profile (senior-swe) when no profile specified", async () => {
+      const config: Config = { installType: "free" };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should use senior-swe as default
       expect(content).toContain(
-        'ask me if I want to create a branch or a worktree',
+        "ask me if I want to create a branch or a worktree",
       );
     });
   });
 
-  describe('skills list generation', () => {
-    it('should include skills list in installed CLAUDE.md', async () => {
+  describe("skills list generation", () => {
+    it("should include skills list in installed CLAUDE.md", async () => {
       const config: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'senior-swe' },
+        installType: "free",
+        profile: { baseProfile: "senior-swe" },
       };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should contain skills list section
-      expect(content).toContain('Available Skills');
+      expect(content).toContain("Available Skills");
 
       // Should list at least some skills from senior-swe profile
-      expect(content).toContain('~/.claude/skills/using-skills/SKILL.md');
+      expect(content).toContain("~/.claude/skills/using-skills/SKILL.md");
       expect(content).toContain(
-        '~/.claude/skills/test-driven-development/SKILL.md',
+        "~/.claude/skills/test-driven-development/SKILL.md",
       );
-      expect(content).toContain('~/.claude/skills/brainstorming/SKILL.md');
+      expect(content).toContain("~/.claude/skills/brainstorming/SKILL.md");
     });
 
-    it('should include skill name and description from frontmatter', async () => {
+    it("should include skill name and description from frontmatter", async () => {
       const config: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'senior-swe' },
+        installType: "free",
+        profile: { baseProfile: "senior-swe" },
       };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should include skill metadata (names and descriptions from frontmatter)
-      expect(content).toContain('Name: Getting Started with Abilities');
-      expect(content).toContain('Name: Brainstorming');
+      expect(content).toContain("Name: Getting Started with Abilities");
+      expect(content).toContain("Name: Brainstorming");
       // Verify description exists (exact wording may change)
       expect(content).toMatch(/Description:.*abilities/i);
     });
 
-    it('should strip paid- prefix from skill paths', async () => {
+    it("should strip paid- prefix from skill paths", async () => {
       const config: Config = {
-        installType: 'paid',
+        installType: "paid",
         auth: {
-          username: 'test',
-          password: 'test',
-          organizationUrl: 'https://test.com',
+          username: "test",
+          password: "test",
+          organizationUrl: "https://test.com",
         },
-        profile: { baseProfile: 'senior-swe' },
+        profile: { baseProfile: "senior-swe" },
       };
 
       // Recompose profiles with paid mixin
@@ -454,48 +453,48 @@ More user instructions.
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should show installed paths without paid- prefix
-      expect(content).toContain('~/.claude/skills/recall/SKILL.md');
-      expect(content).toContain('~/.claude/skills/memorize/SKILL.md');
+      expect(content).toContain("~/.claude/skills/recall/SKILL.md");
+      expect(content).toContain("~/.claude/skills/memorize/SKILL.md");
 
       // Should NOT contain paid- prefix in paths
-      expect(content).not.toContain('~/.claude/skills/paid-recall');
-      expect(content).not.toContain('~/.claude/skills/paid-memorize');
+      expect(content).not.toContain("~/.claude/skills/paid-recall");
+      expect(content).not.toContain("~/.claude/skills/paid-memorize");
     });
 
-    it('should handle profiles with no skills gracefully', async () => {
+    it("should handle profiles with no skills gracefully", async () => {
       const config: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'product-manager' },
+        installType: "free",
+        profile: { baseProfile: "product-manager" },
       };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should still have basic structure
-      expect(content).toContain('BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('END NORI-AI MANAGED BLOCK');
+      expect(content).toContain("BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("END NORI-AI MANAGED BLOCK");
 
       // Should not fail or error
       expect(content.length).toBeGreaterThan(0);
     });
 
-    it('should handle skills with missing frontmatter gracefully', async () => {
+    it("should handle skills with missing frontmatter gracefully", async () => {
       const config: Config = {
-        installType: 'free',
-        profile: { baseProfile: 'senior-swe' },
+        installType: "free",
+        profile: { baseProfile: "senior-swe" },
       };
 
       await claudeMdLoader.run({ config });
 
-      const content = await fs.readFile(claudeMdPath, 'utf-8');
+      const content = await fs.readFile(claudeMdPath, "utf-8");
 
       // Should still complete successfully even if some skills lack metadata
-      expect(content).toContain('BEGIN NORI-AI MANAGED BLOCK');
-      expect(content).toContain('END NORI-AI MANAGED BLOCK');
+      expect(content).toContain("BEGIN NORI-AI MANAGED BLOCK");
+      expect(content).toContain("END NORI-AI MANAGED BLOCK");
     });
   });
 });

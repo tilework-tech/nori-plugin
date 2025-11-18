@@ -16,6 +16,11 @@ import {
   getConfigPath,
   type Config,
 } from "@/installer/config.js";
+import {
+  getClaudeAgentsDir,
+  getClaudeCommandsDir,
+  getClaudeProfilesDir,
+} from "@/installer/env.js";
 import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
 import { error, success, info, warn } from "@/installer/logger.js";
 import { promptUser } from "@/installer/prompt.js";
@@ -94,6 +99,56 @@ const promptForUninstall = async (args?: {
 };
 
 /**
+ * Remove empty directories that were created by Nori loaders
+ * Only removes directories if they are empty (preserves user-created content)
+ * @param args - Configuration arguments
+ * @param args.config - Runtime configuration with installDir
+ */
+const cleanupEmptyDirectories = async (args: {
+  config: Config;
+}): Promise<void> => {
+  const { config } = args;
+  info({ message: "Cleaning up empty directories..." });
+
+  const directoriesToCheck = [
+    getClaudeAgentsDir({ installDir: config.installDir }),
+    getClaudeCommandsDir({ installDir: config.installDir }),
+    getClaudeProfilesDir({ installDir: config.installDir }),
+  ];
+
+  for (const dir of directoriesToCheck) {
+    try {
+      const files = await fs.readdir(dir);
+      if (files.length === 0) {
+        await fs.rmdir(dir);
+        success({ message: `✓ Removed empty directory: ${dir}` });
+      } else {
+        info({
+          message: `Directory not empty, preserving: ${dir} (${files.length} files)`,
+        });
+      }
+    } catch {
+      // Directory doesn't exist, which is fine
+    }
+  }
+};
+
+/**
+ * Remove the .nori-notifications.log file
+ */
+const cleanupNotificationsLog = async (): Promise<void> => {
+  const logPath = path.join(process.env.HOME || "~", ".nori-notifications.log");
+
+  try {
+    await fs.access(logPath);
+    await fs.unlink(logPath);
+    success({ message: `✓ Removed notifications log: ${logPath}` });
+  } catch {
+    // File doesn't exist, which is fine
+  }
+};
+
+/**
  * Remove the nori-config.json file and .nori-installed-version file
  * @param args - Configuration arguments
  * @param args.installDir - Custom installation directory (optional)
@@ -167,9 +222,12 @@ export const runUninstall = async (args?: {
     },
   });
 
-  // Load all feature loaders
+  // Load all feature loaders in reverse order for uninstall
+  // During install, profiles must run first to create profile directories.
+  // During uninstall, profiles must run last so other loaders can still
+  // read from profile directories to know what files to remove.
   const registry = LoaderRegistry.getInstance();
-  const loaders = registry.getAll();
+  const loaders = registry.getAllReversed();
 
   // Execute uninstallers sequentially to avoid race conditions
   // (hooks and statusline both read/write settings.json)
@@ -182,6 +240,10 @@ export const runUninstall = async (args?: {
       });
     }
   }
+
+  // Clean up empty directories and standalone files
+  await cleanupEmptyDirectories({ config });
+  await cleanupNotificationsLog();
 
   // Remove config file only if explicitly requested (e.g., from user-initiated uninstall)
   if (removeConfig) {

@@ -50,6 +50,7 @@ vi.mock("@/installer/features/loaderRegistry.js", () => ({
   LoaderRegistry: {
     getInstance: () => ({
       getAll: () => [],
+      getAllReversed: () => [],
     }),
   },
 }));

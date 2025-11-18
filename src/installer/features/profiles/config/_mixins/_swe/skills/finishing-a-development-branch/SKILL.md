@@ -95,7 +95,7 @@ sleep 60 && gh pr checks
 
 - If CI did not pass, examine why.
 - Make changes as needed, push a new commit, and repeat the process.
-  <system-reminder> It is _critical_ that you fix any ci issues, EVEN IF YOU DID NOT CAUSE THEM. </system-reminder>
+<system-reminder> It is *critical* that you fix any ci issues, EVEN IF YOU DID NOT CAUSE THEM. </system-reminder>
 
 9. Tell me: "I can automatically get review comments, just let me know when to do so."
    </required>

@@ -47,7 +47,6 @@ node ~/.claude/skills/sync-noridocs/script.js --gitRepoUrl="https://github.com/u
 ## Output
 
 Shows progress as each file is synced, with a summary at the end:
-
 - Number of files found
 - Number successfully synced
 - Number failed (with error details)

@@ -131,9 +131,9 @@ BEFORE adding any method to production class:
 
 ```typescript
 // ❌ BAD: Mock breaks test logic
-test("detects duplicate server", () => {
+test('detects duplicate server', () => {
   // Mock prevents config write that test depends on!
-  vi.mock("ToolCatalog", () => ({
+  vi.mock('ToolCatalog', () => ({
     discoverAndCacheTools: vi.fn().mockResolvedValue(undefined),
   }));
 
@@ -152,9 +152,9 @@ test("detects duplicate server", () => {
 
 ```typescript
 // ✅ GOOD: Mock at correct level
-test("detects duplicate server", () => {
+test('detects duplicate server', () => {
   // Mock the slow part, preserve behavior test needs
-  vi.mock("MCPServerManager"); // Just mock slow server startup
+  vi.mock('MCPServerManager'); // Just mock slow server startup
 
   await addServer(config); // Config written
   await addServer(config); // Duplicate detected ✓
@@ -194,8 +194,8 @@ BEFORE mocking any method:
 ```typescript
 // ❌ BAD: Partial mock - only fields you think you need
 const mockResponse = {
-  status: "success",
-  data: { userId: "123", name: "Alice" },
+  status: 'success',
+  data: { userId: '123', name: 'Alice' },
   // Missing: metadata that downstream code uses
 };
 
@@ -216,9 +216,9 @@ const mockResponse = {
 ```typescript
 // ✅ GOOD: Mirror real API completeness
 const mockResponse = {
-  status: "success",
-  data: { userId: "123", name: "Alice" },
-  metadata: { requestId: "req-789", timestamp: 1234567890 },
+  status: 'success',
+  data: { userId: '123', name: 'Alice' },
+  metadata: { requestId: 'req-789', timestamp: 1234567890 },
   // All fields real API returns
 };
 ```

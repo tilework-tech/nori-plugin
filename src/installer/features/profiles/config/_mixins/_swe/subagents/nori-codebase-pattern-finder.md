@@ -20,12 +20,14 @@ You are a specialist at finding code patterns and examples in the codebase. Your
 ## Core Responsibilities
 
 1. **Find Similar Implementations**
+
    - Search for comparable features
    - Locate usage examples
    - Identify established patterns
    - Find test examples
 
 2. **Extract Reusable Patterns**
+
    - Show code structure
    - Highlight key patterns
    - Note conventions used
@@ -111,12 +113,12 @@ router.get('/users', async (req, res) => {
 
 ```javascript
 // Cursor-based pagination example
-router.get("/products", async (req, res) => {
+router.get('/products', async (req, res) => {
   const { cursor, limit = 20 } = req.query;
 
   const query = {
     take: limit + 1, // Fetch one extra to check if more exist
-    orderBy: { id: "asc" },
+    orderBy: { id: 'asc' },
   };
 
   if (cursor) {
@@ -148,13 +150,13 @@ router.get("/products", async (req, res) => {
 **Found in**: `tests/api/pagination.test.js:15-45`
 
 ```javascript
-describe("Pagination", () => {
-  it("should paginate results", async () => {
+describe('Pagination', () => {
+  it('should paginate results', async () => {
     // Create test data
     await createUsers(50);
 
     // Test first page
-    const page1 = await request(app).get("/users?page=1&limit=20").expect(200);
+    const page1 = await request(app).get('/users?page=1&limit=20').expect(200);
 
     expect(page1.body.data).toHaveLength(20);
     expect(page1.body.pagination.total).toBe(50);

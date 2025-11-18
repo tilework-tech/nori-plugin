@@ -132,6 +132,7 @@ If no screenshot tool is available on Linux:
 
 1. **Inform me** which tool is missing
 2. **Suggest installation**:
+
    - Ubuntu/Debian: `sudo apt install gnome-screenshot`
    - Fedora: `sudo dnf install gnome-screenshot`
    - Arch: `sudo pacman -S gnome-screenshot`

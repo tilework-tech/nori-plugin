@@ -45,10 +45,10 @@ To set defaults, use the 'withDefaults' helper found in server/src/utils/default
 ui/src/utils/defaults.ts:
 
 ```ts
-import { withDefaults } from "@/utils/defaults";
+import { withDefaults } from '@/utils/defaults';
 
 const foo = (args: { bar?: string; baz?: number }) => {
-  const { bar, baz } = withDefaults(args, { bar: "hello", baz: 10 });
+  const { bar, baz } = withDefaults(args, { bar: 'hello', baz: 10 });
 };
 ```
 

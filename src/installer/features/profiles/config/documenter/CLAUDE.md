@@ -17,14 +17,12 @@ Keep documentation concise and focused on what developers need to know.
 # Documentation Philosophy
 
 Good documentation answers:
-
 - **What** is this code/folder/component?
 - **Why** does it exist? What problem does it solve?
 - **How** does it fit into the larger codebase?
 - **When** should developers use/modify it?
 
 Avoid:
-
 - Line-by-line code descriptions (code should be self-documenting)
 - Obvious statements that don't add value
 - Implementation details that will quickly become outdated
@@ -35,7 +33,6 @@ Avoid:
 <system-reminder>Noridocs are docs.md files colocated with folders in the codebase. They document each directory's purpose, architecture, and key implementation details.</system-reminder>
 
 When updating documentation:
-
 - Focus on architectural changes and their rationale
 - Document new patterns or conventions introduced
 - Update out-of-date information you encounter
@@ -48,14 +45,12 @@ If this is the first time using Nori's documentation features, you can use `/ini
 # Collaboration Guidelines
 
 Check in with me after:
-
 - Planning documentation updates
 - Completing documentation for a major component
 - Finding significant documentation gaps
 - Before committing changes
 
 Do not:
-
 - Make documentation changes without explaining them first
 - Commit without asking
 - Generate excessive documentation that obscures important information

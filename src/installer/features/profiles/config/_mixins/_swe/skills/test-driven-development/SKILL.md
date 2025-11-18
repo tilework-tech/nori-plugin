@@ -12,7 +12,7 @@ description: Use when implementing any feature or bugfix, before writing impleme
 4. Verify the test now passes due to the behavior of the application.
 5. Refactor the code to clean it up.
 6. Verify tests still pass.
-   </required>
+</required>
 
 # Red-Green-Refactor In Depth
 
@@ -55,17 +55,17 @@ Write one minimal test showing what should happen.
 <good-example>
 
 ```typescript
-test("retries failed operations 3 times", async () => {
+test('retries failed operations 3 times', async () => {
   let attempts = 0;
   const operation = () => {
     attempts++;
-    if (attempts < 3) throw new Error("fail");
-    return "success";
+    if (attempts < 3) throw new Error('fail');
+    return 'success';
   };
 
   const result = await foobar.retryOperation(operation);
 
-  expect(result).toBe("success");
+  expect(result).toBe('success');
   expect(attempts).toBe(3);
 });
 ```
@@ -78,12 +78,12 @@ imported -- this is a STRONG sign that this is testing something real.
 <bad-example>
 
 ```typescript
-test("retry works", async () => {
+test('retry works', async () => {
   const mock = jest
     .fn()
     .mockRejectedValueOnce(new Error())
     .mockRejectedValueOnce(new Error())
-    .mockResolvedValueOnce("success");
+    .mockResolvedValueOnce('success');
   await retryOperation(mock);
   expect(mock).toHaveBeenCalledTimes(3);
 });

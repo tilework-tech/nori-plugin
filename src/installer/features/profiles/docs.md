@@ -110,6 +110,7 @@ All feature loaders (claudemd, skills, slashcommands, subagents) read from `~/.c
 ### Install Flow
 
 1. **Profiles loader runs FIRST** (before profile selection)
+
    - Reads profile.json from each profile to get mixins configuration
    - Injects `paid` mixin dynamically if user has auth credentials
    - Composes profile by copying content from mixins in alphabetical order
@@ -119,6 +120,7 @@ All feature loaders (claudemd, skills, slashcommands, subagents) read from `~/.c
    - Leaves custom profiles untouched
 
 2. **User selects profile**
+
    - Reads available profiles from `~/.claude/profiles/`
    - Shows both built-in and custom profiles
 

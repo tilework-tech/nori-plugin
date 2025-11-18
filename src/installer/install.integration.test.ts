@@ -59,7 +59,6 @@ vi.mock("./env.js", () => {
   const testClaudeDir = "/tmp/install-integration-test-claude";
   return {
     MCP_ROOT: testRoot,
-    // New function exports
     getClaudeDir: () => testClaudeDir,
     getClaudeSettingsFile: () => `${testClaudeDir}/settings.json`,
     getClaudeAgentsDir: () => `${testClaudeDir}/agents`,
@@ -67,28 +66,6 @@ vi.mock("./env.js", () => {
     getClaudeMdFile: () => `${testClaudeDir}/CLAUDE.md`,
     getClaudeSkillsDir: () => `${testClaudeDir}/skills`,
     getClaudeProfilesDir: () => `${testClaudeDir}/profiles`,
-    // Deprecated constant exports (for backward compatibility)
-    get CLAUDE_DIR() {
-      return testClaudeDir;
-    },
-    get CLAUDE_SETTINGS_FILE() {
-      return `${testClaudeDir}/settings.json`;
-    },
-    get CLAUDE_AGENTS_DIR() {
-      return `${testClaudeDir}/agents`;
-    },
-    get CLAUDE_COMMANDS_DIR() {
-      return `${testClaudeDir}/commands`;
-    },
-    get CLAUDE_MD_FILE() {
-      return `${testClaudeDir}/CLAUDE.md`;
-    },
-    get CLAUDE_SKILLS_DIR() {
-      return `${testClaudeDir}/skills`;
-    },
-    get CLAUDE_PROFILES_DIR() {
-      return `${testClaudeDir}/profiles`;
-    },
   };
 });
 

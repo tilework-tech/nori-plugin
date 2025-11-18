@@ -49,28 +49,6 @@ vi.mock("@/installer/env.js", async (importOriginal) => {
       const installDir = args?.installDir || mockInstallDir;
       return path.join(installDir, ".claude", "CLAUDE.md");
     },
-    // Keep deprecated constants for backward compatibility
-    get CLAUDE_DIR() {
-      return path.join(mockInstallDir, ".claude");
-    },
-    get CLAUDE_SETTINGS_FILE() {
-      return path.join(mockInstallDir, ".claude", "settings.json");
-    },
-    get CLAUDE_PROFILES_DIR() {
-      return path.join(mockInstallDir, ".claude", "profiles");
-    },
-    get CLAUDE_SKILLS_DIR() {
-      return path.join(mockInstallDir, ".claude", "skills");
-    },
-    get CLAUDE_AGENTS_DIR() {
-      return path.join(mockInstallDir, ".claude", "agents");
-    },
-    get CLAUDE_COMMANDS_DIR() {
-      return path.join(mockInstallDir, ".claude", "commands");
-    },
-    get CLAUDE_MD_FILE() {
-      return path.join(mockInstallDir, ".claude", "CLAUDE.md");
-    },
   };
 });
 

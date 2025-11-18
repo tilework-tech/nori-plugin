@@ -18,7 +18,6 @@ let mockClaudeDir: string;
 let mockClaudeSkillsDir: string;
 
 vi.mock("@/installer/env.js", () => ({
-  // New function exports
   getClaudeDir: () => mockClaudeDir,
   getClaudeSettingsFile: () => path.join(mockClaudeDir, "settings.json"),
   getClaudeAgentsDir: () => path.join(mockClaudeDir, "agents"),
@@ -26,30 +25,6 @@ vi.mock("@/installer/env.js", () => ({
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => mockClaudeSkillsDir,
   getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
-  get CLAUDE_DIR() {
-    return mockClaudeDir;
-  },
-  get CLAUDE_MD_FILE() {
-    return path.join(mockClaudeDir, "CLAUDE.md");
-  },
-  get CLAUDE_SETTINGS_FILE() {
-    return path.join(mockClaudeDir, "settings.json");
-  },
-  get CLAUDE_AGENTS_DIR() {
-    return path.join(mockClaudeDir, "agents");
-  },
-  get CLAUDE_COMMANDS_DIR() {
-    return path.join(mockClaudeDir, "commands");
-  },
-  get CLAUDE_NORI_DIR() {
-    return path.join(mockClaudeDir, "nori-deprecated");
-  },
-  get CLAUDE_SKILLS_DIR() {
-    return mockClaudeSkillsDir;
-  },
-  get CLAUDE_PROFILES_DIR() {
-    return path.join(mockClaudeDir, "profiles");
-  },
   MCP_ROOT: "/mock/mcp/root",
 }));
 

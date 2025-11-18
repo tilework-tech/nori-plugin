@@ -56,15 +56,39 @@ vi.mock("child_process", async (importOriginal) => {
 // Mock env module to use test directory
 vi.mock("./env.js", () => {
   const testRoot = "/tmp/install-integration-test-mcp-root";
+  const testClaudeDir = "/tmp/install-integration-test-claude";
   return {
     MCP_ROOT: testRoot,
-    CLAUDE_DIR: "/tmp/install-integration-test-claude",
-    CLAUDE_SETTINGS_FILE: "/tmp/install-integration-test-claude/settings.json",
-    CLAUDE_AGENTS_DIR: "/tmp/install-integration-test-claude/agents",
-    CLAUDE_COMMANDS_DIR: "/tmp/install-integration-test-claude/commands",
-    CLAUDE_MD_FILE: "/tmp/install-integration-test-claude/CLAUDE.md",
-    CLAUDE_SKILLS_DIR: "/tmp/install-integration-test-claude/skills",
-    CLAUDE_PROFILES_DIR: "/tmp/install-integration-test-claude/profiles",
+    // New function exports
+    getClaudeDir: () => testClaudeDir,
+    getClaudeSettingsFile: () => `${testClaudeDir}/settings.json`,
+    getClaudeAgentsDir: () => `${testClaudeDir}/agents`,
+    getClaudeCommandsDir: () => `${testClaudeDir}/commands`,
+    getClaudeMdFile: () => `${testClaudeDir}/CLAUDE.md`,
+    getClaudeSkillsDir: () => `${testClaudeDir}/skills`,
+    getClaudeProfilesDir: () => `${testClaudeDir}/profiles`,
+    // Deprecated constant exports (for backward compatibility)
+    get CLAUDE_DIR() {
+      return testClaudeDir;
+    },
+    get CLAUDE_SETTINGS_FILE() {
+      return `${testClaudeDir}/settings.json`;
+    },
+    get CLAUDE_AGENTS_DIR() {
+      return `${testClaudeDir}/agents`;
+    },
+    get CLAUDE_COMMANDS_DIR() {
+      return `${testClaudeDir}/commands`;
+    },
+    get CLAUDE_MD_FILE() {
+      return `${testClaudeDir}/CLAUDE.md`;
+    },
+    get CLAUDE_SKILLS_DIR() {
+      return `${testClaudeDir}/skills`;
+    },
+    get CLAUDE_PROFILES_DIR() {
+      return `${testClaudeDir}/profiles`;
+    },
   };
 });
 

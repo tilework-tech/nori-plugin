@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "permissions": {
-    "additionalDirectories": [
-      "/home/amol/code/nori/nori-plugin/.worktrees/configurable-install-dir/.claude/profiles",
-      "/home/amol/code/nori/nori-plugin/.worktrees/configurable-install-dir/.claude/skills"
-    ]
-  }
-}

@@ -70,11 +70,11 @@ const summarizeNotificationHook: HookInterface = {
 };
 
 /**
- * Summarize hook - memorizes conversations to Nori Agent Brain (async)
+ * Summarize hook - memorizes conversations to Nori Profiles (async)
  */
 const summarizeHook: HookInterface = {
   name: "summarize",
-  description: "Memorize conversations to Nori Agent Brain",
+  description: "Memorize conversations to Nori Profiles",
   install: async () => {
     const scriptPath = path.join(HOOKS_CONFIG_DIR, "summarize.js");
     return [
@@ -85,7 +85,7 @@ const summarizeHook: HookInterface = {
           {
             type: "command",
             command: `node ${scriptPath} SessionEnd`,
-            description: "Memorize session summary to Nori Agent Brain",
+            description: "Memorize session summary to Nori Profiles",
           },
         ],
       },
@@ -97,7 +97,7 @@ const summarizeHook: HookInterface = {
             type: "command",
             command: `node ${scriptPath} PreCompact`,
             description:
-              "Memorize conversation before context compaction to Nori Agent Brain",
+              "Memorize conversation before context compaction to Nori Profiles",
           },
         ],
       },
@@ -110,7 +110,7 @@ const summarizeHook: HookInterface = {
  */
 const autoupdateHook: HookInterface = {
   name: "autoupdate",
-  description: "Check for Nori Agent Brain updates",
+  description: "Check for Nori Profiles updates",
   install: async () => {
     const scriptPath = path.join(HOOKS_CONFIG_DIR, "autoupdate.js");
     return [
@@ -121,7 +121,7 @@ const autoupdateHook: HookInterface = {
           {
             type: "command",
             command: `node ${scriptPath}`,
-            description: "Check for Nori Agent Brain updates on session start",
+            description: "Check for Nori Profiles updates on session start",
           },
         ],
       },

@@ -25,7 +25,12 @@ const HOOKS_CONFIG_DIR = path.join(__dirname, "config");
 
 // Hook configuration types
 type HookConfig = {
-  event: "SessionEnd" | "PreCompact" | "Notification" | "SessionStart";
+  event:
+    | "SessionEnd"
+    | "PreCompact"
+    | "Notification"
+    | "SessionStart"
+    | "UserPromptSubmit";
   matcher: "" | "startup" | "auto" | "*";
   hooks: Array<{
     type: "command";
@@ -149,6 +154,31 @@ const notifyHook: HookInterface = {
 };
 
 /**
+ * Quick-switch hook - instant profile switching without LLM inference
+ */
+const quickSwitchHook: HookInterface = {
+  name: "quick-switch",
+  description: "Instant profile switching via /switch-nori-profile command",
+  install: async () => {
+    const scriptPath = path.join(HOOKS_CONFIG_DIR, "quick-switch.js");
+    return [
+      {
+        event: "UserPromptSubmit",
+        matcher: "",
+        hooks: [
+          {
+            type: "command",
+            command: `node ${scriptPath}`,
+            description:
+              "Intercept /switch-nori-profile for instant profile switching",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+/**
  * Configure hooks for automatic conversation memorization (paid version)
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -185,6 +215,7 @@ const configurePaidHooks = async (args: { config: Config }): Promise<void> => {
     summarizeHook,
     autoupdateHook,
     notifyHook,
+    quickSwitchHook,
   ];
   const hooksConfig: any = {};
 
@@ -252,8 +283,8 @@ const configureFreeHooks = async (args: { config: Config }): Promise<void> => {
     };
   }
 
-  // Install notification and autoupdate hooks for free version
-  const hooks = [autoupdateHook, notifyHook];
+  // Install notification, autoupdate, and quick-switch hooks for free version
+  const hooks = [autoupdateHook, notifyHook, quickSwitchHook];
   const hooksConfig: any = {};
 
   for (const hook of hooks) {

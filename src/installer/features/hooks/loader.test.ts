@@ -266,6 +266,58 @@ describe("hooksLoader", () => {
       expect(settings.hooks.SessionEnd).toBeDefined();
       expect(settings.hooks.PreCompact).toBeDefined();
     });
+
+    it("should configure UserPromptSubmit hook for quick profile switching (paid)", async () => {
+      const config: Config = { installType: "paid" };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify UserPromptSubmit hooks are configured
+      expect(settings.hooks.UserPromptSubmit).toBeDefined();
+      expect(settings.hooks.UserPromptSubmit.length).toBeGreaterThan(0);
+
+      // Find quick-switch hook
+      let hasQuickSwitchHook = false;
+      for (const hookConfig of settings.hooks.UserPromptSubmit) {
+        if (hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("quick-switch")) {
+              hasQuickSwitchHook = true;
+            }
+          }
+        }
+      }
+      expect(hasQuickSwitchHook).toBe(true);
+    });
+
+    it("should configure UserPromptSubmit hook for quick profile switching (free)", async () => {
+      const config: Config = { installType: "free" };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify UserPromptSubmit hooks are configured for free mode too
+      expect(settings.hooks.UserPromptSubmit).toBeDefined();
+      expect(settings.hooks.UserPromptSubmit.length).toBeGreaterThan(0);
+
+      // Find quick-switch hook
+      let hasQuickSwitchHook = false;
+      for (const hookConfig of settings.hooks.UserPromptSubmit) {
+        if (hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("quick-switch")) {
+              hasQuickSwitchHook = true;
+            }
+          }
+        }
+      }
+      expect(hasQuickSwitchHook).toBe(true);
+    });
   });
 
   describe("uninstall", () => {

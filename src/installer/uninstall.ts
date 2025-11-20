@@ -24,6 +24,7 @@ import {
 import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
 import { error, success, info, warn } from "@/installer/logger.js";
 import { promptUser } from "@/installer/prompt.js";
+import { getVersionFilePath } from "@/installer/version.js";
 
 /**
  * Prompt user for confirmation before uninstalling
@@ -134,9 +135,16 @@ const cleanupEmptyDirectories = async (args: {
 
 /**
  * Remove the .nori-notifications.log file
+ * @param args - Configuration arguments
+ * @param args.installDir - Custom installation directory (optional)
  */
-const cleanupNotificationsLog = async (): Promise<void> => {
-  const logPath = path.join(process.env.HOME || "~", ".nori-notifications.log");
+const cleanupNotificationsLog = async (args?: {
+  installDir?: string | null;
+}): Promise<void> => {
+  const { installDir } = args || {};
+  const baseDir =
+    installDir != null && installDir !== "" ? installDir : process.cwd();
+  const logPath = path.join(baseDir, ".nori-notifications.log");
 
   try {
     await fs.access(logPath);
@@ -157,10 +165,7 @@ const removeConfigFile = async (args?: {
 }): Promise<void> => {
   const { installDir } = args || {};
   const configPath = getConfigPath({ installDir });
-  const versionPath = path.join(
-    process.env.HOME || "~",
-    ".nori-installed-version",
-  );
+  const versionPath = getVersionFilePath({ installDir });
 
   info({ message: "Removing Nori configuration files..." });
 
@@ -242,7 +247,7 @@ export const runUninstall = async (args?: {
 
   // Clean up empty directories and standalone files
   await cleanupEmptyDirectories({ config });
-  await cleanupNotificationsLog();
+  await cleanupNotificationsLog({ installDir: config.installDir });
 
   // Remove config file only if explicitly requested (e.g., from user-initiated uninstall)
   if (removeConfig) {

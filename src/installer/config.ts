@@ -56,12 +56,12 @@ export const getConfigPath = (args?: {
   const { installDir } = args || {};
 
   if (installDir != null && installDir !== "") {
-    // Use custom install directory with dotfile name
+    // Use provided install directory with dotfile name
     return path.join(installDir, ".nori-config.json");
   }
 
-  // Legacy behavior: use HOME directory with non-dotfile name
-  return path.join(process.env.HOME || "~", "nori-config.json");
+  // Default: use current working directory with dotfile name
+  return path.join(process.cwd(), ".nori-config.json");
 };
 
 /**

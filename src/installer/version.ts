@@ -25,13 +25,19 @@ const getVersionFilePath = (): string => {
  * Check if there's an existing installation
  * An installation exists if:
  * - Version file exists at ~/.nori-installed-version
- * - OR config file exists at ~/nori-config.json
+ * - OR config file exists at <installDir>/.nori-config.json (or cwd if not specified)
+ *
+ * @param args - Configuration arguments
+ * @param args.installDir - Custom installation directory (optional)
  *
  * @returns true if an installation exists, false otherwise
  */
-export const hasExistingInstallation = (): boolean => {
+export const hasExistingInstallation = (args?: {
+  installDir?: string | null;
+}): boolean => {
+  const { installDir } = args || {};
   const versionFileExists = existsSync(getVersionFilePath());
-  const configFileExists = existsSync(getConfigPath());
+  const configFileExists = existsSync(getConfigPath({ installDir }));
   return versionFileExists || configFileExists;
 };
 

@@ -375,7 +375,7 @@ export const main = async (args?: {
     }
 
     // Check if there's an existing installation to clean up
-    if (!skipUninstall && hasExistingInstallation()) {
+    if (!skipUninstall && hasExistingInstallation({ installDir })) {
       const previousVersion = getInstalledVersion();
       info({
         message: `Cleaning up previous installation (v${previousVersion})...`,

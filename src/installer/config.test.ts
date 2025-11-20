@@ -12,29 +12,67 @@ import {
   loadDiskConfig,
   saveDiskConfig,
   generateConfig,
+  getConfigPath,
   type DiskConfig,
 } from "./config.js";
+
+describe("getConfigPath", () => {
+  let originalCwd: () => string;
+
+  beforeEach(() => {
+    originalCwd = process.cwd;
+  });
+
+  afterEach(() => {
+    process.cwd = originalCwd;
+  });
+
+  describe("default behavior", () => {
+    it("should return process.cwd()/.nori-config.json when no installDir provided", () => {
+      process.cwd = () => "/mock/project/dir";
+      const result = getConfigPath();
+      expect(result).toBe("/mock/project/dir/.nori-config.json");
+    });
+
+    it("should return process.cwd()/.nori-config.json when installDir is null", () => {
+      process.cwd = () => "/mock/project/dir";
+      const result = getConfigPath({ installDir: null });
+      expect(result).toBe("/mock/project/dir/.nori-config.json");
+    });
+
+    it("should return process.cwd()/.nori-config.json when installDir is empty string", () => {
+      process.cwd = () => "/mock/project/dir";
+      const result = getConfigPath({ installDir: "" });
+      expect(result).toBe("/mock/project/dir/.nori-config.json");
+    });
+  });
+
+  describe("custom installDir", () => {
+    it("should return <installDir>/.nori-config.json when custom installDir provided", () => {
+      const result = getConfigPath({ installDir: "/custom/path" });
+      expect(result).toBe("/custom/path/.nori-config.json");
+    });
+  });
+});
 
 describe("config with profile-based system", () => {
   let tempDir: string;
   let mockConfigPath: string;
-  let originalHome: string | undefined;
+  let originalCwd: () => string;
 
   beforeEach(async () => {
     // Create temp directory for testing
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "config-test-"));
-    mockConfigPath = path.join(tempDir, "nori-config.json");
+    mockConfigPath = path.join(tempDir, ".nori-config.json");
 
-    // Mock HOME environment variable
-    originalHome = process.env.HOME;
-    process.env.HOME = tempDir;
+    // Mock process.cwd() to return temp directory
+    originalCwd = process.cwd;
+    process.cwd = () => tempDir;
   });
 
   afterEach(async () => {
-    // Restore HOME
-    if (originalHome !== undefined) {
-      process.env.HOME = originalHome;
-    }
+    // Restore process.cwd
+    process.cwd = originalCwd;
 
     // Clean up temp directory
     await fs.rm(tempDir, { recursive: true, force: true });

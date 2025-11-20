@@ -37,9 +37,9 @@ vi.mock("child_process", async (importOriginal) => {
         // When uninstalling v12.0.0, remove the marker file
         if (version === "12.0.0") {
           try {
-            // Compute marker path using current HOME (which will be mocked in tests)
+            // Compute marker path using current cwd (which will be mocked in tests)
             const markerPath = path.join(
-              process.env.HOME || "~",
+              process.cwd(),
               ".nori-test-installation-marker",
             );
             fs.unlinkSync(markerPath);
@@ -81,8 +81,8 @@ vi.mock("./analytics.js", () => ({
 }));
 
 describe("install integration test", () => {
-  let tempHomeDir: string;
-  let originalHome: string | undefined;
+  let tempDir: string;
+  let originalCwd: () => string;
   let VERSION_FILE_PATH: string;
   let MARKER_FILE_PATH: string;
 
@@ -90,23 +90,23 @@ describe("install integration test", () => {
   const TEST_CLAUDE_DIR = "/tmp/install-integration-test-claude";
 
   beforeEach(async () => {
-    // Create temp HOME directory
-    tempHomeDir = await fsPromises.mkdtemp(
-      path.join(os.tmpdir(), "install-test-home-"),
+    // Create temp directory
+    tempDir = await fsPromises.mkdtemp(
+      path.join(os.tmpdir(), "install-test-cwd-"),
     );
 
-    // Mock HOME environment variable
-    originalHome = process.env.HOME;
-    process.env.HOME = tempHomeDir;
+    // Mock process.cwd
+    originalCwd = process.cwd;
+    process.cwd = () => tempDir;
 
-    // Now paths point to temp HOME
-    VERSION_FILE_PATH = path.join(tempHomeDir, ".nori-installed-version");
-    MARKER_FILE_PATH = path.join(tempHomeDir, ".nori-test-installation-marker");
+    // Now paths point to temp dir (via cwd)
+    VERSION_FILE_PATH = path.join(tempDir, ".nori-installed-version");
+    MARKER_FILE_PATH = path.join(tempDir, ".nori-test-installation-marker");
 
     // Reset tracking variable
     uninstallCalledWith = null;
 
-    // Clean up any existing files in temp HOME
+    // Clean up any existing files in temp dir
     try {
       fs.unlinkSync(VERSION_FILE_PATH);
     } catch {}
@@ -133,16 +133,12 @@ describe("install integration test", () => {
   });
 
   afterEach(async () => {
-    // Restore HOME
-    if (originalHome !== undefined) {
-      process.env.HOME = originalHome;
-    } else {
-      delete process.env.HOME;
-    }
+    // Restore cwd
+    process.cwd = originalCwd;
 
-    // Clean up temp HOME directory
+    // Clean up temp directory
     try {
-      await fsPromises.rm(tempHomeDir, { recursive: true, force: true });
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
     } catch {}
 
     // Clean up test directories
@@ -330,9 +326,9 @@ describe("install integration test", () => {
   });
 
   it("should never delete real user config file", () => {
-    // This test verifies that process.env.HOME is mocked and tests never touch the real config file
-    // Get what the real config path WOULD be (using originalHome from beforeEach)
-    const realConfigPath = path.join(originalHome || "~", "nori-config.json");
+    // This test verifies that process.cwd is mocked and tests never touch the real config file
+    // Get what the real config path WOULD be (using originalCwd from beforeEach)
+    const realConfigPath = path.join(originalCwd(), ".nori-config.json");
 
     // Check if real config exists before test
     let existedBefore = false;
@@ -347,13 +343,13 @@ describe("install integration test", () => {
     const testConfigPath = getConfigPath();
 
     // Verify that test config path is NOT the real config path
-    // This proves HOME is mocked to a temp directory
+    // This proves cwd is mocked to a temp directory
     expect(testConfigPath).not.toBe(realConfigPath);
 
-    // Verify the test HOME is actually different from real HOME
-    // (We expect process.env.HOME to be a temp directory like /tmp/install-test-home-XXXXXX)
-    expect(process.env.HOME).toContain("/tmp/");
-    expect(process.env.HOME).toContain("install-test-home-");
+    // Verify the test cwd is actually different from real cwd
+    // (We expect process.cwd() to be a temp directory like /tmp/install-test-cwd-XXXXXX)
+    expect(process.cwd()).toContain("/tmp/");
+    expect(process.cwd()).toContain("install-test-cwd-");
 
     // Verify real config still exists (if it existed before)
     if (existedBefore) {
@@ -393,7 +389,7 @@ describe("install integration test", () => {
 
     // STEP 1: Snapshot state BEFORE install
     const preInstallClaudeSnapshot = getDirectorySnapshot(TEST_CLAUDE_DIR);
-    const preInstallHomeSnapshot = getDirectorySnapshot(tempHomeDir);
+    const preInstallCwdSnapshot = getDirectorySnapshot(tempDir);
 
     // STEP 2: Install with paid config to get all features
     const paidConfig = {
@@ -410,14 +406,14 @@ describe("install integration test", () => {
 
     // STEP 3: Verify installation actually created files
     const postInstallClaudeSnapshot = getDirectorySnapshot(TEST_CLAUDE_DIR);
-    const postInstallHomeSnapshot = getDirectorySnapshot(tempHomeDir);
+    const postInstallCwdSnapshot = getDirectorySnapshot(tempDir);
 
     // Installation should have added files
     expect(postInstallClaudeSnapshot.length).toBeGreaterThan(
       preInstallClaudeSnapshot.length,
     );
-    expect(postInstallHomeSnapshot.length).toBeGreaterThan(
-      preInstallHomeSnapshot.length,
+    expect(postInstallCwdSnapshot.length).toBeGreaterThan(
+      preInstallCwdSnapshot.length,
     );
 
     // Verify some expected files exist (sanity check)
@@ -435,7 +431,7 @@ describe("install integration test", () => {
     );
 
     // Create notifications log to test cleanup
-    const notificationsLog = path.join(tempHomeDir, ".nori-notifications.log");
+    const notificationsLog = path.join(tempDir, ".nori-notifications.log");
     fs.writeFileSync(notificationsLog, "test notification log");
 
     // STEP 4: Run uninstall with removeConfig=true (user-initiated uninstall)
@@ -443,7 +439,7 @@ describe("install integration test", () => {
 
     // STEP 5: Snapshot state AFTER uninstall
     const postUninstallClaudeSnapshot = getDirectorySnapshot(TEST_CLAUDE_DIR);
-    const postUninstallHomeSnapshot = getDirectorySnapshot(tempHomeDir);
+    const postUninstallCwdSnapshot = getDirectorySnapshot(tempDir);
 
     // STEP 6: Compare snapshots - state should match pre-install
     // Note: settings.json may remain as it's a shared Claude Code file,
@@ -471,14 +467,14 @@ describe("install integration test", () => {
       }
     }
 
-    // Home directory should be back to pre-install state
+    // Cwd directory should be back to pre-install state
     // (no config file, no version file, no notifications log)
-    expect(postUninstallHomeSnapshot).toEqual(preInstallHomeSnapshot);
+    expect(postUninstallCwdSnapshot).toEqual(preInstallCwdSnapshot);
   });
 
   it("should warn when ancestor directory has nori installation", async () => {
     // Setup: Create a parent directory with a nori installation
-    const parentDir = path.join(tempHomeDir, "parent");
+    const parentDir = path.join(tempDir, "parent");
     const childDir = path.join(parentDir, "child");
     fs.mkdirSync(childDir, { recursive: true });
 

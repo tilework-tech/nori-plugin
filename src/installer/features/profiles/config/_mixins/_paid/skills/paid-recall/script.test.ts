@@ -11,19 +11,20 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { main } from "./script.js";
 
 describe("paid-recall script", () => {
+  let tempDir: string;
   let tempConfigPath: string;
-  let originalHome: string | undefined;
+  let originalCwd: () => string;
   let originalArgv: Array<string>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    originalHome = process.env.HOME;
+    originalCwd = process.cwd;
     originalArgv = process.argv;
 
-    const tempDir = path.join(os.tmpdir(), `recall-test-${Date.now()}`);
-    process.env.HOME = tempDir;
-    tempConfigPath = path.join(tempDir, "nori-config.json");
+    tempDir = path.join(os.tmpdir(), `recall-test-${Date.now()}`);
+    process.cwd = () => tempDir;
+    tempConfigPath = path.join(tempDir, ".nori-config.json");
 
     consoleErrorSpy = vi
       .spyOn(console, "error")
@@ -36,16 +37,14 @@ describe("paid-recall script", () => {
   });
 
   afterEach(async () => {
-    if (originalHome !== undefined) {
-      process.env.HOME = originalHome;
-    }
+    process.cwd = originalCwd;
     process.argv = originalArgv;
 
     consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();
 
     try {
-      await fs.rm(path.dirname(tempConfigPath), {
+      await fs.rm(tempDir, {
         recursive: true,
         force: true,
       });

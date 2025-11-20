@@ -85,7 +85,7 @@ describe("version", () => {
 
   describe("getInstalledVersion", () => {
     let tempDir: string;
-    let originalHome: string | undefined;
+    let originalCwd: () => string;
     let VERSION_FILE_PATH: string;
 
     beforeEach(async () => {
@@ -94,23 +94,19 @@ describe("version", () => {
         path.join(os.tmpdir(), "version-test-getInstalledVersion-"),
       );
 
-      // Save original HOME (might be undefined)
-      originalHome = process.env.HOME;
+      // Save original cwd
+      originalCwd = process.cwd;
 
-      // Mock HOME to temp directory
-      process.env.HOME = tempDir;
+      // Mock cwd to temp directory
+      process.cwd = () => tempDir;
 
-      // NOW compute path - it will use the mocked HOME
+      // NOW compute path - it will use the mocked cwd
       VERSION_FILE_PATH = path.join(tempDir, ".nori-installed-version");
     });
 
     afterEach(async () => {
-      // Restore HOME (handle both defined and undefined cases)
-      if (originalHome !== undefined) {
-        process.env.HOME = originalHome;
-      } else {
-        delete process.env.HOME;
-      }
+      // Restore cwd
+      process.cwd = originalCwd;
 
       // Clean up temp directory
       try {
@@ -120,7 +116,7 @@ describe("version", () => {
       }
     });
 
-    it("should return version from ~/.nori-installed-version", () => {
+    it("should return version from .nori-installed-version in cwd", () => {
       // Create a test version file
       fs.writeFileSync(VERSION_FILE_PATH, "13.5.2", "utf-8");
 
@@ -157,10 +153,10 @@ describe("version", () => {
     });
 
     it("should never delete real user version file", () => {
-      // This test verifies that process.env.HOME is mocked and tests never touch the real version file
-      // Get what the real version path WOULD be (using originalHome from beforeEach)
+      // This test verifies that process.cwd is mocked and tests never touch the real version file
+      // Get what the real version path WOULD be (using originalCwd from beforeEach)
       const realVersionPath = path.join(
-        originalHome || "~",
+        originalCwd(),
         ".nori-installed-version",
       );
 
@@ -174,13 +170,13 @@ describe("version", () => {
       }
 
       // Verify that VERSION_FILE_PATH used by tests is NOT the real version path
-      // This proves HOME is mocked
+      // This proves cwd is mocked
       expect(VERSION_FILE_PATH).not.toBe(realVersionPath);
 
-      // Verify the test HOME is actually different from real HOME
-      // (We expect process.env.HOME to be a temp directory like /tmp/version-test-getInstalledVersion-XXXXXX)
-      expect(process.env.HOME).toContain("/tmp/");
-      expect(process.env.HOME).toContain("version-test-getInstalledVersion-");
+      // Verify the test cwd is actually different from real cwd
+      // (We expect process.cwd() to be a temp directory like /tmp/version-test-getInstalledVersion-XXXXXX)
+      expect(process.cwd()).toContain("/tmp/");
+      expect(process.cwd()).toContain("version-test-getInstalledVersion-");
 
       // Run all the test operations
       fs.writeFileSync(VERSION_FILE_PATH, "13.5.2", "utf-8");
@@ -202,7 +198,7 @@ describe("version", () => {
 
   describe("saveInstalledVersion", () => {
     let tempDir: string;
-    let originalHome: string | undefined;
+    let originalCwd: () => string;
     let VERSION_FILE_PATH: string;
 
     beforeEach(async () => {
@@ -211,23 +207,19 @@ describe("version", () => {
         path.join(os.tmpdir(), "version-test-saveInstalledVersion-"),
       );
 
-      // Save original HOME (might be undefined)
-      originalHome = process.env.HOME;
+      // Save original cwd
+      originalCwd = process.cwd;
 
-      // Mock HOME to temp directory
-      process.env.HOME = tempDir;
+      // Mock cwd to temp directory
+      process.cwd = () => tempDir;
 
-      // NOW compute path - it will use the mocked HOME
+      // NOW compute path - it will use the mocked cwd
       VERSION_FILE_PATH = path.join(tempDir, ".nori-installed-version");
     });
 
     afterEach(async () => {
-      // Restore HOME (handle both defined and undefined cases)
-      if (originalHome !== undefined) {
-        process.env.HOME = originalHome;
-      } else {
-        delete process.env.HOME;
-      }
+      // Restore cwd
+      process.cwd = originalCwd;
 
       // Clean up temp directory
       try {
@@ -237,7 +229,7 @@ describe("version", () => {
       }
     });
 
-    it("should save version to ~/.nori-installed-version", () => {
+    it("should save version to .nori-installed-version in cwd", () => {
       saveInstalledVersion({ version: "15.0.0" });
 
       const savedVersion = fs.readFileSync(VERSION_FILE_PATH, "utf-8");
@@ -256,10 +248,10 @@ describe("version", () => {
     });
 
     it("should never delete real user version file", () => {
-      // This test verifies that process.env.HOME is mocked and tests never touch the real version file
-      // Get what the real version path WOULD be (using originalHome from beforeEach)
+      // This test verifies that process.cwd is mocked and tests never touch the real version file
+      // Get what the real version path WOULD be (using originalCwd from beforeEach)
       const realVersionPath = path.join(
-        originalHome || "~",
+        originalCwd(),
         ".nori-installed-version",
       );
 
@@ -273,13 +265,13 @@ describe("version", () => {
       }
 
       // Verify that VERSION_FILE_PATH used by tests is NOT the real version path
-      // This proves HOME is mocked
+      // This proves cwd is mocked
       expect(VERSION_FILE_PATH).not.toBe(realVersionPath);
 
-      // Verify the test HOME is actually different from real HOME
-      // (We expect process.env.HOME to be a temp directory like /tmp/version-test-saveInstalledVersion-XXXXXX)
-      expect(process.env.HOME).toContain("/tmp/");
-      expect(process.env.HOME).toContain("version-test-saveInstalledVersion-");
+      // Verify the test cwd is actually different from real cwd
+      // (We expect process.cwd() to be a temp directory like /tmp/version-test-saveInstalledVersion-XXXXXX)
+      expect(process.cwd()).toContain("/tmp/");
+      expect(process.cwd()).toContain("version-test-saveInstalledVersion-");
 
       // Run all the test operations
       saveInstalledVersion({ version: "15.0.0" });
@@ -300,7 +292,7 @@ describe("version", () => {
 
   describe("hasExistingInstallation", () => {
     let tempDir: string;
-    let originalHome: string | undefined;
+    let originalCwd: () => string;
     let VERSION_FILE_PATH: string;
     let CONFIG_PATH: string;
 
@@ -310,9 +302,9 @@ describe("version", () => {
         path.join(os.tmpdir(), "version-test-"),
       );
 
-      // Mock HOME environment variable
-      originalHome = process.env.HOME;
-      process.env.HOME = tempDir;
+      // Mock cwd
+      originalCwd = process.cwd;
+      process.cwd = () => tempDir;
 
       // Now paths point to temp directory
       VERSION_FILE_PATH = path.join(tempDir, ".nori-installed-version");
@@ -328,12 +320,8 @@ describe("version", () => {
     });
 
     afterEach(async () => {
-      // Restore HOME (handle both defined and undefined cases)
-      if (originalHome !== undefined) {
-        process.env.HOME = originalHome;
-      } else {
-        delete process.env.HOME;
-      }
+      // Restore cwd
+      process.cwd = originalCwd;
 
       // Clean up temp directory
       try {
@@ -362,9 +350,9 @@ describe("version", () => {
     });
 
     it("should never delete real user config file", () => {
-      // This test verifies that process.env.HOME is mocked and tests never touch the real config file
-      // Get what the real config path WOULD be (using originalHome from beforeEach)
-      const realConfigPath = path.join(originalHome || "~", "nori-config.json");
+      // This test verifies that process.cwd is mocked and tests never touch the real config file
+      // Get what the real config path WOULD be (using originalCwd from beforeEach)
+      const realConfigPath = path.join(originalCwd(), ".nori-config.json");
 
       // Check if real config exists before test
       let existedBefore = false;
@@ -376,7 +364,7 @@ describe("version", () => {
       }
 
       // Verify that CONFIG_PATH used by tests is NOT the real config path
-      // This proves HOME is mocked
+      // This proves cwd is mocked
       expect(CONFIG_PATH).not.toBe(realConfigPath);
 
       // Run all the test operations

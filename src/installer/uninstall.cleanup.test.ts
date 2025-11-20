@@ -60,11 +60,11 @@ describe("uninstall cleanup", () => {
   let commandsDir: string;
   let profilesDir: string;
   let configPath: string;
-  let originalHome: string | undefined;
+  let originalCwd: () => string;
 
   beforeEach(async () => {
-    // Save original HOME
-    originalHome = process.env.HOME;
+    // Save original cwd
+    originalCwd = process.cwd;
 
     // Create temp directory for testing
     tempDir = await fs.mkdtemp(
@@ -74,10 +74,10 @@ describe("uninstall cleanup", () => {
     agentsDir = path.join(claudeDir, "agents");
     commandsDir = path.join(claudeDir, "commands");
     profilesDir = path.join(claudeDir, "profiles");
-    configPath = path.join(tempDir, "nori-config.json");
+    configPath = path.join(tempDir, ".nori-config.json");
 
-    // CRITICAL: Mock HOME to point to temp directory
-    process.env.HOME = tempDir;
+    // CRITICAL: Mock cwd to point to temp directory
+    process.cwd = () => tempDir;
 
     // Set mock paths
     mockClaudeDir = claudeDir;
@@ -91,12 +91,8 @@ describe("uninstall cleanup", () => {
   });
 
   afterEach(async () => {
-    // Restore original HOME
-    if (originalHome !== undefined) {
-      process.env.HOME = originalHome;
-    } else {
-      delete process.env.HOME;
-    }
+    // Restore original cwd
+    process.cwd = originalCwd;
 
     // Clean up temp directory
     await fs.rm(tempDir, { recursive: true, force: true });

@@ -375,8 +375,8 @@ export const main = async (args?: {
     }
 
     // Check if there's an existing installation to clean up
-    if (!skipUninstall && hasExistingInstallation()) {
-      const previousVersion = getInstalledVersion();
+    if (!skipUninstall && hasExistingInstallation({ installDir })) {
+      const previousVersion = getInstalledVersion({ installDir });
       info({
         message: `Cleaning up previous installation (v${previousVersion})...`,
       });
@@ -535,7 +535,7 @@ export const main = async (args?: {
     // Save installed version
     const finalVersion = getCurrentPackageVersion();
     if (finalVersion) {
-      saveInstalledVersion({ version: finalVersion });
+      saveInstalledVersion({ version: finalVersion, installDir });
     }
 
     // Delete install-in-progress marker on successful completion

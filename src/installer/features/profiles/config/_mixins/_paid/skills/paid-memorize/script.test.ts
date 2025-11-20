@@ -11,21 +11,22 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { main } from "./script.js";
 
 describe("paid-memorize script", () => {
+  let tempDir: string;
   let tempConfigPath: string;
-  let originalHome: string | undefined;
+  let originalCwd: () => string;
   let originalArgv: Array<string>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     // Save original state
-    originalHome = process.env.HOME;
+    originalCwd = process.cwd;
     originalArgv = process.argv;
 
     // Create temp directory for config
-    const tempDir = path.join(os.tmpdir(), `memorize-test-${Date.now()}`);
-    process.env.HOME = tempDir;
-    tempConfigPath = path.join(tempDir, "nori-config.json");
+    tempDir = path.join(os.tmpdir(), `memorize-test-${Date.now()}`);
+    process.cwd = () => tempDir;
+    tempConfigPath = path.join(tempDir, ".nori-config.json");
 
     // Mock console.error and process.exit
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {
@@ -40,9 +41,7 @@ describe("paid-memorize script", () => {
 
   afterEach(async () => {
     // Restore original state
-    if (originalHome !== undefined) {
-      process.env.HOME = originalHome;
-    }
+    process.cwd = originalCwd;
     process.argv = originalArgv;
 
     // Restore mocks
@@ -51,7 +50,7 @@ describe("paid-memorize script", () => {
 
     // Clean up temp config
     try {
-      await fs.rm(path.dirname(tempConfigPath), {
+      await fs.rm(tempDir, {
         recursive: true,
         force: true,
       });

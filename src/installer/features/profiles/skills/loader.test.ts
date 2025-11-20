@@ -10,7 +10,6 @@ import * as path from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { profilesLoader } from "@/installer/features/profiles/loader.js";
-import { _testing as profilesTesting } from "@/installer/features/profiles/loader.js";
 
 import type { Config } from "@/installer/config.js";
 
@@ -31,7 +30,6 @@ vi.mock("@/installer/env.js", () => ({
 
 // Import loaders after mocking env
 import { skillsLoader } from "./loader.js";
-import { _testing as profilesTesting } from "@/installer/features/profiles/loader.js";
 
 describe("skillsLoader", () => {
   let tempDir: string;

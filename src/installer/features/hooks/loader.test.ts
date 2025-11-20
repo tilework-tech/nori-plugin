@@ -228,6 +228,44 @@ describe("hooksLoader", () => {
       expect(settings.hooks).toBeDefined();
     });
 
+    it("should set includeCoAuthoredBy to false in settings.json", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      await hooksLoader.run({ config });
+
+      // Read and parse settings
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify includeCoAuthoredBy is set to false
+      expect(settings.includeCoAuthoredBy).toBe(false);
+    });
+
+    it("should preserve existing settings when adding includeCoAuthoredBy", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      // Create settings.json with existing configuration
+      const existingSettings = {
+        $schema: "https://json.schemastore.org/claude-code-settings.json",
+        someOtherSetting: "value",
+      };
+      await fs.writeFile(
+        settingsPath,
+        JSON.stringify(existingSettings, null, 2),
+      );
+
+      await hooksLoader.run({ config });
+
+      // Read and parse settings
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify existing settings are preserved
+      expect(settings.someOtherSetting).toBe("value");
+      // Verify includeCoAuthoredBy is added
+      expect(settings.includeCoAuthoredBy).toBe(false);
+    });
+
     it("should update hooks if already configured", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
@@ -378,6 +416,60 @@ describe("hooksLoader", () => {
       }
       expect(hasNestedWarningHook).toBe(true);
     });
+
+    it("should configure PreToolUse hook for commit-author (paid)", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify PreToolUse hooks include commit-author
+      expect(settings.hooks.PreToolUse).toBeDefined();
+      expect(settings.hooks.PreToolUse.length).toBeGreaterThan(0);
+
+      // Find commit-author hook
+      let hasCommitAuthorHook = false;
+      for (const hookConfig of settings.hooks.PreToolUse) {
+        if (hookConfig.matcher === "Bash" && hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("commit-author")) {
+              hasCommitAuthorHook = true;
+              expect(hook.description).toContain("Nori");
+            }
+          }
+        }
+      }
+      expect(hasCommitAuthorHook).toBe(true);
+    });
+
+    it("should configure PreToolUse hook for commit-author (free)", async () => {
+      const config: Config = { installType: "free", installDir: tempDir };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify PreToolUse hooks include commit-author
+      expect(settings.hooks.PreToolUse).toBeDefined();
+      expect(settings.hooks.PreToolUse.length).toBeGreaterThan(0);
+
+      // Find commit-author hook
+      let hasCommitAuthorHook = false;
+      for (const hookConfig of settings.hooks.PreToolUse) {
+        if (hookConfig.matcher === "Bash" && hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("commit-author")) {
+              hasCommitAuthorHook = true;
+              expect(hook.description).toContain("Nori");
+            }
+          }
+        }
+      }
+      expect(hasCommitAuthorHook).toBe(true);
+    });
   });
 
   describe("uninstall", () => {
@@ -420,6 +512,47 @@ describe("hooksLoader", () => {
       settings = JSON.parse(content);
       expect(settings.someOtherSetting).toBe("preserved value");
       expect(settings.hooks).toBeUndefined();
+    });
+
+    it("should remove includeCoAuthoredBy setting during uninstall", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      // Install first
+      await hooksLoader.run({ config });
+
+      // Verify includeCoAuthoredBy exists
+      let content = await fs.readFile(settingsPath, "utf-8");
+      let settings = JSON.parse(content);
+      expect(settings.includeCoAuthoredBy).toBe(false);
+
+      // Uninstall
+      await hooksLoader.uninstall({ config });
+
+      // Verify includeCoAuthoredBy is removed
+      content = await fs.readFile(settingsPath, "utf-8");
+      settings = JSON.parse(content);
+      expect(settings.includeCoAuthoredBy).toBeUndefined();
+    });
+
+    it("should preserve other settings when removing includeCoAuthoredBy", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      // Create settings with hooks and other config
+      await hooksLoader.run({ config });
+
+      let content = await fs.readFile(settingsPath, "utf-8");
+      let settings = JSON.parse(content);
+      settings.someOtherSetting = "preserved value";
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+
+      // Uninstall
+      await hooksLoader.uninstall({ config });
+
+      // Verify other settings are preserved
+      content = await fs.readFile(settingsPath, "utf-8");
+      settings = JSON.parse(content);
+      expect(settings.someOtherSetting).toBe("preserved value");
+      expect(settings.includeCoAuthoredBy).toBeUndefined();
     });
 
     it("should handle missing settings.json gracefully", async () => {
@@ -502,6 +635,60 @@ describe("hooksLoader", () => {
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
       expect(result.errors?.[0]).toContain("Settings file not found");
+    });
+
+    it("should return invalid when includeCoAuthoredBy is not set to false", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      // Install hooks
+      await hooksLoader.run({ config });
+
+      // Modify settings to remove includeCoAuthoredBy
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+      delete settings.includeCoAuthoredBy;
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+
+      // Validate
+      if (hooksLoader.validate == null) {
+        throw new Error("validate method not implemented");
+      }
+
+      const result = await hooksLoader.validate({ config });
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toContain("issues");
+      expect(result.errors).not.toBeNull();
+      expect(
+        result.errors?.some((e) => e.includes("includeCoAuthoredBy")),
+      ).toBe(true);
+    });
+
+    it("should return invalid when includeCoAuthoredBy is set to true", async () => {
+      const config: Config = { installType: "paid", installDir: tempDir };
+
+      // Install hooks
+      await hooksLoader.run({ config });
+
+      // Modify settings to set includeCoAuthoredBy to true
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+      settings.includeCoAuthoredBy = true;
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+
+      // Validate
+      if (hooksLoader.validate == null) {
+        throw new Error("validate method not implemented");
+      }
+
+      const result = await hooksLoader.validate({ config });
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toContain("issues");
+      expect(result.errors).not.toBeNull();
+      expect(
+        result.errors?.some((e) => e.includes("includeCoAuthoredBy")),
+      ).toBe(true);
     });
 
     it("should return invalid when hooks are not configured", async () => {

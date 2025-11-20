@@ -33,8 +33,9 @@ type HookConfig = {
     | "PreCompact"
     | "Notification"
     | "SessionStart"
-    | "UserPromptSubmit";
-  matcher: "" | "startup" | "auto" | "*";
+    | "UserPromptSubmit"
+    | "PreToolUse";
+  matcher: "" | "startup" | "auto" | "*" | "Bash";
   hooks: Array<{
     type: "command";
     command: string;
@@ -207,6 +208,31 @@ const quickSwitchHook: HookInterface = {
 };
 
 /**
+ * Commit-author hook - replace Claude attribution with Nori in git commits
+ */
+const commitAuthorHook: HookInterface = {
+  name: "commit-author",
+  description: "Replace Claude Code attribution with Nori in git commits",
+  install: async () => {
+    const scriptPath = path.join(HOOKS_CONFIG_DIR, "commit-author.js");
+    return [
+      {
+        event: "PreToolUse",
+        matcher: "Bash",
+        hooks: [
+          {
+            type: "command",
+            command: `node ${scriptPath}`,
+            description:
+              "Replace Claude Code co-author attribution with Nori in git commits",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+/**
  * Configure hooks for automatic conversation memorization (paid version)
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -234,6 +260,9 @@ const configurePaidHooks = async (args: { config: Config }): Promise<void> => {
     };
   }
 
+  // Disable Claude Code's built-in co-author byline
+  settings.includeCoAuthoredBy = false;
+
   // Install all hooks for paid version
   // Note: summarizeNotificationHook must run before summarizeHook for proper ordering
   const hooks = [
@@ -243,6 +272,7 @@ const configurePaidHooks = async (args: { config: Config }): Promise<void> => {
     nestedInstallWarningHook,
     notifyHook,
     quickSwitchHook,
+    commitAuthorHook,
   ];
   const hooksConfig: any = {};
 
@@ -308,12 +338,16 @@ const configureFreeHooks = async (args: { config: Config }): Promise<void> => {
     };
   }
 
-  // Install notification, autoupdate, nested-install-warning, and quick-switch hooks for free version
+  // Disable Claude Code's built-in co-author byline
+  settings.includeCoAuthoredBy = false;
+
+  // Install notification, autoupdate, nested-install-warning, quick-switch, and commit-author hooks for free version
   const hooks = [
     autoupdateHook,
     nestedInstallWarningHook,
     notifyHook,
     quickSwitchHook,
+    commitAuthorHook,
   ];
   const hooksConfig: any = {};
 
@@ -363,8 +397,20 @@ const removeHooks = async (args: { config: Config }): Promise<void> => {
     const content = await fs.readFile(claudeSettingsFile, "utf-8");
     const settings = JSON.parse(content);
 
+    let modified = false;
+
     if (settings.hooks) {
       delete settings.hooks;
+      modified = true;
+    }
+
+    // Remove includeCoAuthoredBy setting
+    if (settings.includeCoAuthoredBy === false) {
+      delete settings.includeCoAuthoredBy;
+      modified = true;
+    }
+
+    if (modified) {
       await fs.writeFile(claudeSettingsFile, JSON.stringify(settings, null, 2));
       success({ message: "✓ Hooks removed from settings.json" });
     } else {
@@ -473,6 +519,12 @@ const validate = async (args: {
     errors.push(
       "Missing hook configuration for SessionStart event (autoupdate)",
     );
+  }
+
+  // Check includeCoAuthoredBy setting
+  if (settings.includeCoAuthoredBy !== false) {
+    errors.push("includeCoAuthoredBy should be set to false in settings.json");
+    errors.push('Run "nori-ai install" to configure git settings');
   }
 
   if (errors.length > 0) {

@@ -19,7 +19,63 @@ import { switchProfile } from "@/installer/profiles.js";
 import { main as uninstallMain } from "@/installer/uninstall.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
-const showHelp = (): void => {
+const showHelp = (args?: { command?: string | null }): void => {
+  const { command } = args || {};
+
+  if (command === "install") {
+    console.log("Usage: nori-ai install [options]");
+    console.log("");
+    console.log("Install Nori Profiles to your system");
+    console.log("");
+    console.log("Options:");
+    console.log(
+      "  --install-dir <path> Install to custom directory (default: ~/.claude)",
+    );
+    console.log("  --non-interactive    Run without prompts");
+    return;
+  }
+
+  if (command === "uninstall") {
+    console.log("Usage: nori-ai uninstall [options]");
+    console.log("");
+    console.log("Uninstall Nori Profiles from your system");
+    console.log("");
+    console.log("Options:");
+    console.log(
+      "  --install-dir <path> Uninstall from custom directory (default: ~/.claude)",
+    );
+    console.log("  --non-interactive    Run without prompts");
+    return;
+  }
+
+  if (command === "check") {
+    console.log("Usage: nori-ai check [options]");
+    console.log("");
+    console.log("Validate Nori installation and configuration");
+    console.log("");
+    console.log("Options:");
+    console.log(
+      "  --install-dir <path> Check installation in custom directory (default: ~/.claude)",
+    );
+    return;
+  }
+
+  if (command === "switch-profile") {
+    console.log("Usage: nori-ai switch-profile <profile-name> [options]");
+    console.log("");
+    console.log("Switch to a different profile and reinstall");
+    console.log("");
+    console.log("Arguments:");
+    console.log("  <profile-name>       Name of the profile to switch to");
+    console.log("");
+    console.log("Options:");
+    console.log(
+      "  --install-dir <path> Installation directory (default: ~/.claude)",
+    );
+    return;
+  }
+
+  // General help
   console.log("Usage: nori-ai [command] [options]");
   console.log("");
   console.log("Commands:");
@@ -38,6 +94,10 @@ const showHelp = (): void => {
     "  --install-dir <path> Install to custom directory (default: ~/.claude)",
   );
   console.log("  --non-interactive    Run without prompts");
+  console.log("");
+  console.log(
+    "Run 'nori-ai <command> --help' for more information on a command",
+  );
 };
 
 /**
@@ -152,12 +212,62 @@ const parseInstallDir = (args: Array<string>): string | null => {
   return normalizeInstallDir({ installDir: rawPath });
 };
 
-const main = async (): Promise<void> => {
-  const args = process.argv.slice(2);
+/**
+ * Validate arguments for a given command
+ * @param args - Configuration arguments
+ * @param args.command - The command being executed
+ * @param args.commandArgs - Arguments passed to the command (excluding the command itself)
+ *
+ * @returns True if arguments are valid, false otherwise
+ */
+const validateCommandArgs = (args: {
+  command: string;
+  commandArgs: Array<string>;
+}): boolean => {
+  const { command, commandArgs } = args;
+  const validOptions = new Set([
+    "--help",
+    "-h",
+    "--install-dir",
+    "--non-interactive",
+  ]);
+
+  // Filter out known options and their values
+  const unknownArgs = commandArgs.filter((arg, index) => {
+    // If this is a value for --install-dir, skip it
+    if (index > 0 && commandArgs[index - 1] === "--install-dir") {
+      return false;
+    }
+    // If this is a known option, skip it
+    if (validOptions.has(arg)) {
+      return false;
+    }
+    // For switch-profile, the first arg is the profile name
+    if (command === "switch-profile" && index === 0 && !arg.startsWith("-")) {
+      return false;
+    }
+    return true;
+  });
+
+  return unknownArgs.length === 0;
+};
+
+/**
+ * Process CLI arguments and route to appropriate command
+ * Exported for testing
+ * @param args - Command line arguments (e.g., from process.argv.slice(2))
+ */
+export const processCli = async (args: Array<string>): Promise<void> => {
   const command = args[0] || "install";
 
   if (command === "help" || command === "--help" || command === "-h") {
     showHelp();
+    return;
+  }
+
+  // Check for help flags anywhere in arguments
+  if (args.includes("--help") || args.includes("-h")) {
+    showHelp({ command });
     return;
   }
 
@@ -168,11 +278,29 @@ const main = async (): Promise<void> => {
   const installDir = parseInstallDir(args);
 
   if (command === "install") {
+    // Validate arguments
+    const commandArgs = args.slice(1);
+    if (!validateCommandArgs({ command, commandArgs })) {
+      error({ message: "Unrecognized arguments" });
+      console.log("");
+      showHelp({ command });
+      process.exit(1);
+    }
+
     await installMain({ nonInteractive, installDir });
     return;
   }
 
   if (command === "uninstall") {
+    // Validate arguments
+    const commandArgs = args.slice(1);
+    if (!validateCommandArgs({ command, commandArgs })) {
+      error({ message: "Unrecognized arguments" });
+      console.log("");
+      showHelp({ command });
+      process.exit(1);
+    }
+
     await uninstallMain({ nonInteractive, installDir });
     return;
   }
@@ -210,6 +338,11 @@ const main = async (): Promise<void> => {
   console.log("");
   showHelp();
   process.exit(1);
+};
+
+const main = async (): Promise<void> => {
+  const args = process.argv.slice(2);
+  await processCli(args);
 };
 
 main();

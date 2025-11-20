@@ -60,7 +60,7 @@ export const normalizeInstallDir = (args: {
  *
  * @returns true if Nori is installed in this directory
  */
-const hasNoriInstallation = (args: { dir: string }): boolean => {
+export const hasNoriInstallation = (args: { dir: string }): boolean => {
   const { dir } = args;
 
   // Check for .nori-config.json (new style)

@@ -17,6 +17,7 @@ vi.mock("fs", () => ({
   appendFileSync: vi.fn(),
   openSync: vi.fn(),
   closeSync: vi.fn(),
+  existsSync: vi.fn(),
 }));
 
 // Mock logger to suppress output
@@ -37,6 +38,12 @@ vi.mock("@/installer/config.js", () => ({
 // Mock version utilities
 vi.mock("@/installer/version.js", () => ({
   getInstalledVersion: vi.fn(),
+}));
+
+// Mock path utilities
+vi.mock("@/utils/path.js", () => ({
+  hasNoriInstallation: vi.fn(),
+  findAncestorInstallations: vi.fn(),
 }));
 
 // Stub the __PACKAGE_VERSION__ that gets injected at build time
@@ -69,6 +76,18 @@ describe("autoupdate", () => {
     beforeEach(async () => {
       vi.clearAllMocks();
       vi.resetModules(); // Reset module cache to ensure fresh imports
+
+      // Setup default mocks for path utilities
+      // By default, assume config is found in cwd
+      const { hasNoriInstallation, findAncestorInstallations } = await import(
+        "@/utils/path.js"
+      );
+      vi.mocked(hasNoriInstallation).mockReturnValue(true);
+      vi.mocked(findAncestorInstallations).mockReturnValue([]);
+
+      // Mock existsSync to return true by default (installDir exists)
+      const { existsSync } = await import("fs");
+      vi.mocked(existsSync).mockReturnValue(true);
     });
 
     it("should trigger installation when new version is available", async () => {
@@ -97,7 +116,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -124,7 +147,11 @@ describe("autoupdate", () => {
       // Verify spawn was called with correct arguments to install new version
       expect(mockSpawn).toHaveBeenCalledWith(
         "npx",
-        ["nori-ai@14.2.0", "install", "--non-interactive"],
+        expect.arrayContaining([
+          "nori-ai@14.2.0",
+          "install",
+          "--non-interactive",
+        ]),
         {
           detached: true,
           stdio: ["ignore", 3, 3],
@@ -160,7 +187,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -203,7 +234,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -239,7 +274,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -325,7 +364,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig to return free config
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -437,7 +480,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -461,7 +508,11 @@ describe("autoupdate", () => {
       // not build constant (14.1.0) vs npm (14.3.6)
       expect(mockSpawn).toHaveBeenCalledWith(
         "npx",
-        ["nori-ai@14.3.6", "install", "--non-interactive"],
+        expect.arrayContaining([
+          "nori-ai@14.3.6",
+          "install",
+          "--non-interactive",
+        ]),
         {
           detached: true,
           stdio: ["ignore", 3, 3],
@@ -507,7 +558,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -548,7 +603,11 @@ describe("autoupdate", () => {
       // Verify spawn was called with stdio redirected to log file descriptor
       expect(mockSpawn).toHaveBeenCalledWith(
         "npx",
-        ["nori-ai@14.3.6", "install", "--non-interactive"],
+        expect.arrayContaining([
+          "nori-ai@14.3.6",
+          "install",
+          "--non-interactive",
+        ]),
         {
           detached: true,
           stdio: ["ignore", 3, 3],
@@ -584,7 +643,11 @@ describe("autoupdate", () => {
       // Mock loadDiskConfig
       const { loadDiskConfig } = await import("@/installer/config.js");
       const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue(null);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: process.cwd(),
+      });
 
       // Mock trackEvent
       const { trackEvent } = await import("@/installer/analytics.js");
@@ -609,7 +672,11 @@ describe("autoupdate", () => {
       // Verify spawn was called with file descriptor, not stream
       expect(mockSpawn).toHaveBeenCalledWith(
         "npx",
-        ["nori-ai@14.3.6", "install", "--non-interactive"],
+        expect.arrayContaining([
+          "nori-ai@14.3.6",
+          "install",
+          "--non-interactive",
+        ]),
         {
           detached: true,
           stdio: ["ignore", 3, 3],
@@ -617,6 +684,110 @@ describe("autoupdate", () => {
       );
 
       consoleLogSpy.mockRestore();
+    });
+
+    it("should find config in parent directory when running from subdirectory", async () => {
+      // This test verifies the fix for the bug where autoupdate uses process.cwd()
+      // instead of searching upward for the config file.
+      //
+      // Scenario: Nori installed in /home/user, but Claude Code running from /home/user/foo/bar
+      // Expected: Autoupdate finds /home/user/.nori-config.json and uses /home/user/.claude as installDir
+
+      // Mock process.cwd() to return subdirectory
+      const originalCwd = process.cwd;
+      process.cwd = vi.fn(() => "/home/user/foo/bar");
+
+      // Mock path.ts functions
+      const { hasNoriInstallation, findAncestorInstallations } = await import(
+        "@/utils/path.js"
+      );
+      const hasNoriInstallationSpy = vi.mocked(hasNoriInstallation);
+      const findAncestorInstallationsSpy = vi.mocked(findAncestorInstallations);
+
+      // Mock hasNoriInstallation to return false for cwd, true for parent
+      hasNoriInstallationSpy.mockImplementation((args) => {
+        return args.dir === "/home/user";
+      });
+
+      // Mock findAncestorInstallations to return parent directory
+      findAncestorInstallationsSpy.mockReturnValue(["/home/user"]);
+
+      // Mock loadDiskConfig to return config with installDir
+      const { loadDiskConfig } = await import("@/installer/config.js");
+      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
+      mockLoadDiskConfig.mockResolvedValue({
+        auth: null,
+        profile: null,
+        installDir: "/home/user/.claude",
+      });
+
+      // Mock getInstalledVersion
+      const { getInstalledVersion } = await import("@/installer/version.js");
+      const mockGetInstalledVersion = vi.mocked(getInstalledVersion);
+      mockGetInstalledVersion.mockReturnValue("14.1.0");
+
+      // Mock execSync to return newer version
+      const mockExecSync = vi.mocked(execSync);
+      mockExecSync.mockReturnValue("14.2.0\n");
+
+      // Mock spawn
+      const mockSpawn = vi.mocked(spawn);
+      const mockChild = {
+        unref: vi.fn(),
+        on: vi.fn(),
+      };
+      mockSpawn.mockReturnValue(mockChild as any);
+
+      // Mock openSync
+      const { openSync } = await import("fs");
+      const mockOpenSync = vi.mocked(openSync);
+      mockOpenSync.mockReturnValue(3 as any);
+
+      // Mock trackEvent
+      const { trackEvent } = await import("@/installer/analytics.js");
+      const mockTrackEvent = vi.mocked(trackEvent);
+      mockTrackEvent.mockResolvedValue();
+
+      // Spy on console.log
+      const consoleLogSpy = vi
+        .spyOn(console, "log")
+        .mockImplementation(() => undefined);
+
+      // Run autoupdate
+      const autoupdate = await import("./autoupdate.js");
+      await autoupdate.main();
+
+      // Verify loadDiskConfig was called with the parent directory (where config was found)
+      expect(mockLoadDiskConfig).toHaveBeenCalledWith({
+        installDir: "/home/user",
+      });
+
+      // Verify getInstalledVersion was called with the installDir from config
+      expect(mockGetInstalledVersion).toHaveBeenCalledWith({
+        installDir: "/home/user/.claude",
+      });
+
+      // Verify spawn was called with correct installDir
+      expect(mockSpawn).toHaveBeenCalledWith(
+        "npx",
+        [
+          "nori-ai@14.2.0",
+          "install",
+          "--non-interactive",
+          "--install-dir",
+          "/home/user/.claude",
+        ],
+        {
+          detached: true,
+          stdio: ["ignore", 3, 3],
+        },
+      );
+
+      // Restore
+      process.cwd = originalCwd;
+      consoleLogSpy.mockRestore();
+      hasNoriInstallationSpy.mockRestore();
+      findAncestorInstallationsSpy.mockRestore();
     });
   });
 });

@@ -8,13 +8,17 @@
  */
 
 import { execSync, spawn } from "child_process";
-import { appendFileSync, openSync, closeSync } from "fs";
+import { appendFileSync, openSync, closeSync, existsSync } from "fs";
 import { join } from "path";
 
 import { trackEvent } from "@/installer/analytics.js";
 import { loadDiskConfig } from "@/installer/config.js";
 import { error } from "@/installer/logger.js";
 import { getInstalledVersion } from "@/installer/version.js";
+import {
+  hasNoriInstallation,
+  findAncestorInstallations,
+} from "@/utils/path.js";
 
 const PACKAGE_NAME = "nori-ai";
 
@@ -109,15 +113,61 @@ const logToClaudeSession = (args: { message: string }): void => {
  */
 const main = async (): Promise<void> => {
   try {
-    // Get installed version from file (not build constant) to ensure
-    // we retry if previous install failed
-    // Use cwd as installDir since hook is called from project directory
-    const installDir = process.cwd();
-    const installedVersion = getInstalledVersion({ installDir });
+    const cwd = process.cwd();
 
-    // Load disk config to determine install_type
-    const diskConfig = await loadDiskConfig({ installDir });
+    // Find Nori installation by searching upward from cwd
+    let configDir: string | null = null;
+    if (hasNoriInstallation({ dir: cwd })) {
+      configDir = cwd;
+    } else {
+      const ancestors = findAncestorInstallations({ installDir: cwd });
+      if (ancestors.length > 0) {
+        configDir = ancestors[0]; // closest ancestor
+      }
+    }
+
+    if (configDir == null) {
+      // No config found - log to notifications and exit
+      const logPath = join(cwd, ".nori-notifications.log");
+      appendFileSync(
+        logPath,
+        `\n=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+          `Could not find .nori-config.json in current directory or any parent directory.\n` +
+          `Searched from: ${cwd}\n`,
+      );
+      return;
+    }
+
+    // Load disk config from found directory
+    const diskConfig = await loadDiskConfig({ installDir: configDir });
     const installType = diskConfig?.auth ? "paid" : "free";
+
+    if (diskConfig?.installDir == null) {
+      // Config exists but has no installDir - log error and exit
+      const logPath = join(cwd, ".nori-notifications.log");
+      appendFileSync(
+        logPath,
+        `\n=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+          `Config file exists at ${configDir} but has no installDir field.\n`,
+      );
+      return;
+    }
+
+    const installDir = diskConfig.installDir;
+
+    // Validate that installDir exists
+    if (!existsSync(installDir)) {
+      const logPath = join(cwd, ".nori-notifications.log");
+      appendFileSync(
+        logPath,
+        `\n=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+          `Config specifies installDir: ${installDir} but directory does not exist.\n`,
+      );
+      return;
+    }
+
+    // Get installed version from the actual install directory
+    const installedVersion = getInstalledVersion({ installDir });
 
     // Check for updates
     const latestVersion = await getLatestVersion();

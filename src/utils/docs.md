@@ -16,7 +16,7 @@ The path.ts module provides installation directory utilities used by both the in
 
 The url.ts module exports a single normalizeUrl function that accepts { baseUrl: string, path?: string | null } and returns a normalized URL. The function strips all trailing slashes from baseUrl using replace(/\/+$/, ''), handles optional path by ensuring it starts with exactly one leading slash, and concatenates them to prevent double slashes. Comprehensive test coverage in url.test.ts validates edge cases including multiple trailing slashes, empty paths, localhost URLs, and query parameters. The function follows the codebase style of named parameters and optional null types.
 
-The path.ts module exports two functions: normalizeInstallDir and findAncestorInstallations.
+The path.ts module exports three functions: normalizeInstallDir, hasNoriInstallation, and findAncestorInstallations.
 
 **normalizeInstallDir Architecture:** This function accepts { installDir?: string | null } and returns the BASE installation directory (without `.claude` suffix), handling tilde expansion (`~/` becomes home directory), relative path resolution, and path normalization. If no installDir is provided, it defaults to `process.cwd()`. If a path ending with `.claude` is provided, it strips the suffix and returns the parent directory. This clarifies that `installDir` represents the base directory where:
 - `.nori-config.json` is stored (config file)
@@ -27,7 +27,9 @@ The `installDir` parameter is required throughout all internal functions in the 
 
 The configuration path follows the same pattern - getConfigPath() in @/plugin/src/installer/config.ts requires { installDir: string } and returns `<installDir>/.nori-config.json`. Similarly, getClaudeDir() in @/plugin/src/installer/env.ts requires { installDir: string } and returns `<installDir>/.claude`. This ensures all paths are derived from the same base directory.
 
-The findAncestorInstallations function accepts { installDir: string } and returns an array of paths to ancestor directories with Nori installations, ordered from closest to furthest. It uses the internal hasNoriInstallation helper to check each directory for installation markers: `.nori-config.json`, `nori-config.json` (legacy), or `.claude/CLAUDE.md` containing "NORI-AI MANAGED BLOCK".
+**hasNoriInstallation Architecture:** This function accepts { dir: string } and returns a boolean indicating whether a directory has a Nori installation. It checks for three installation markers in order: (1) `.nori-config.json` (new style config file), (2) `nori-config.json` (legacy config file), (3) `.claude/CLAUDE.md` containing "NORI-AI MANAGED BLOCK". This function was previously private and is now publicly exported for use by @/plugin/src/installer/features/hooks/config/autoupdate.ts to detect whether the current working directory contains a Nori installation before searching parent directories.
+
+**findAncestorInstallations Architecture:** This function accepts { installDir: string } and returns an array of paths to ancestor directories with Nori installations, ordered from closest to furthest. It uses hasNoriInstallation() to check each directory for installation markers, starting from the parent of the provided installDir (or grandparent if installDir ends with `.claude`). The function walks up the directory tree until reaching the filesystem root, returning all detected ancestor installations. This is used by both @/plugin/src/installer/install.ts (during installation to warn about conflicting ancestor installations) and @/plugin/src/installer/features/hooks/config/autoupdate.ts (during session startup to locate the config file when running from a subdirectory).
 
 ### Things to Know
 

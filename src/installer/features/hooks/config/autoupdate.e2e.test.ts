@@ -37,6 +37,12 @@ vi.mock("@/installer/version.js", () => ({
   getInstalledVersion: vi.fn(),
 }));
 
+// Mock path utilities
+vi.mock("@/utils/path.js", () => ({
+  hasNoriInstallation: vi.fn(),
+  findAncestorInstallations: vi.fn(),
+}));
+
 describe("autoupdate E2E real spawn tests", () => {
   let tempBinDir: string;
   let tempHomeDir: string;
@@ -109,10 +115,21 @@ exit 0
     const mockGetInstalledVersion = vi.mocked(getInstalledVersion);
     mockGetInstalledVersion.mockReturnValue("1.0.0");
 
+    // Mock path utilities to find config in tempHomeDir
+    const { hasNoriInstallation, findAncestorInstallations } = await import(
+      "@/utils/path.js"
+    );
+    vi.mocked(hasNoriInstallation).mockReturnValue(true);
+    vi.mocked(findAncestorInstallations).mockReturnValue([]);
+
     // Mock loadDiskConfig
     const { loadDiskConfig } = await import("@/installer/config.js");
     const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-    mockLoadDiskConfig.mockResolvedValue(null);
+    mockLoadDiskConfig.mockResolvedValue({
+      auth: null,
+      profile: null,
+      installDir: tempHomeDir,
+    });
 
     // Mock trackEvent
     const { trackEvent } = await import("@/installer/analytics.js");

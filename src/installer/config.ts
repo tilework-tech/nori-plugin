@@ -88,7 +88,11 @@ export const loadDiskConfig = async (args: {
       const result: DiskConfig = {
         auth: null,
         profile: null,
-        installDir,
+        // Use installDir from config file if present, otherwise use parameter
+        installDir:
+          typeof config.installDir === "string"
+            ? config.installDir
+            : installDir,
       };
 
       // Check if auth credentials exist and are valid

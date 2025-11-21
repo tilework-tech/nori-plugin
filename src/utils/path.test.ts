@@ -8,7 +8,11 @@ import * as path from "path";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-import { normalizeInstallDir, findAncestorInstallations } from "./path.js";
+import {
+  normalizeInstallDir,
+  findAncestorInstallations,
+  getInstallDirs,
+} from "./path.js";
 
 describe("normalizeInstallDir", () => {
   describe("default behavior", () => {
@@ -263,6 +267,124 @@ describe("findAncestorInstallations", () => {
 
       // Should NOT find the installation at the same level
       expect(result).toEqual([]);
+    });
+  });
+});
+
+describe("getInstallDirs", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    // Create a unique temp directory for each test
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nori-test-"));
+  });
+
+  afterEach(() => {
+    // Clean up temp directory
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  describe("current directory has installation", () => {
+    it("should return array with current directory when it has installation", () => {
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      // Create nori installation in current directory
+      fs.writeFileSync(
+        path.join(projectDir, ".nori-config.json"),
+        JSON.stringify({ profile: { baseProfile: "test" } }),
+      );
+
+      const result = getInstallDirs({ currentDir: projectDir });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe(projectDir);
+    });
+
+    it("should return current directory first, then ancestors when both have installations", () => {
+      const parentDir = path.join(tempDir, "parent");
+      const projectDir = path.join(parentDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      // Create installations in both parent and current
+      fs.writeFileSync(
+        path.join(parentDir, ".nori-config.json"),
+        JSON.stringify({ profile: { baseProfile: "parent" } }),
+      );
+      fs.writeFileSync(
+        path.join(projectDir, ".nori-config.json"),
+        JSON.stringify({ profile: { baseProfile: "project" } }),
+      );
+
+      const result = getInstallDirs({ currentDir: projectDir });
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe(projectDir); // Current first
+      expect(result[1]).toBe(parentDir); // Then ancestor
+    });
+  });
+
+  describe("current directory has no installation", () => {
+    it("should return empty array when no installations found anywhere", () => {
+      const projectDir = path.join(tempDir, "project", "child");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const result = getInstallDirs({ currentDir: projectDir });
+
+      expect(result).toEqual([]);
+    });
+
+    it("should return only ancestor installations when current has none", () => {
+      const parentDir = path.join(tempDir, "parent");
+      const projectDir = path.join(parentDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      // Create installation in parent only
+      fs.writeFileSync(
+        path.join(parentDir, ".nori-config.json"),
+        JSON.stringify({ profile: { baseProfile: "parent" } }),
+      );
+
+      const result = getInstallDirs({ currentDir: projectDir });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe(parentDir);
+    });
+
+    it("should return all ancestor installations in order (closest first)", () => {
+      const grandparentDir = path.join(tempDir, "grandparent");
+      const parentDir = path.join(grandparentDir, "parent");
+      const projectDir = path.join(parentDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      // Create installations in ancestors
+      fs.writeFileSync(
+        path.join(grandparentDir, ".nori-config.json"),
+        JSON.stringify({ profile: { baseProfile: "grandparent" } }),
+      );
+      fs.writeFileSync(
+        path.join(parentDir, ".nori-config.json"),
+        JSON.stringify({ profile: { baseProfile: "parent" } }),
+      );
+
+      const result = getInstallDirs({ currentDir: projectDir });
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe(parentDir); // Closest ancestor
+      expect(result[1]).toBe(grandparentDir); // Further ancestor
+    });
+  });
+
+  describe("default currentDir behavior", () => {
+    it("should use process.cwd() when currentDir not provided", () => {
+      // This test is environment-dependent, so we just verify it doesn't throw
+      const result = getInstallDirs({});
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    it("should use process.cwd() when currentDir is null", () => {
+      const result = getInstallDirs({ currentDir: null });
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 });

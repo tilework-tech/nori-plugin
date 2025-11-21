@@ -24,7 +24,6 @@ import type {
   ValidationResult,
 } from "@/installer/features/loaderRegistry.js";
 
-
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

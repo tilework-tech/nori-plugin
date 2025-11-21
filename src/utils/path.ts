@@ -126,3 +126,30 @@ export const findAncestorInstallations = (args: {
 
   return results;
 };
+
+/**
+ * Get all directories that have Nori installations, starting from current directory
+ * Searches current directory first, then ancestors
+ * @param args - Configuration arguments
+ * @param args.currentDir - The directory to start searching from (defaults to process.cwd())
+ *
+ * @returns Array of paths to directories with Nori installations, ordered from closest to furthest.
+ *   Returns empty array if no installations found.
+ */
+export const getInstallDirs = (args?: {
+  currentDir?: string | null;
+}): Array<string> => {
+  const currentDir = args?.currentDir || process.cwd();
+  const results: Array<string> = [];
+
+  // Check if current directory has a Nori installation
+  if (hasNoriInstallation({ dir: currentDir })) {
+    results.push(currentDir);
+  }
+
+  // Find ancestor installations
+  const ancestors = findAncestorInstallations({ installDir: currentDir });
+  results.push(...ancestors);
+
+  return results;
+};

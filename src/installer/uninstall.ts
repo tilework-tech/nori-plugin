@@ -337,6 +337,14 @@ export const runUninstall = async (args: {
       continue;
     }
 
+    // Skip config loader if removeConfig is false
+    if (!removeConfig && loader.name === "config") {
+      info({
+        message: "Skipping config uninstall (preserving config file)",
+      });
+      continue;
+    }
+
     try {
       await loader.uninstall({ config });
     } catch (err: any) {

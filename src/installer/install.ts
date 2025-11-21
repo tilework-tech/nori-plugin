@@ -29,6 +29,7 @@ import {
 import { getClaudeDir } from "@/installer/env.js";
 import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
 import { profilesLoader } from "@/installer/features/profiles/loader.js";
+import { hasExistingInstallation } from "@/installer/installState.js";
 import {
   error,
   success,
@@ -43,7 +44,6 @@ import { promptUser } from "@/installer/prompt.js";
 import {
   getCurrentPackageVersion,
   getInstalledVersion,
-  hasExistingInstallation,
   saveInstalledVersion,
 } from "@/installer/version.js";
 import {

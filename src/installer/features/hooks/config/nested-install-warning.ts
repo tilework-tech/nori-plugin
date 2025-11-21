@@ -7,7 +7,6 @@
  * It checks for Nori installations in ancestor directories and warns the user.
  */
 
-import { loadDiskConfig } from "@/installer/config.js";
 import { error } from "@/installer/logger.js";
 import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
@@ -35,31 +34,13 @@ export const main = async (args?: {
   installDir?: string | null;
 }): Promise<void> => {
   try {
-    let installDir = args?.installDir;
+    // Check for all installations in directory tree
+    const allInstallations = getInstallDirs({
+      currentDir: normalizeInstallDir({ installDir: args?.installDir }),
+    });
 
-    // If no installDir provided, load from config using cwd
-    if (installDir == null) {
-      const cwd = process.cwd();
-      const diskConfig = await loadDiskConfig({ installDir: cwd });
-      installDir = diskConfig?.installDir
-        ? normalizeInstallDir({ installDir: diskConfig.installDir })
-        : null;
-    }
-
-    // If still no installDir, use default (cwd)
-    if (installDir == null) {
-      installDir = normalizeInstallDir({});
-    }
-
-    // Check for ancestor installations
-    const allInstallations = getInstallDirs({ currentDir: installDir });
-    // Filter out the current directory to get only ancestors
-    const ancestorInstallations = allInstallations.filter(
-      (dir) => dir !== installDir,
-    );
-
-    if (ancestorInstallations.length < 2) {
-      // Less than 2 ancestor installations - no nested scenario
+    if (allInstallations.length < 2) {
+      // Less than 2 total installations - no nested scenario
       return;
     }
 
@@ -69,15 +50,15 @@ export const main = async (args?: {
       "Claude Code loads CLAUDE.md files from all parent directories. ";
     message +=
       "Having multiple Nori installations can cause duplicate or conflicting configurations.\n\n";
-    message += "**Existing Nori installations found at:**\n";
+    message += "**All Nori installations found:**\n";
 
-    for (const ancestorPath of ancestorInstallations) {
-      message += `- ${ancestorPath}\n`;
+    for (const installPath of allInstallations) {
+      message += `- ${installPath}\n`;
     }
 
-    message += "\n**To remove an existing installation, run:**\n";
-    for (const ancestorPath of ancestorInstallations) {
-      message += `\`cd ${ancestorPath} && npx nori-ai@latest uninstall\`\n`;
+    message += "\n**To remove an installation, run:**\n";
+    for (const installPath of allInstallations) {
+      message += `\`cd ${installPath} && npx nori-ai@latest uninstall\`\n`;
     }
 
     // Output to Claude session

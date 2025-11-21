@@ -145,32 +145,38 @@ describe("nested-install-warning hook", () => {
     expect(consoleOutput).toHaveLength(0);
   });
 
-  it("should warn when 2+ ancestor installations exist", async () => {
-    // Setup: grandparent and parent both have installations
-    const grandparentDir = path.join(tempDir, "grandparent");
-    const parentDir = path.join(grandparentDir, "parent");
+  it("should warn when current dir AND one ancestor have installations", async () => {
+    // Setup: Simulates installation at ~ and ~/foo/bar
+    const parentDir = path.join(tempDir, "parent");
     const childDir = path.join(parentDir, "child");
     fs.mkdirSync(childDir, { recursive: true });
 
-    // Create installations in grandparent and parent
-    fs.writeFileSync(
-      path.join(grandparentDir, ".nori-config.json"),
-      JSON.stringify({ profile: { baseProfile: "test" } }),
-    );
+    // Create installation in parent (simulating ~)
     fs.writeFileSync(
       path.join(parentDir, ".nori-config.json"),
       JSON.stringify({ profile: { baseProfile: "test" } }),
     );
 
-    // Run hook from child
+    // Create installation in child (simulating ~/foo/bar)
+    fs.writeFileSync(
+      path.join(childDir, ".nori-config.json"),
+      JSON.stringify({
+        profile: { baseProfile: "test" },
+        installDir: path.join(childDir, ".claude"),
+      }),
+    );
+
+    // Run hook from child directory
     await main({ installDir: path.join(childDir, ".claude") });
 
-    // Should warn - 2 ancestor installations
+    // Should warn - 2 total installations
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
     expect(output).toHaveProperty("systemMessage");
     expect(output.systemMessage).toContain("⚠️");
+    expect(output.systemMessage).toContain("Nested Nori Installation");
+    // Should show both installation locations
     expect(output.systemMessage).toContain(parentDir);
-    expect(output.systemMessage).toContain(grandparentDir);
+    expect(output.systemMessage).toContain(childDir);
   });
 });

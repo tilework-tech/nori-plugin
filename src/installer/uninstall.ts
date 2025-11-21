@@ -19,11 +19,7 @@ import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
 import { error, success, info, warn } from "@/installer/logger.js";
 import { promptUser } from "@/installer/prompt.js";
 import { getVersionFilePath } from "@/installer/version.js";
-import {
-  normalizeInstallDir,
-  hasNoriInstallation,
-  findAncestorInstallations,
-} from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 import type { Command } from "commander";
 
@@ -47,12 +43,15 @@ export const generatePromptConfig = async (args: {
 }): Promise<PromptConfig | null> => {
   let { installDir } = args;
 
-  // Check if there's a Nori installation in the current directory
-  const hasLocalInstall = hasNoriInstallation({ dir: installDir });
+  // Get all installations (current + ancestors)
+  const allInstallations = getInstallDirs({ currentDir: installDir });
+  const hasLocalInstall =
+    allInstallations.length > 0 && allInstallations[0] === installDir;
 
   // If no local installation, check ancestors
   if (!hasLocalInstall) {
-    const ancestors = findAncestorInstallations({ installDir });
+    // All found installations are ancestors (current dir not included)
+    const ancestors = allInstallations;
 
     if (ancestors.length === 0) {
       // No installation found anywhere
@@ -295,6 +294,14 @@ export const runUninstall = async (args: {
     ) {
       info({
         message: `Skipping ${loader.name} uninstall (preserving ~/.claude/settings.json)`,
+      });
+      continue;
+    }
+
+    // Skip config loader if removeConfig is false
+    if (!removeConfig && loader.name === "config") {
+      info({
+        message: "Skipping config uninstall (preserving config file)",
       });
       continue;
     }

@@ -28,6 +28,7 @@ import {
 } from "@/installer/config.js";
 import { getClaudeDir } from "@/installer/env.js";
 import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
+import { hasExistingInstallation } from "@/installer/installState.js";
 import {
   error,
   success,
@@ -42,13 +43,9 @@ import { promptUser } from "@/installer/prompt.js";
 import {
   getCurrentPackageVersion,
   getInstalledVersion,
-  hasExistingInstallation,
   saveInstalledVersion,
 } from "@/installer/version.js";
-import {
-  normalizeInstallDir,
-  findAncestorInstallations,
-} from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 import type { Command } from "commander";
 
@@ -327,10 +324,14 @@ export const interactive = async (args?: {
   const { skipUninstall, installDir } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
 
-  // Check for ancestor installations
-  const ancestorInstallations = findAncestorInstallations({
-    installDir: normalizedInstallDir,
+  // Check for ancestor installations that might cause conflicts
+  const allInstallations = getInstallDirs({
+    currentDir: normalizedInstallDir,
   });
+  // Filter out the current directory to get only ancestors
+  const ancestorInstallations = allInstallations.filter(
+    (dir) => dir !== normalizedInstallDir,
+  );
 
   if (ancestorInstallations.length > 0) {
     console.log();
@@ -527,9 +528,12 @@ export const noninteractive = async (args?: {
   const normalizedInstallDir = normalizeInstallDir({ installDir });
 
   // Check for ancestor installations (warn but continue)
-  const ancestorInstallations = findAncestorInstallations({
-    installDir: normalizedInstallDir,
+  const allInstallations = getInstallDirs({
+    currentDir: normalizedInstallDir,
   });
+  const ancestorInstallations = allInstallations.filter(
+    (dir) => dir !== normalizedInstallDir,
+  );
 
   if (ancestorInstallations.length > 0) {
     console.log();

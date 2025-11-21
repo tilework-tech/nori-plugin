@@ -54,74 +54,103 @@ export const normalizeInstallDir = (args: {
 };
 
 /**
- * Check if a directory has a Nori installation
+ * Get all directories that have Nori installations, starting from current directory
+ * Searches current directory first, then ancestors
  * @param args - Configuration arguments
- * @param args.dir - The directory to check
+ * @param args.currentDir - The directory to start searching from (defaults to process.cwd())
  *
- * @returns true if Nori is installed in this directory
+ * @returns Array of paths to directories with Nori installations, ordered from closest to furthest.
+ *   Returns empty array if no installations found.
  */
-export const hasNoriInstallation = (args: { dir: string }): boolean => {
-  const { dir } = args;
-
-  // Check for .nori-config.json (new style)
-  const newConfigPath = path.join(dir, ".nori-config.json");
-  if (fs.existsSync(newConfigPath)) {
-    return true;
-  }
-
-  // Check for nori-config.json (legacy style)
-  const legacyConfigPath = path.join(dir, "nori-config.json");
-  if (fs.existsSync(legacyConfigPath)) {
-    return true;
-  }
-
-  // Check for .claude/CLAUDE.md with NORI-AI MANAGED BLOCK
-  const claudeMdPath = path.join(dir, ".claude", "CLAUDE.md");
-  if (fs.existsSync(claudeMdPath)) {
-    try {
-      const content = fs.readFileSync(claudeMdPath, "utf-8");
-      if (content.includes("NORI-AI MANAGED BLOCK")) {
-        return true;
-      }
-    } catch {
-      // Ignore read errors
-    }
-  }
-
-  return false;
-};
-
-/**
- * Find all ancestor directories that have Nori installations
- * @param args - Configuration arguments
- * @param args.installDir - The installation directory to check from
- *
- * @returns Array of paths to ancestor directories with Nori installations, ordered from closest to furthest
- */
-export const findAncestorInstallations = (args: {
-  installDir: string;
+export const getInstallDirs = (args?: {
+  currentDir?: string | null;
 }): Array<string> => {
-  const { installDir } = args;
+  const currentDir = args?.currentDir || process.cwd();
   const results: Array<string> = [];
 
-  // Get the parent directory of the .claude directory
-  // If installDir is /foo/bar/.claude, we start checking from /foo (not /foo/bar)
-  let currentDir = path.dirname(installDir);
+  // Inline hasNoriInstallation logic
+  const hasCurrentInstallation = (() => {
+    // Check for .nori-config.json (new style)
+    const newConfigPath = path.join(currentDir, ".nori-config.json");
+    if (fs.existsSync(newConfigPath)) {
+      return true;
+    }
 
-  // If the installDir ends with .claude, get the grandparent
-  if (path.basename(installDir) === ".claude") {
-    currentDir = path.dirname(currentDir);
+    // Check for nori-config.json (legacy style)
+    const legacyConfigPath = path.join(currentDir, "nori-config.json");
+    if (fs.existsSync(legacyConfigPath)) {
+      return true;
+    }
+
+    // Check for .claude/CLAUDE.md with NORI-AI MANAGED BLOCK
+    const claudeMdPath = path.join(currentDir, ".claude", "CLAUDE.md");
+    if (fs.existsSync(claudeMdPath)) {
+      try {
+        const content = fs.readFileSync(claudeMdPath, "utf-8");
+        if (content.includes("NORI-AI MANAGED BLOCK")) {
+          return true;
+        }
+      } catch {
+        // Ignore read errors
+      }
+    }
+
+    return false;
+  })();
+
+  if (hasCurrentInstallation) {
+    results.push(currentDir);
+  }
+
+  // Inline findAncestorInstallations logic
+  // Get the parent directory of the .claude directory
+  // If currentDir is /foo/bar/.claude, we start checking from /foo (not /foo/bar)
+  let checkDir = path.dirname(currentDir);
+
+  // If the currentDir ends with .claude, get the grandparent
+  if (path.basename(currentDir) === ".claude") {
+    checkDir = path.dirname(checkDir);
   }
 
   // Walk up the directory tree
   let previousDir = "";
-  while (currentDir !== previousDir) {
-    if (hasNoriInstallation({ dir: currentDir })) {
-      results.push(currentDir);
+  while (checkDir !== previousDir) {
+    // Check for Nori installation in this ancestor directory
+    const hasAncestorInstallation = (() => {
+      // Check for .nori-config.json (new style)
+      const newConfigPath = path.join(checkDir, ".nori-config.json");
+      if (fs.existsSync(newConfigPath)) {
+        return true;
+      }
+
+      // Check for nori-config.json (legacy style)
+      const legacyConfigPath = path.join(checkDir, "nori-config.json");
+      if (fs.existsSync(legacyConfigPath)) {
+        return true;
+      }
+
+      // Check for .claude/CLAUDE.md with NORI-AI MANAGED BLOCK
+      const claudeMdPath = path.join(checkDir, ".claude", "CLAUDE.md");
+      if (fs.existsSync(claudeMdPath)) {
+        try {
+          const content = fs.readFileSync(claudeMdPath, "utf-8");
+          if (content.includes("NORI-AI MANAGED BLOCK")) {
+            return true;
+          }
+        } catch {
+          // Ignore read errors
+        }
+      }
+
+      return false;
+    })();
+
+    if (hasAncestorInstallation) {
+      results.push(checkDir);
     }
 
-    previousDir = currentDir;
-    currentDir = path.dirname(currentDir);
+    previousDir = checkDir;
+    checkDir = path.dirname(checkDir);
   }
 
   return results;

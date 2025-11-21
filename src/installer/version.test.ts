@@ -16,11 +16,11 @@ vi.mock("./env.js", () => {
 
 import { getConfigPath } from "./config.js";
 import { MCP_ROOT } from "./env.js";
+import { hasExistingInstallation } from "./installState.js";
 import {
   getCurrentPackageVersion,
   getInstalledVersion,
   saveInstalledVersion,
-  hasExistingInstallation,
 } from "./version.js";
 
 describe("version", () => {

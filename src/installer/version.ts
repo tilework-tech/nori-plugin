@@ -26,27 +26,6 @@ export const getVersionFilePath = (args: { installDir: string }): string => {
 };
 
 /**
- * Check if there's an existing installation
- * An installation exists if:
- * - Version file exists at <installDir>/.nori-installed-version
- * - OR config file exists at <installDir>/.nori-config.json
- *
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- *
- * @returns true if an installation exists, false otherwise
- */
-export const hasExistingInstallation = (args: {
-  installDir: string;
-}): boolean => {
-  const { installDir } = args;
-  const versionFileExists = existsSync(getVersionFilePath({ installDir }));
-  const configFilePath = join(installDir, ".nori-config.json");
-  const configFileExists = existsSync(configFilePath);
-  return versionFileExists || configFileExists;
-};
-
-/**
  * Get the current package version by reading package.json
  * This works for any installation method (global npm, npx, local node_modules)
  * @returns The current package version or null if not found

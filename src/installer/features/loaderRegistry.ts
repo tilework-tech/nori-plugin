@@ -3,9 +3,11 @@
  * Singleton registry that manages all feature loaders
  */
 
+import { configLoader } from "@/installer/features/config/loader.js";
 import { hooksLoader } from "@/installer/features/hooks/loader.js";
 import { profilesLoader } from "@/installer/features/profiles/loader.js";
 import { statuslineLoader } from "@/installer/features/statusline/loader.js";
+import { versionLoader } from "@/installer/features/version/loader.js";
 
 import type { Config } from "@/installer/config.js";
 
@@ -40,7 +42,12 @@ export class LoaderRegistry {
     this.loaders = new Map();
 
     // Register all loaders
-    // IMPORTANT: profilesLoader must run FIRST to compose profiles and install profile-dependent features
+    // IMPORTANT: Order matters!
+    // - version and config must run before profiles (profiles may depend on config)
+    // - profilesLoader must run after version/config to compose profiles and install profile-dependent features
+    // - During uninstall, the order is reversed automatically
+    this.loaders.set(versionLoader.name, versionLoader);
+    this.loaders.set(configLoader.name, configLoader);
     this.loaders.set(profilesLoader.name, profilesLoader);
     this.loaders.set(hooksLoader.name, hooksLoader);
     this.loaders.set(statuslineLoader.name, statuslineLoader);

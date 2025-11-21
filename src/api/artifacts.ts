@@ -57,7 +57,7 @@ export const artifactsApi = {
     const { id } = args;
 
     return apiRequest<Artifact>({
-      path: `/artifact/${id}`,
+      path: `/artifacts/${id}`,
       method: "GET",
       queryParams: { actor: "claude-code" },
     });

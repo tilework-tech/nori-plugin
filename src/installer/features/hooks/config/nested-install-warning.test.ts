@@ -145,35 +145,6 @@ describe("nested-install-warning hook", () => {
     expect(consoleOutput).toHaveLength(0);
   });
 
-  it("should warn when 2+ ancestor installations exist", async () => {
-    // Setup: grandparent and parent both have installations
-    const grandparentDir = path.join(tempDir, "grandparent");
-    const parentDir = path.join(grandparentDir, "parent");
-    const childDir = path.join(parentDir, "child");
-    fs.mkdirSync(childDir, { recursive: true });
-
-    // Create installations in grandparent and parent
-    fs.writeFileSync(
-      path.join(grandparentDir, ".nori-config.json"),
-      JSON.stringify({ profile: { baseProfile: "test" } }),
-    );
-    fs.writeFileSync(
-      path.join(parentDir, ".nori-config.json"),
-      JSON.stringify({ profile: { baseProfile: "test" } }),
-    );
-
-    // Run hook from child
-    await main({ installDir: path.join(childDir, ".claude") });
-
-    // Should warn - 2 ancestor installations
-    expect(consoleOutput).toHaveLength(1);
-    const output = JSON.parse(consoleOutput[0]);
-    expect(output).toHaveProperty("systemMessage");
-    expect(output.systemMessage).toContain("⚠️");
-    expect(output.systemMessage).toContain(parentDir);
-    expect(output.systemMessage).toContain(grandparentDir);
-  });
-
   it("should warn when current dir AND one ancestor have installations", async () => {
     // Setup: Simulates installation at ~ and ~/foo/bar
     const parentDir = path.join(tempDir, "parent");

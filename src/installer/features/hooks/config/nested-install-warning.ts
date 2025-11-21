@@ -7,9 +7,6 @@
  * It checks for Nori installations in ancestor directories and warns the user.
  */
 
-import * as path from "path";
-
-import { loadDiskConfig } from "@/installer/config.js";
 import { error } from "@/installer/logger.js";
 import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
@@ -37,30 +34,10 @@ export const main = async (args?: {
   installDir?: string | null;
 }): Promise<void> => {
   try {
-    let installDir = args?.installDir;
-
-    // If no installDir provided, load from config using cwd
-    if (installDir == null) {
-      const cwd = process.cwd();
-      const diskConfig = await loadDiskConfig({ installDir: cwd });
-      installDir = diskConfig?.installDir
-        ? normalizeInstallDir({ installDir: diskConfig.installDir })
-        : null;
-    }
-
-    // If still no installDir, use default (cwd)
-    if (installDir == null) {
-      installDir = normalizeInstallDir({});
-    }
-
     // Check for all installations in directory tree
-    // getInstallDirs expects the directory containing the installation, not the .claude subdir
-    // If installDir ends with .claude, use its parent; otherwise use installDir itself
-    const searchDir =
-      path.basename(installDir) === ".claude"
-        ? path.dirname(installDir)
-        : installDir;
-    const allInstallations = getInstallDirs({ currentDir: searchDir });
+    const allInstallations = getInstallDirs({
+      currentDir: normalizeInstallDir({ installDir: args?.installDir }),
+    });
 
     if (allInstallations.length < 2) {
       // Less than 2 total installations - no nested scenario

@@ -42,8 +42,7 @@ vi.mock("@/installer/version.js", () => ({
 
 // Mock path utilities
 vi.mock("@/utils/path.js", () => ({
-  hasNoriInstallation: vi.fn(),
-  findAncestorInstallations: vi.fn(),
+  getInstallDirs: vi.fn(),
 }));
 
 // Stub the __PACKAGE_VERSION__ that gets injected at build time
@@ -79,11 +78,9 @@ describe("autoupdate", () => {
 
       // Setup default mocks for path utilities
       // By default, assume config is found in cwd
-      const { hasNoriInstallation, findAncestorInstallations } = await import(
-        "@/utils/path.js"
-      );
-      vi.mocked(hasNoriInstallation).mockReturnValue(true);
-      vi.mocked(findAncestorInstallations).mockReturnValue([]);
+      const { getInstallDirs } = await import("@/utils/path.js");
+      // Mock getInstallDirs to return cwd as the install directory
+      vi.mocked(getInstallDirs).mockReturnValue(["/home/user/project"]);
 
       // Mock existsSync to return true by default (installDir exists)
       const { existsSync } = await import("fs");
@@ -698,19 +695,12 @@ describe("autoupdate", () => {
       process.cwd = vi.fn(() => "/home/user/foo/bar");
 
       // Mock path.ts functions
-      const { hasNoriInstallation, findAncestorInstallations } = await import(
-        "@/utils/path.js"
-      );
-      const hasNoriInstallationSpy = vi.mocked(hasNoriInstallation);
-      const findAncestorInstallationsSpy = vi.mocked(findAncestorInstallations);
+      const { getInstallDirs } = await import("@/utils/path.js");
+      const getInstallDirsSpy = vi.mocked(getInstallDirs);
 
-      // Mock hasNoriInstallation to return false for cwd, true for parent
-      hasNoriInstallationSpy.mockImplementation((args) => {
-        return args.dir === "/home/user";
-      });
-
-      // Mock findAncestorInstallations to return parent directory
-      findAncestorInstallationsSpy.mockReturnValue(["/home/user"]);
+      // Mock getInstallDirs to return parent directory as closest installation
+      // (cwd has no installation, but parent does)
+      getInstallDirsSpy.mockReturnValue(["/home/user"]);
 
       // Mock loadDiskConfig to return config with installDir
       const { loadDiskConfig } = await import("@/installer/config.js");
@@ -786,8 +776,7 @@ describe("autoupdate", () => {
       // Restore
       process.cwd = originalCwd;
       consoleLogSpy.mockRestore();
-      hasNoriInstallationSpy.mockRestore();
-      findAncestorInstallationsSpy.mockRestore();
+      getInstallDirsSpy.mockRestore();
     });
   });
 });

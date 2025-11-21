@@ -9,10 +9,7 @@
 
 import { loadDiskConfig } from "@/installer/config.js";
 import { error } from "@/installer/logger.js";
-import {
-  normalizeInstallDir,
-  findAncestorInstallations,
-} from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 /**
  * Output hook result with systemMessage
@@ -55,9 +52,11 @@ export const main = async (args?: {
     }
 
     // Check for ancestor installations
-    const ancestorInstallations = findAncestorInstallations({
-      installDir,
-    });
+    const allInstallations = getInstallDirs({ currentDir: installDir });
+    // Filter out the current directory to get only ancestors
+    const ancestorInstallations = allInstallations.filter(
+      (dir) => dir !== installDir,
+    );
 
     if (ancestorInstallations.length < 2) {
       // Less than 2 ancestor installations - no nested scenario

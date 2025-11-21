@@ -5,21 +5,36 @@
 
 import { unlinkSync, existsSync } from "fs";
 
-import { getConfigPath } from "@/installer/config.js";
+import { getConfigPath, saveDiskConfig } from "@/installer/config.js";
 import { info, success } from "@/installer/logger.js";
 
 import type { Config } from "@/installer/config.js";
 import type { Loader } from "@/installer/features/loaderRegistry.js";
 
 /**
- * Install config file - no-op, config is managed by install.ts
+ * Install config file - save config to disk
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
  */
 const installConfig = async (args: { config: Config }): Promise<void> => {
-  const { config: _config } = args;
-  // Config file creation is handled by install.ts via saveDiskConfig()
-  // This loader only handles uninstall
+  const { config } = args;
+
+  // Extract auth credentials from config
+  const username = config.auth?.username ?? null;
+  const password = config.auth?.password ?? null;
+  const organizationUrl = config.auth?.organizationUrl ?? null;
+
+  // Save config to disk
+  await saveDiskConfig({
+    username,
+    password,
+    organizationUrl,
+    profile: config.profile ?? null,
+    installDir: config.installDir,
+  });
+
+  const configPath = getConfigPath({ installDir: config.installDir });
+  success({ message: `✓ Config file created: ${configPath}` });
 };
 
 /**

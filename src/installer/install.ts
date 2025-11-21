@@ -46,10 +46,7 @@ import {
   getInstalledVersion,
   saveInstalledVersion,
 } from "@/installer/version.js";
-import {
-  normalizeInstallDir,
-  findAncestorInstallations,
-} from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 import type { Command } from "commander";
 
@@ -321,9 +318,13 @@ export const main = async (args?: {
   try {
     // Check for ancestor installations that might cause conflicts
     const normalizedInstallDir = normalizeInstallDir({ installDir });
-    const ancestorInstallations = findAncestorInstallations({
-      installDir: normalizedInstallDir,
+    const allInstallations = getInstallDirs({
+      currentDir: normalizedInstallDir,
     });
+    // Filter out the current directory to get only ancestors
+    const ancestorInstallations = allInstallations.filter(
+      (dir) => dir !== normalizedInstallDir,
+    );
 
     if (ancestorInstallations.length > 0) {
       console.log(); // Add spacing

@@ -26,14 +26,22 @@ describe("configLoader", () => {
   });
 
   describe("run", () => {
-    it("should not create config file (config is managed by install.ts)", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+    it("should create config file", async () => {
+      const config: Config = {
+        installType: "free",
+        installDir: tempDir,
+        profile: { baseProfile: "senior-swe" },
+      };
 
       await configLoader.run({ config });
 
       const configFile = getConfigPath({ installDir: tempDir });
-      // The loader doesn't create the file - that's handled by install.ts
-      expect(fs.existsSync(configFile)).toBe(false);
+      expect(fs.existsSync(configFile)).toBe(true);
+
+      // Verify file contents
+      const fileContents = JSON.parse(fs.readFileSync(configFile, "utf-8"));
+      expect(fileContents.installDir).toBe(tempDir);
+      expect(fileContents.profile).toEqual({ baseProfile: "senior-swe" });
     });
   });
 

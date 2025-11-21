@@ -25,11 +25,7 @@ import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
 import { error, success, info, warn } from "@/installer/logger.js";
 import { promptUser } from "@/installer/prompt.js";
 import { getVersionFilePath } from "@/installer/version.js";
-import {
-  normalizeInstallDir,
-  hasNoriInstallation,
-  findAncestorInstallations,
-} from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 import type { Command } from "commander";
 
@@ -48,12 +44,15 @@ const promptForUninstall = async (args: {
 } | null> => {
   let { installDir } = args;
 
-  // Check if there's a Nori installation in the current directory
-  const hasLocalInstall = hasNoriInstallation({ dir: installDir });
+  // Get all installations (current + ancestors)
+  const allInstallations = getInstallDirs({ currentDir: installDir });
+  const hasLocalInstall =
+    allInstallations.length > 0 && allInstallations[0] === installDir;
 
   // If no local installation, check ancestors
   if (!hasLocalInstall) {
-    const ancestors = findAncestorInstallations({ installDir });
+    // All found installations are ancestors (current dir not included)
+    const ancestors = allInstallations;
 
     if (ancestors.length === 0) {
       // No installation found anywhere

@@ -15,10 +15,7 @@ import { trackEvent } from "@/installer/analytics.js";
 import { loadDiskConfig } from "@/installer/config.js";
 import { error } from "@/installer/logger.js";
 import { getInstalledVersion } from "@/installer/version.js";
-import {
-  hasNoriInstallation,
-  findAncestorInstallations,
-} from "@/utils/path.js";
+import { getInstallDirs } from "@/utils/path.js";
 
 const PACKAGE_NAME = "nori-ai";
 
@@ -116,15 +113,8 @@ const main = async (): Promise<void> => {
     const cwd = process.cwd();
 
     // Find Nori installation by searching upward from cwd
-    let configDir: string | null = null;
-    if (hasNoriInstallation({ dir: cwd })) {
-      configDir = cwd;
-    } else {
-      const ancestors = findAncestorInstallations({ installDir: cwd });
-      if (ancestors.length > 0) {
-        configDir = ancestors[0]; // closest ancestor
-      }
-    }
+    const allInstallations = getInstallDirs({ currentDir: cwd });
+    const configDir = allInstallations.length > 0 ? allInstallations[0] : null;
 
     if (configDir == null) {
       // No config found - log to notifications and exit

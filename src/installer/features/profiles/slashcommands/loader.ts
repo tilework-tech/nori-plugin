@@ -11,10 +11,8 @@ import { getClaudeDir, getClaudeCommandsDir } from "@/installer/env.js";
 import { success, info, warn } from "@/installer/logger.js";
 
 import type { Config } from "@/installer/config.js";
-import type {
-  Loader,
-  ValidationResult,
-} from "@/installer/features/loaderRegistry.js";
+import type { ValidationResult } from "@/installer/features/loaderRegistry.js";
+import type { ProfileLoader } from "@/installer/features/profiles/profileLoaderRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
@@ -253,10 +251,10 @@ const validate = async (args: {
 /**
  * Slash commands feature loader
  */
-export const slashCommandsLoader: Loader = {
+export const slashCommandsLoader: ProfileLoader = {
   name: "slashcommands",
   description: "Register all Nori slash commands with Claude Code",
-  run: async (args: { config: Config }) => {
+  install: async (args: { config: Config }) => {
     const { config } = args;
     await registerSlashCommands({ config });
   },

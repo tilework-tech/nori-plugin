@@ -17,10 +17,8 @@ import {
 } from "@/utils/template.js";
 
 import type { Config } from "@/installer/config.js";
-import type {
-  Loader,
-  ValidationResult,
-} from "@/installer/features/loaderRegistry.js";
+import type { ValidationResult } from "@/installer/features/loaderRegistry.js";
+import type { ProfileLoader } from "@/installer/features/profiles/profileLoaderRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
@@ -429,10 +427,10 @@ const validate = async (args: {
 /**
  * CLAUDE.md feature loader
  */
-export const claudeMdLoader: Loader = {
+export const claudeMdLoader: ProfileLoader = {
   name: "claudemd",
   description: "Configure CLAUDE.md with coding task instructions",
-  run: async (args: { config: Config }) => {
+  install: async (args: { config: Config }) => {
     const { config } = args;
     await insertClaudeMd({ config });
   },

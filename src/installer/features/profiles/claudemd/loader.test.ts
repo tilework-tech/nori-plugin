@@ -67,7 +67,7 @@ describe("claudeMdLoader", () => {
     it("should create CLAUDE.md with managed block for free installation", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Verify file exists
       const content = await fs.readFile(claudeMdPath, "utf-8");
@@ -88,7 +88,7 @@ describe("claudeMdLoader", () => {
     it("should create CLAUDE.md with managed block for paid installation", async () => {
       const config: Config = { installType: "paid", installDir: tempDir };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Verify file exists
       const content = await fs.readFile(claudeMdPath, "utf-8");
@@ -110,7 +110,7 @@ describe("claudeMdLoader", () => {
         "# My Custom Instructions\n\nUser-specific content here.\n";
       await fs.writeFile(claudeMdPath, userContent);
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Verify file exists
       const content = await fs.readFile(claudeMdPath, "utf-8");
@@ -142,7 +142,7 @@ More user instructions.
 `;
       await fs.writeFile(claudeMdPath, existingContent);
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Verify file exists
       const content = await fs.readFile(claudeMdPath, "utf-8");
@@ -171,7 +171,7 @@ More user instructions.
         profile: { baseProfile: "senior-swe" },
         installDir: tempDir,
       };
-      await claudeMdLoader.run({ config: seniorSweConfig });
+      await claudeMdLoader.install({ config: seniorSweConfig });
 
       const seniorSweContent = await fs.readFile(claudeMdPath, "utf-8");
       expect(seniorSweContent).toContain(
@@ -184,7 +184,7 @@ More user instructions.
         profile: { baseProfile: "amol" },
         installDir: tempDir,
       };
-      await claudeMdLoader.run({ config: amolConfig });
+      await claudeMdLoader.install({ config: amolConfig });
 
       const amolContent = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -202,7 +202,7 @@ More user instructions.
       const config: Config = { installType: "free", installDir: tempDir };
 
       // First install
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Add some user content before uninstalling
       let content = await fs.readFile(claudeMdPath, "utf-8");
@@ -228,7 +228,7 @@ More user instructions.
       const config: Config = { installType: "free", installDir: tempDir };
 
       // Install (creates CLAUDE.md with only managed block)
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Uninstall
       await claudeMdLoader.uninstall({ config });
@@ -273,63 +273,7 @@ More user instructions.
     });
   });
 
-  describe("validate", () => {
-    it("should return valid for properly installed CLAUDE.md", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Install
-      await claudeMdLoader.run({ config });
-
-      // Validate
-      if (claudeMdLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await claudeMdLoader.validate({ config });
-
-      expect(result.valid).toBe(true);
-      expect(result.message).toContain("properly configured");
-      expect(result.errors).toBeNull();
-    });
-
-    it("should return invalid when CLAUDE.md does not exist", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Validate without installing
-      if (claudeMdLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await claudeMdLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("not found");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-      expect(result.errors?.[0]).toContain("CLAUDE.md not found");
-    });
-
-    it("should return invalid when managed block is missing", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Create CLAUDE.md without managed block
-      const userContent = "# User Instructions\n\nNo nori content here.\n";
-      await fs.writeFile(claudeMdPath, userContent);
-
-      // Validate
-      if (claudeMdLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await claudeMdLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("managed block missing");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-      expect(result.errors?.[0]).toContain("Nori managed block not found");
-    });
-  });
+  // Validate tests removed - validation is now handled at profilesLoader level
 
   describe("profile-based CLAUDE.md loading", () => {
     it("should load CLAUDE.md from selected profile", async () => {
@@ -339,7 +283,7 @@ More user instructions.
         installDir: tempDir,
       };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -360,7 +304,7 @@ More user instructions.
         installDir: tempDir,
       };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -374,7 +318,7 @@ More user instructions.
     it("should use default profile (senior-swe) when no profile specified", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -393,7 +337,7 @@ More user instructions.
         installDir: tempDir,
       };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -416,7 +360,7 @@ More user instructions.
         installDir: tempDir,
       };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -442,7 +386,7 @@ More user instructions.
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -463,7 +407,7 @@ More user instructions.
         installDir: tempDir,
       };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 
@@ -482,7 +426,7 @@ More user instructions.
         installDir: tempDir,
       };
 
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       const content = await fs.readFile(claudeMdPath, "utf-8");
 

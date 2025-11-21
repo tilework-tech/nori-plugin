@@ -67,7 +67,7 @@ describe("skillsLoader", () => {
     it("should create skills directory", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify skills directory exists
       const exists = await fs
@@ -85,7 +85,7 @@ describe("skillsLoader", () => {
       await fs.mkdir(skillsDir, { recursive: true });
       await fs.writeFile(path.join(skillsDir, "old-skill.json"), "old content");
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify old file is gone
       const oldFileExists = await fs
@@ -100,7 +100,7 @@ describe("skillsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // First installation
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const firstCheck = await fs
         .access(skillsDir)
@@ -109,7 +109,7 @@ describe("skillsLoader", () => {
       expect(firstCheck).toBe(true);
 
       // Second installation (update)
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const secondCheck = await fs
         .access(skillsDir)
@@ -124,7 +124,7 @@ describe("skillsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // Install first
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify it exists
       let exists = await fs
@@ -160,47 +160,14 @@ describe("skillsLoader", () => {
     });
   });
 
-  describe("validate", () => {
-    it("should return valid for properly installed skills", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Install
-      await skillsLoader.run({ config });
-
-      // Validate
-      if (skillsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await skillsLoader.validate({ config });
-
-      expect(result.valid).toBe(true);
-      expect(result.message).toContain("properly installed");
-      expect(result.errors).toBeNull();
-    });
-
-    it("should return invalid when skills directory does not exist", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Validate without installing
-      if (skillsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await skillsLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("not found");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-    });
-  });
+  // Validate tests removed - no longer relevant as skills are now installed via profilesLoader
+  // Validation is tested at the profilesLoader level
 
   describe("updating-noridocs skill", () => {
     it("should include updating-noridocs skill", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Check if the updating-noridocs skill exists
       const skillPath = path.join(skillsDir, "updating-noridocs", "SKILL.md");
@@ -228,7 +195,7 @@ describe("skillsLoader", () => {
         installDir: tempDir,
       };
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Check a skill that references {{skills_dir}}
       const skillPath = path.join(skillsDir, "using-skills", "SKILL.md");
@@ -256,7 +223,7 @@ describe("skillsLoader", () => {
 
       // Run profiles loader for custom install
       await profilesLoader.run({ config });
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Check a skill that references {{skills_dir}}
       const skillPath = path.join(
@@ -294,7 +261,7 @@ describe("skillsLoader", () => {
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Should exist without prefix
       const memorizeExists = await fs
@@ -316,7 +283,7 @@ describe("skillsLoader", () => {
     it("should not install paid-prefixed skills for free tier", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Should not exist with or without prefix
       const memorizeExists = await fs
@@ -348,7 +315,7 @@ describe("skillsLoader", () => {
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const skillPath = path.join(skillsDir, "recall", "SKILL.md");
 
@@ -374,7 +341,7 @@ describe("skillsLoader", () => {
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const skillPath = path.join(skillsDir, "read-noridoc", "SKILL.md");
 
@@ -400,7 +367,7 @@ describe("skillsLoader", () => {
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const skillPath = path.join(skillsDir, "write-noridoc", "SKILL.md");
 
@@ -426,7 +393,7 @@ describe("skillsLoader", () => {
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const skillPath = path.join(skillsDir, "list-noridocs", "SKILL.md");
 
@@ -441,7 +408,7 @@ describe("skillsLoader", () => {
     it("should not install any paid skills for free tier", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const paidSkills = [
         "memorize",
@@ -467,7 +434,7 @@ describe("skillsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
       const settingsPath = path.join(claudeDir, "settings.json");
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify settings.json exists
       const exists = await fs
@@ -503,7 +470,7 @@ describe("skillsLoader", () => {
         ),
       );
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify existing settings are preserved
       const content = await fs.readFile(settingsPath, "utf-8");
@@ -519,10 +486,10 @@ describe("skillsLoader", () => {
       const settingsPath = path.join(claudeDir, "settings.json");
 
       // First installation
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Second installation (update scenario)
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify skills directory appears only once
       const content = await fs.readFile(settingsPath, "utf-8");
@@ -554,7 +521,7 @@ describe("skillsLoader", () => {
         ),
       );
 
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify existing paths are preserved
       const content = await fs.readFile(settingsPath, "utf-8");
@@ -575,7 +542,7 @@ describe("skillsLoader", () => {
       const settingsPath = path.join(claudeDir, "settings.json");
 
       // Install first
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify permissions are configured
       let content = await fs.readFile(settingsPath, "utf-8");
@@ -614,7 +581,7 @@ describe("skillsLoader", () => {
       );
 
       // Install (adds skills directory)
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Uninstall
       await skillsLoader.uninstall({ config });
@@ -646,7 +613,7 @@ describe("skillsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // Install
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Validate
       if (skillsLoader.validate == null) {
@@ -664,7 +631,7 @@ describe("skillsLoader", () => {
       const settingsPath = path.join(claudeDir, "settings.json");
 
       // Install skills but manually remove permissions
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       const content = await fs.readFile(settingsPath, "utf-8");
       const settings = JSON.parse(content);

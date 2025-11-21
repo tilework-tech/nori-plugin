@@ -10,9 +10,9 @@ import * as path from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { loadDiskConfig, generateConfig, type Config } from "./config.js";
-import { claudeMdLoader } from "./features/claudemd/loader.js";
+import { claudeMdLoader } from "./features/profiles/claudemd/loader.js";
 import { profilesLoader } from "./features/profiles/loader.js";
-import { skillsLoader } from "./features/skills/loader.js";
+import { skillsLoader } from "./features/profiles/skills/loader.js";
 
 // Mock env module to use test directories
 let mockInstallDir: string;
@@ -120,7 +120,7 @@ describe("configurable install directory integration", () => {
       await profilesLoader.run({ config });
 
       // Then install skills
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify skills were installed to custom location
       const skillsDir = path.join(customInstallDir, ".claude", "skills");
@@ -146,7 +146,7 @@ describe("configurable install directory integration", () => {
       await profilesLoader.run({ config });
 
       // Then create CLAUDE.md
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Verify CLAUDE.md was created
       const claudeMdPath = path.join(customInstallDir, ".claude", "CLAUDE.md");
@@ -172,7 +172,7 @@ describe("configurable install directory integration", () => {
       await profilesLoader.run({ config });
 
       // Install skills (adds to settings.json permissions)
-      await skillsLoader.run({ config });
+      await skillsLoader.install({ config });
 
       // Verify settings.json was created
       const settingsPath = path.join(
@@ -226,7 +226,7 @@ describe("configurable install directory integration", () => {
       await profilesLoader.run({ config });
 
       // Then create CLAUDE.md
-      await claudeMdLoader.run({ config });
+      await claudeMdLoader.install({ config });
 
       // Read CLAUDE.md content
       const claudeMdPath = path.join(customInstallDir, ".claude", "CLAUDE.md");

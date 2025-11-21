@@ -16,10 +16,8 @@ import { success, info, warn } from "@/installer/logger.js";
 import { substituteTemplatePaths } from "@/utils/template.js";
 
 import type { Config } from "@/installer/config.js";
-import type {
-  Loader,
-  ValidationResult,
-} from "@/installer/features/loaderRegistry.js";
+import type { ValidationResult } from "@/installer/features/loaderRegistry.js";
+import type { ProfileLoader } from "@/installer/features/profiles/profileLoaderRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
@@ -402,10 +400,10 @@ const validate = async (args: {
 /**
  * Skills feature loader
  */
-export const skillsLoader: Loader = {
+export const skillsLoader: ProfileLoader = {
   name: "skills",
   description: "Install skill configuration files",
-  run: async (args: { config: Config }) => {
+  install: async (args: { config: Config }) => {
     const { config } = args;
     await installSkills({ config });
   },

@@ -114,18 +114,11 @@ describe("build process", () => {
 
       // Verify all features validated successfully
       // This proves the build script copied all necessary config files
-      expect(checkOutput).toContain("✓ skills: Skills are properly installed");
-      expect(checkOutput).toContain(
-        "✓ claudemd: CLAUDE.md is properly configured",
-      );
+      // Note: skills, claudemd, slashcommands, subagents are now validated via profilesLoader
       expect(checkOutput).toContain("✓ hooks: Hooks are properly configured");
       expect(checkOutput).toContain(
         "✓ profiles: All required profiles are properly installed",
       );
-      expect(checkOutput).toContain(
-        "✓ slashcommands: All 5 slash commands are properly installed",
-      );
-      expect(checkOutput).toContain("subagents are properly installed");
     } catch (error: unknown) {
       if (error && typeof error === "object") {
         const execError = error as {

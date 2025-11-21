@@ -68,7 +68,7 @@ describe("slashCommandsLoader", () => {
     it("should create commands directory and copy slash command files for free installation", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       // Verify commands directory exists
       const exists = await fs
@@ -86,7 +86,7 @@ describe("slashCommandsLoader", () => {
     it("should create commands directory and copy slash command files for paid installation", async () => {
       const config: Config = { installType: "paid", installDir: tempDir };
 
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       // Verify commands directory exists
       const exists = await fs
@@ -105,13 +105,13 @@ describe("slashCommandsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // First installation
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       const firstFiles = await fs.readdir(commandsDir);
       expect(firstFiles.length).toBeGreaterThan(0);
 
       // Second installation (update)
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       const secondFiles = await fs.readdir(commandsDir);
       expect(secondFiles.length).toBeGreaterThan(0);
@@ -123,7 +123,7 @@ describe("slashCommandsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // Install first
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       // Verify files exist
       let files = await fs.readdir(commandsDir);
@@ -158,58 +158,5 @@ describe("slashCommandsLoader", () => {
     });
   });
 
-  describe("validate", () => {
-    it("should return valid for properly installed slash commands", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Install
-      await slashCommandsLoader.run({ config });
-
-      // Validate
-      if (slashCommandsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await slashCommandsLoader.validate({ config });
-
-      expect(result.valid).toBe(true);
-      expect(result.message).toContain("properly installed");
-      expect(result.errors).toBeNull();
-    });
-
-    it("should return invalid when commands directory does not exist", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Validate without installing
-      if (slashCommandsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await slashCommandsLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("not found");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-    });
-
-    it("should return invalid when slash command files are missing", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Create commands directory but don't install slash commands
-      await fs.mkdir(commandsDir, { recursive: true });
-
-      // Validate
-      if (slashCommandsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await slashCommandsLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("not installed");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-    });
-  });
+  // Validate tests removed - validation is now handled at profilesLoader level
 });

@@ -148,7 +148,7 @@ describe("paid-recall script", () => {
       await expect(main()).rejects.toThrow("process.exit(1)");
       expect(processExitSpy).toHaveBeenCalledWith(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Error: --query parameter is required",
+        "Error: Either --query or --id parameter is required",
       );
     });
 
@@ -180,6 +180,47 @@ describe("paid-recall script", () => {
     it("should output formatted search results", async () => {
       // Test structure for API mock integration
       expect(true).toBe(true);
+    });
+  });
+
+  describe("--id parameter", () => {
+    it("should fail when both --id and --query are provided", async () => {
+      await fs.mkdir(path.dirname(tempConfigPath), { recursive: true });
+      await fs.writeFile(
+        tempConfigPath,
+        JSON.stringify({
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://test.nori.ai",
+        }),
+      );
+
+      process.argv = ["node", "script.js", "--id=nori_test123", "--query=test"];
+
+      await expect(main()).rejects.toThrow("process.exit(1)");
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Error: --id and --query are mutually exclusive. Provide one or the other.",
+      );
+    });
+
+    it("should fail when neither --id nor --query are provided", async () => {
+      await fs.mkdir(path.dirname(tempConfigPath), { recursive: true });
+      await fs.writeFile(
+        tempConfigPath,
+        JSON.stringify({
+          username: "test@example.com",
+          password: "password",
+          organizationUrl: "https://test.nori.ai",
+        }),
+      );
+
+      process.argv = ["node", "script.js"];
+
+      await expect(main()).rejects.toThrow("process.exit(1)");
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+      const errorCalls = consoleErrorSpy.mock.calls.flat().join("\n");
+      expect(errorCalls).toMatch(/Usage:/);
     });
   });
 });

@@ -34,31 +34,40 @@ import type { Artifact } from "@/api/index.js";
  * Show usage information
  */
 const showUsage = (): void => {
-  console.error(`Usage: node script.js --query="Search query" [--limit=10]
+  console.error(`Usage:
+  node script.js --query="Search query" [--limit=10]
+  node script.js --id="artifact_id"
 
 Parameters:
-  --query      (required) Describe what you're trying to do or problem you're solving
-  --limit      (optional) Maximum results (default: 10)
+  --query      Search for artifacts (mutually exclusive with --id)
+  --id         Fetch a specific artifact by ID (mutually exclusive with --query)
+  --limit      Maximum search results (default: 10, only applies to --query)
 
-Example:
+Examples:
+  # Search for artifacts
   node script.js --query="implementing authentication endpoints" --limit=5
 
+  # Fetch specific artifact by ID
+  node script.js --id="nori_abc123def456"
+
 Description:
-  Searches the shared knowledge base for relevant context.
+  Search mode (--query):
+    Searches the shared knowledge base for relevant context.
+    Returns snippets from matching artifacts.
+
+  Fetch mode (--id):
+    Retrieves the complete content of a specific artifact.
+    Displays full artifact without truncation.
 
   The knowledge base contains:
   - Previous solutions and debugging sessions
   - User-provided docs and project context
   - Code patterns and architectural decisions
-  - Bug reports and conventions
-
-  Search modes:
-  - Full text, fuzzy matching, and vector search all enabled
-  - Returns best matches across all modes`);
+  - Bug reports and conventions`);
 };
 
 /**
- * Format artifact for display
+ * Format artifact for display in search results (truncated)
  * @param args - Formatting arguments
  * @param args.artifact - Artifact to format
  * @param args.index - Zero-based index for numbered display
@@ -80,6 +89,26 @@ const formatArtifact = (args: {
        ? artifact.content.substring(0, 200) + "..."
        : artifact.content
    }`;
+};
+
+/**
+ * Format full artifact for display (no truncation)
+ * @param args - Formatting arguments
+ * @param args.artifact - Artifact to format
+ *
+ * @returns Formatted string
+ */
+const formatFullArtifact = (args: { artifact: Artifact }): string => {
+  const { artifact } = args;
+
+  return `Artifact: ${artifact.name}
+ID: ${artifact.id}
+Type: ${artifact.type}
+Repository: ${artifact.repository}
+Created: ${new Date(artifact.createdAt).toLocaleString()}
+Updated: ${new Date(artifact.updatedAt).toLocaleString()}
+
+${artifact.content}`;
 };
 
 /**
@@ -111,54 +140,74 @@ export const main = async (): Promise<void> => {
   // 3. Parse and validate arguments
   const args = minimist(process.argv.slice(2));
 
-  if (args.query == null) {
-    console.error("Error: --query parameter is required");
+  // Check for mutual exclusivity
+  if (args.id != null && args.query != null) {
+    console.error(
+      "Error: --id and --query are mutually exclusive. Provide one or the other.",
+    );
+    process.exit(1);
+  }
+
+  // Check that at least one is provided
+  if (args.id == null && args.query == null) {
+    console.error("Error: Either --query or --id parameter is required");
     console.error("");
     showUsage();
     process.exit(1);
   }
 
-  const query = args.query as string;
-  const limit = (args.limit as number | null) ?? 10;
+  // 4. Execute API call based on mode
+  if (args.id != null) {
+    // Fetch mode - get single artifact by ID
+    const id = args.id as string;
+    const artifact = await apiClient.artifacts.get({ id });
 
-  // 4. Execute API call
-  const result = await apiClient.query.search({
-    query,
-    limit,
-    fuzzySearch: true,
-    vectorSearch: true,
-  });
+    // 5. Format and display full artifact
+    const formatted = formatFullArtifact({ artifact });
+    console.log(formatted);
+  } else {
+    // Search mode - search for artifacts
+    const query = args.query as string;
+    const limit = (args.limit as number | null) ?? 10;
 
-  // 5. Format and display output
-  if (!result.results || result.results.length === 0) {
-    console.log(`No artifacts found matching query: "${query}"`);
-    return;
+    const result = await apiClient.query.search({
+      query,
+      limit,
+      fuzzySearch: true,
+      vectorSearch: true,
+    });
+
+    // 5. Format and display output
+    if (!result.results || result.results.length === 0) {
+      console.log(`No artifacts found matching query: "${query}"`);
+      return;
+    }
+
+    const formattedResults = result.results
+      .map((artifact, index) => formatArtifact({ artifact, index }))
+      .join("\n\n");
+
+    let sourcesInfo = "";
+    if (result.sources) {
+      const sources = [];
+      if (result.sources.keywordSearch.length > 0) {
+        sources.push(`Keyword: ${result.sources.keywordSearch.length}`);
+      }
+      if (result.sources.fuzzySearch.length > 0) {
+        sources.push(`Fuzzy: ${result.sources.fuzzySearch.length}`);
+      }
+      if (result.sources.vectorSearch.length > 0) {
+        sources.push(`Vector: ${result.sources.vectorSearch.length}`);
+      }
+      if (sources.length > 0) {
+        sourcesInfo = `\n\nSearch sources: ${sources.join(", ")}`;
+      }
+    }
+
+    console.log(
+      `Found ${result.results.length} artifacts matching "${query}":\n\n${formattedResults}${sourcesInfo}`,
+    );
   }
-
-  const formattedResults = result.results
-    .map((artifact, index) => formatArtifact({ artifact, index }))
-    .join("\n\n");
-
-  let sourcesInfo = "";
-  if (result.sources) {
-    const sources = [];
-    if (result.sources.keywordSearch.length > 0) {
-      sources.push(`Keyword: ${result.sources.keywordSearch.length}`);
-    }
-    if (result.sources.fuzzySearch.length > 0) {
-      sources.push(`Fuzzy: ${result.sources.fuzzySearch.length}`);
-    }
-    if (result.sources.vectorSearch.length > 0) {
-      sources.push(`Vector: ${result.sources.vectorSearch.length}`);
-    }
-    if (sources.length > 0) {
-      sourcesInfo = `\n\nSearch sources: ${sources.join(", ")}`;
-    }
-  }
-
-  console.log(
-    `Found ${result.results.length} artifacts matching "${query}":\n\n${formattedResults}${sourcesInfo}`,
-  );
 };
 
 // Run main function if executed directly

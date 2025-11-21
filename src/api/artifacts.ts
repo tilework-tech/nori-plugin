@@ -53,6 +53,16 @@ export const artifactsApi = {
     });
   },
 
+  get: async (args: { id: string }): Promise<Artifact> => {
+    const { id } = args;
+
+    return apiRequest<Artifact>({
+      path: `/artifact/${id}`,
+      method: "GET",
+      queryParams: { actor: "claude-code" },
+    });
+  },
+
   replace: async (args: ReplaceInArtifactRequest): Promise<Artifact> => {
     const { id, old_string, new_string } = args;
 

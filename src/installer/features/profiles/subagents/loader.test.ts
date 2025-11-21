@@ -172,6 +172,37 @@ describe("subagentsLoader", () => {
       const secondFiles = await fs.readdir(agentsDir);
       expect(secondFiles.length).toBeGreaterThan(0);
     });
+
+    it("should install nori-code-reviewer subagent for free installation", async () => {
+      const config: Config = { installType: "free", installDir: tempDir };
+
+      await subagentsLoader.install({ config });
+
+      // Verify agents directory exists
+      const exists = await fs
+        .access(agentsDir)
+        .then(() => true)
+        .catch(() => false);
+
+      expect(exists).toBe(true);
+
+      // Verify nori-code-reviewer.md was copied
+      const fileNames = await fs.readdir(agentsDir);
+      const hasCodeReviewer = fileNames.includes("nori-code-reviewer.md");
+      expect(hasCodeReviewer).toBe(true);
+
+      // Verify the file has valid YAML frontmatter
+      const fileContent = await fs.readFile(
+        path.join(agentsDir, "nori-code-reviewer.md"),
+        "utf-8",
+      );
+
+      // Check for required frontmatter fields
+      expect(fileContent).toContain("name: nori-code-reviewer");
+      expect(fileContent).toContain("description:");
+      expect(fileContent).toContain("tools:");
+      expect(fileContent).toContain("model:");
+    });
   });
 
   describe("uninstall", () => {

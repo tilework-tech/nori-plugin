@@ -459,8 +459,3 @@ export const registerUninstallCommand = (args: { program: Command }): void => {
       });
     });
 };
-
-// Run the uninstaller if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
-}

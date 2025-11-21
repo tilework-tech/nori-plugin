@@ -609,8 +609,3 @@ export const registerInstallCommand = (args: { program: Command }): void => {
       });
     });
 };
-
-// Run the installer if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
-}

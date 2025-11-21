@@ -560,7 +560,8 @@ describe("profilesLoader", () => {
         "/existing/path2",
       );
       expect(settings.permissions.additionalDirectories).toContain(profilesDir);
-      expect(settings.permissions.additionalDirectories.length).toBe(3);
+      // Now includes profiles + skills directories (profilesLoader calls skillsLoader)
+      expect(settings.permissions.additionalDirectories.length).toBe(4);
     });
 
     it("should remove permissions on uninstall", async () => {

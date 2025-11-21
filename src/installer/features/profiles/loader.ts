@@ -11,6 +11,7 @@ import {
   getClaudeProfilesDir,
   getClaudeSettingsFile,
 } from "@/installer/env.js";
+import { ProfileLoaderRegistry } from "@/installer/features/profiles/profileLoaderRegistry.js";
 import {
   readProfileMetadata,
   type ProfileMetadata,
@@ -575,9 +576,24 @@ export const profilesLoader: Loader = {
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installProfiles({ config });
+
+    // Install all profile-dependent features
+    const registry = ProfileLoaderRegistry.getInstance();
+    const loaders = registry.getAll();
+    for (const loader of loaders) {
+      await loader.install({ config });
+    }
   },
   uninstall: async (args: { config: Config }) => {
     const { config } = args;
+
+    // Uninstall profile-dependent features in reverse order
+    const registry = ProfileLoaderRegistry.getInstance();
+    const loaders = registry.getAllReversed();
+    for (const loader of loaders) {
+      await loader.uninstall({ config });
+    }
+
     await uninstallProfiles({ config });
   },
   validate,

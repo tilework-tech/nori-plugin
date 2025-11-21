@@ -50,8 +50,8 @@ vi.mock("@/installer/logger.js", () => ({
 
 // Import after mocking
 import { profilesLoader } from "@/installer/features/profiles/loader.js";
-import { slashCommandsLoader } from "@/installer/features/slashcommands/loader.js";
-import { subagentsLoader } from "@/installer/features/subagents/loader.js";
+import { slashCommandsLoader } from "@/installer/features/profiles/slashcommands/loader.js";
+import { subagentsLoader } from "@/installer/features/profiles/subagents/loader.js";
 
 import { runUninstall } from "./uninstall.js";
 
@@ -112,7 +112,7 @@ describe("uninstall cleanup", () => {
       await profilesLoader.run({ config });
 
       // Install subagents (copies files to ~/.claude/agents/)
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Verify agents were installed
       const agentFiles = await fs.readdir(agentsDir);
@@ -146,7 +146,7 @@ describe("uninstall cleanup", () => {
       await profilesLoader.run({ config });
 
       // Install slash commands (copies files to ~/.claude/commands/)
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       // Verify commands were installed
       const commandFiles = await fs.readdir(commandsDir);
@@ -186,7 +186,7 @@ describe("uninstall cleanup", () => {
 
       // Install profiles and subagents
       await profilesLoader.run({ config });
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Verify agents directory exists with files
       const agentFiles = await fs.readdir(agentsDir);
@@ -213,7 +213,7 @@ describe("uninstall cleanup", () => {
 
       // Install profiles and slash commands
       await profilesLoader.run({ config });
-      await slashCommandsLoader.run({ config });
+      await slashCommandsLoader.install({ config });
 
       // Verify commands directory exists with files
       const commandFiles = await fs.readdir(commandsDir);
@@ -266,7 +266,7 @@ describe("uninstall cleanup", () => {
 
       // Install profiles and subagents
       await profilesLoader.run({ config });
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Create a user file in agents directory
       const userAgentFile = path.join(agentsDir, "my-custom-agent.md");

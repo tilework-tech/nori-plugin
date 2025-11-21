@@ -3,13 +3,9 @@
  * Singleton registry that manages all feature loaders
  */
 
-import { claudeMdLoader } from "@/installer/features/claudemd/loader.js";
 import { hooksLoader } from "@/installer/features/hooks/loader.js";
 import { profilesLoader } from "@/installer/features/profiles/loader.js";
-import { skillsLoader } from "@/installer/features/skills/loader.js";
-import { slashCommandsLoader } from "@/installer/features/slashcommands/loader.js";
 import { statuslineLoader } from "@/installer/features/statusline/loader.js";
-import { subagentsLoader } from "@/installer/features/subagents/loader.js";
 
 import type { Config } from "@/installer/config.js";
 
@@ -44,14 +40,10 @@ export class LoaderRegistry {
     this.loaders = new Map();
 
     // Register all loaders
-    // IMPORTANT: profilesLoader must run FIRST to compose profiles before other loaders read from them
+    // IMPORTANT: profilesLoader must run FIRST to compose profiles and install profile-dependent features
     this.loaders.set(profilesLoader.name, profilesLoader);
-    this.loaders.set(skillsLoader.name, skillsLoader);
-    this.loaders.set(claudeMdLoader.name, claudeMdLoader);
     this.loaders.set(hooksLoader.name, hooksLoader);
-    this.loaders.set(slashCommandsLoader.name, slashCommandsLoader);
     this.loaders.set(statuslineLoader.name, statuslineLoader);
-    this.loaders.set(subagentsLoader.name, subagentsLoader);
   }
 
   /**

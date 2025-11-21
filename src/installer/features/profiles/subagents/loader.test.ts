@@ -68,7 +68,7 @@ describe("subagentsLoader", () => {
     it("should create agents directory and copy subagent files for free installation", async () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Verify agents directory exists
       const exists = await fs
@@ -104,7 +104,7 @@ describe("subagentsLoader", () => {
       // Recompose profiles with paid mixin
       await profilesLoader.run({ config });
 
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Verify agents directory exists
       const exists = await fs
@@ -140,7 +140,7 @@ describe("subagentsLoader", () => {
 
       // Free installation
       await profilesLoader.run({ config: freeConfig });
-      await subagentsLoader.run({ config: freeConfig });
+      await subagentsLoader.install({ config: freeConfig });
       const freeFiles = await fs.readdir(agentsDir);
       const freeCount = freeFiles.length;
 
@@ -149,7 +149,7 @@ describe("subagentsLoader", () => {
 
       // Paid installation
       await profilesLoader.run({ config: paidConfig });
-      await subagentsLoader.run({ config: paidConfig });
+      await subagentsLoader.install({ config: paidConfig });
       const paidFiles = await fs.readdir(agentsDir);
       const paidCount = paidFiles.length;
 
@@ -161,13 +161,13 @@ describe("subagentsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // First installation
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       const firstFiles = await fs.readdir(agentsDir);
       expect(firstFiles.length).toBeGreaterThan(0);
 
       // Second installation (update)
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       const secondFiles = await fs.readdir(agentsDir);
       expect(secondFiles.length).toBeGreaterThan(0);
@@ -179,7 +179,7 @@ describe("subagentsLoader", () => {
       const config: Config = { installType: "free", installDir: tempDir };
 
       // Install first
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Verify files exist
       let files = await fs.readdir(agentsDir);
@@ -207,7 +207,7 @@ describe("subagentsLoader", () => {
       const config: Config = { installType: "paid", installDir: tempDir };
 
       // Install first
-      await subagentsLoader.run({ config });
+      await subagentsLoader.install({ config });
 
       // Verify files exist
       let files = await fs.readdir(agentsDir);
@@ -243,58 +243,5 @@ describe("subagentsLoader", () => {
     });
   });
 
-  describe("validate", () => {
-    it("should return valid for properly installed subagents", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Install
-      await subagentsLoader.run({ config });
-
-      // Validate
-      if (subagentsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await subagentsLoader.validate({ config });
-
-      expect(result.valid).toBe(true);
-      expect(result.message).toContain("properly installed");
-      expect(result.errors).toBeNull();
-    });
-
-    it("should return invalid when agents directory does not exist", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Validate without installing
-      if (subagentsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await subagentsLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("not found");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-    });
-
-    it("should return invalid when subagent files are missing", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
-
-      // Create agents directory but don't install subagents
-      await fs.mkdir(agentsDir, { recursive: true });
-
-      // Validate
-      if (subagentsLoader.validate == null) {
-        throw new Error("validate method not implemented");
-      }
-
-      const result = await subagentsLoader.validate({ config });
-
-      expect(result.valid).toBe(false);
-      expect(result.message).toContain("not installed");
-      expect(result.errors).not.toBeNull();
-      expect(result.errors?.length).toBeGreaterThan(0);
-    });
-  });
+  // Validate tests removed - validation is now handled at profilesLoader level
 });

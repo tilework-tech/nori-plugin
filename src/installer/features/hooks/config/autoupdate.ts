@@ -59,8 +59,10 @@ const installUpdate = (args: {
     cmdArgs.push("--install-dir", installDir);
   }
 
-  // Log to notifications file (in current working directory to match where config is stored)
-  const logPath = join(process.cwd(), ".nori-notifications.log");
+  // Log to notifications file in the install directory
+  const logDir =
+    installDir != null && installDir !== "" ? installDir : process.cwd();
+  const logPath = join(logDir, ".nori-notifications.log");
   const logHeader = `\n=== Nori Autoupdate: ${new Date().toISOString()} ===\nInstalling v${version}...\nCommand: npx ${cmdArgs.join(" ")}\n`;
   appendFileSync(logPath, logHeader);
 

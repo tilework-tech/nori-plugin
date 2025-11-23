@@ -12,7 +12,7 @@ import * as path from "path";
 
 import { describe, it, expect } from "vitest";
 
-describe("build process", () => {
+describe.sequential("build process", () => {
   it("should successfully run npm run build without errors", () => {
     // Run the actual build command from the plugin directory
     // This verifies that:

@@ -42,12 +42,6 @@ describe("CLI default behavior", () => {
   });
 
   it("should show help when no arguments provided", () => {
-    // Build the CLI first to ensure we have the latest version
-    execSync("npm run build", {
-      encoding: "utf-8",
-      env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
-    });
-
     // Run the CLI with no arguments
     let output = "";
 

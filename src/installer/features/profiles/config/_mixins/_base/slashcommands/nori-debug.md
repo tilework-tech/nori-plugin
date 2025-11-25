@@ -1,5 +1,6 @@
 ---
 description: Validate Nori Profiles installation and configuration
+allowed-tools: Bash(npx nori-ai:*)
 ---
 
 !`npx nori-ai check`

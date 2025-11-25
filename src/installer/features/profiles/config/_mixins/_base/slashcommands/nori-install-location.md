@@ -1,5 +1,6 @@
 ---
 description: Display the current Nori installation directory
+allowed-tools: Bash(npx nori-ai:*)
 ---
 
 !`npx nori-ai install-location`

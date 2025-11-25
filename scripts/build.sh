@@ -42,7 +42,18 @@ echo ""
 # Converts TypeScript path aliases (@/* -> src/*) to relative paths
 # Example: '@/api/index.js' becomes '../../../../../api/index.js'
 echo -e "${BLUE}[2/6] Resolving path aliases...${NC}"
-tsc-alias
+tsc-alias --verbose
+
+# Verify no @/ imports remain in production JS files (not test files)
+# This catches cases where tsc-alias silently fails to resolve paths
+UNRESOLVED=$(grep -r "from ['\"]@/" build/src --include="*.js" | grep -v "\.test\.js" | grep -v "vi\.mock" || true)
+if [ -n "$UNRESOLVED" ]; then
+  echo -e "${RED}ERROR: Unresolved @/ imports found after tsc-alias:${NC}"
+  echo "$UNRESOLVED"
+  echo -e "${RED}This indicates tsc-alias failed to resolve path aliases.${NC}"
+  exit 1
+fi
+
 echo -e "${GREEN}✓ Path aliases resolved${NC}"
 echo ""
 

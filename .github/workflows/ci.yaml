@@ -23,11 +23,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Explicit build step before lint/test to ensure build artifacts are fresh
+      # Note: npm ci runs 'prepare' which also builds, but we rebuild here to
+      # guarantee a clean build before tests run
+      - name: Build package
+        run: npm run build
+
       - name: Run linter
         run: npm run lint
 
       - name: Run tests
         run: npm test
-
-      - name: Build package
-        run: npm run build

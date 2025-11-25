@@ -116,6 +116,29 @@ describe("slashCommandsLoader", () => {
       const secondFiles = await fs.readdir(commandsDir);
       expect(secondFiles.length).toBeGreaterThan(0);
     });
+
+    it("should install nori-install-location.md slash command", async () => {
+      const config: Config = { installType: "free", installDir: tempDir };
+
+      await slashCommandsLoader.install({ config });
+
+      // Verify nori-install-location.md exists
+      const installLocationPath = path.join(
+        commandsDir,
+        "nori-install-location.md",
+      );
+      const exists = await fs
+        .access(installLocationPath)
+        .then(() => true)
+        .catch(() => false);
+
+      expect(exists).toBe(true);
+
+      // Verify file has content
+      const content = await fs.readFile(installLocationPath, "utf-8");
+      expect(content).toContain("description:");
+      expect(content.length).toBeGreaterThan(0);
+    });
   });
 
   describe("uninstall", () => {

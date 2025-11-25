@@ -203,6 +203,7 @@ Custom commands available in Claude Code.
 
 - `/nori-info` - Display this information (you're using it now!)
 - `/nori-debug` - Validate Nori installation (`npx nori-ai check`)
+- `/nori-install-location` - Display Nori installation directories
 - `/nori-switch-profile` - Switch between profiles interactively
 - `/nori-init-docs` - Generate documentation files throughout codebase
 

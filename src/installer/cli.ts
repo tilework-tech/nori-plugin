@@ -20,7 +20,7 @@ import { error, success, info } from "@/installer/logger.js";
 import { switchProfile } from "@/installer/profiles.js";
 import { registerUninstallCommand } from "@/installer/uninstall.js";
 import { getCurrentPackageVersion } from "@/installer/version.js";
-import { normalizeInstallDir } from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 /**
  * Run validation checks on Nori installation
@@ -170,6 +170,41 @@ const registerSwitchProfileCommand = (args: { program: Command }): void => {
     });
 };
 
+/**
+ * Register the 'install-location' command with commander
+ * @param args - Configuration arguments
+ * @param args.program - Commander program instance
+ */
+const registerInstallLocationCommand = (args: { program: Command }): void => {
+  const { program } = args;
+
+  program
+    .command("install-location")
+    .description("Display Nori installation directories")
+    .action(async () => {
+      const currentDir = process.cwd();
+      const installDirs = getInstallDirs({ currentDir });
+
+      if (installDirs.length === 0) {
+        error({
+          message:
+            "No Nori installations found in current directory or parent directories",
+        });
+        process.exit(1);
+      }
+
+      console.log("");
+      info({ message: "Nori installation directories:" });
+      console.log("");
+
+      for (const dir of installDirs) {
+        success({ message: `  ${dir}` });
+      }
+
+      console.log("");
+    });
+};
+
 const program = new Command();
 const version = getCurrentPackageVersion() || "unknown";
 
@@ -190,6 +225,7 @@ Examples:
   $ nori-ai install --install-dir ~/my-dir
   $ nori-ai uninstall
   $ nori-ai check
+  $ nori-ai install-location
   $ nori-ai switch-profile senior-swe
   $ nori-ai --non-interactive install
 `,
@@ -200,6 +236,7 @@ registerInstallCommand({ program });
 registerUninstallCommand({ program });
 registerCheckCommand({ program });
 registerSwitchProfileCommand({ program });
+registerInstallLocationCommand({ program });
 
 program.parse(process.argv);
 

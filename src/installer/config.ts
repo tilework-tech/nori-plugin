@@ -29,11 +29,6 @@ export type Config = {
 };
 
 /**
- * @deprecated Use Config instead - types have been unified
- */
-export type DiskConfig = Config;
-
-/**
  * Get the path to the config file
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
@@ -158,11 +153,6 @@ export const loadConfig = async (args: {
 };
 
 /**
- * @deprecated Use loadConfig instead
- */
-export const loadDiskConfig = loadConfig;
-
-/**
  * Save configuration to disk
  * @param args - Configuration arguments
  * @param args.username - User's username (null to skip auth)
@@ -224,41 +214,6 @@ export const saveConfig = async (args: {
   config.installDir = installDir;
 
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-};
-
-/**
- * @deprecated Use saveConfig instead
- */
-export const saveDiskConfig = saveConfig;
-
-/**
- * Generate a config object from disk config with defaults applied
- *
- * @param args - Function arguments
- * @param args.diskConfig - Config loaded from disk (or null if not found)
- * @param args.installDir - Installation directory
- *
- * @returns Config object with defaults applied
- *
- * @deprecated No longer needed - use loadConfig directly and apply defaults manually if needed
- * This function is kept for backwards compatibility during migration.
- */
-export const generateConfig = (args: {
-  diskConfig: Config | null;
-  installDir: string;
-}): Config => {
-  const { diskConfig, installDir } = args;
-
-  // Use profile from diskConfig, or default if not present
-  const profile = diskConfig?.profile || getDefaultProfile();
-
-  return {
-    auth: diskConfig?.auth || null,
-    profile,
-    sendSessionTranscript: diskConfig?.sendSessionTranscript ?? null,
-    autoupdate: diskConfig?.autoupdate ?? null,
-    installDir,
-  };
 };
 
 /**
@@ -423,8 +378,3 @@ export const validateConfig = async (args: {
     errors: null,
   };
 };
-
-/**
- * @deprecated Use validateConfig instead
- */
-export const validateDiskConfig = validateConfig;

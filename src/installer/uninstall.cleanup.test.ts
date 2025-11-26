@@ -33,7 +33,7 @@ vi.mock("@/installer/config.js", async () => {
   return {
     ...actual,
     getConfigPath: () => mockConfigPath,
-    loadDiskConfig: async () => mockLoadedConfig,
+    loadConfig: async () => mockLoadedConfig,
   };
 });
 

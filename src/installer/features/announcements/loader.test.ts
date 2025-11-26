@@ -70,7 +70,7 @@ describe("announcementsLoader", () => {
 
   describe("run", () => {
     it("should create settings.json with companyAnnouncements", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       await announcementsLoader.run({ config });
 
@@ -89,11 +89,13 @@ describe("announcementsLoader", () => {
       // Verify companyAnnouncements is configured
       expect(settings.companyAnnouncements).toBeDefined();
       expect(Array.isArray(settings.companyAnnouncements)).toBe(true);
-      expect(settings.companyAnnouncements).toContain("Powered by Nori AI");
+      expect(settings.companyAnnouncements).toContain(
+        "🍙🍙🍙 Powered by Nori AI 🍙🍙🍙",
+      );
     });
 
     it("should preserve existing settings when adding companyAnnouncements", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       // Create settings.json with existing content
       const existingSettings = {
@@ -122,7 +124,7 @@ describe("announcementsLoader", () => {
     });
 
     it("should update companyAnnouncements if already configured", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       // First installation
       await announcementsLoader.run({ config });
@@ -136,13 +138,15 @@ describe("announcementsLoader", () => {
 
       // Verify companyAnnouncements still exists with correct value
       expect(settings.companyAnnouncements).toBeDefined();
-      expect(settings.companyAnnouncements).toContain("Powered by Nori AI");
+      expect(settings.companyAnnouncements).toContain(
+        "🍙🍙🍙 Powered by Nori AI 🍙🍙🍙",
+      );
     });
   });
 
   describe("uninstall", () => {
     it("should remove companyAnnouncements from settings.json", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       // Install first
       await announcementsLoader.run({ config });
@@ -162,7 +166,7 @@ describe("announcementsLoader", () => {
     });
 
     it("should preserve other settings when removing companyAnnouncements", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       // Create settings with companyAnnouncements and other content
       await announcementsLoader.run({ config });
@@ -183,7 +187,7 @@ describe("announcementsLoader", () => {
     });
 
     it("should handle missing settings.json gracefully", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       // Uninstall without installing first
       await expect(
@@ -192,7 +196,7 @@ describe("announcementsLoader", () => {
     });
 
     it("should handle settings.json without companyAnnouncements gracefully", async () => {
-      const config: Config = { installType: "free", installDir: tempDir };
+      const config: Config = { installDir: tempDir };
 
       // Create settings.json without companyAnnouncements
       const settings = {

@@ -32,7 +32,7 @@ vi.mock("@/installer/analytics.js", () => ({
 
 // Mock config to provide install_type
 vi.mock("@/installer/config.js", () => ({
-  loadDiskConfig: vi.fn(),
+  loadConfig: vi.fn(),
 }));
 
 // Mock version utilities
@@ -89,10 +89,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -159,10 +159,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -206,10 +206,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -246,10 +246,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -284,10 +284,10 @@ describe("autoupdate", () => {
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.1.0\n");
 
-      // Mock loadDiskConfig to return paid config
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig to return paid config
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: {
           username: "test@example.com",
           password: "test123",
@@ -336,10 +336,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig to return free config
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig to return free config
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -384,10 +384,10 @@ describe("autoupdate", () => {
         throw new Error("Network error");
       });
 
-      // Mock loadDiskConfig to return paid config
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig to return paid config
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: {
           username: "test@example.com",
           password: "test123",
@@ -452,10 +452,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -529,10 +529,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -609,10 +609,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -670,10 +670,10 @@ describe("autoupdate", () => {
       // (cwd has no installation, but parent does)
       getInstallDirsSpy.mockReturnValue(["/home/user"]);
 
-      // Mock loadDiskConfig to return config with installDir
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig to return config with installDir
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: "/home/user/.claude",
@@ -715,8 +715,8 @@ describe("autoupdate", () => {
       const autoupdate = await import("./autoupdate.js");
       await autoupdate.main();
 
-      // Verify loadDiskConfig was called with the parent directory (where config was found)
-      expect(mockLoadDiskConfig).toHaveBeenCalledWith({
+      // Verify loadConfig was called with the parent directory (where config was found)
+      expect(mockLoadConfig).toHaveBeenCalledWith({
         installDir: "/home/user",
       });
 
@@ -761,10 +761,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -809,10 +809,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -868,10 +868,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -927,10 +927,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),
@@ -972,10 +972,10 @@ describe("autoupdate", () => {
 
       const mockSpawn = vi.mocked(spawn);
 
-      // Mock loadDiskConfig with autoupdate disabled
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig with autoupdate disabled
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         autoupdate: "disabled",
@@ -1034,10 +1034,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig with autoupdate enabled
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig with autoupdate enabled
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         autoupdate: "enabled",
@@ -1101,10 +1101,10 @@ describe("autoupdate", () => {
       };
       mockSpawn.mockReturnValue(mockChild as any);
 
-      // Mock loadDiskConfig WITHOUT autoupdate field (should default to enabled)
-      const { loadDiskConfig } = await import("@/installer/config.js");
-      const mockLoadDiskConfig = vi.mocked(loadDiskConfig);
-      mockLoadDiskConfig.mockResolvedValue({
+      // Mock loadConfig WITHOUT autoupdate field (should default to enabled)
+      const { loadConfig } = await import("@/installer/config.js");
+      const mockLoadConfig = vi.mocked(loadConfig);
+      mockLoadConfig.mockResolvedValue({
         auth: null,
         profile: null,
         installDir: process.cwd(),

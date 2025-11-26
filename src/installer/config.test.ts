@@ -9,11 +9,11 @@ import * as path from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import {
-  loadDiskConfig,
-  saveDiskConfig,
-  generateConfig,
+  loadConfig,
+  saveConfig,
   getConfigPath,
-  type DiskConfig,
+  isPaidInstall,
+  type Config,
 } from "./config.js";
 
 describe("getConfigPath", () => {
@@ -73,9 +73,9 @@ describe("config with profile-based system", () => {
     vi.clearAllMocks();
   });
 
-  describe("saveDiskConfig and loadDiskConfig", () => {
+  describe("saveConfig and loadConfig", () => {
     it("should save and load profile along with auth", async () => {
-      await saveDiskConfig({
+      await saveConfig({
         username: "test@example.com",
         password: "password123",
         organizationUrl: "https://example.com",
@@ -85,7 +85,7 @@ describe("config with profile-based system", () => {
         installDir: tempDir,
       });
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.auth).toEqual({
         username: "test@example.com",
@@ -98,7 +98,7 @@ describe("config with profile-based system", () => {
     });
 
     it("should save and load auth without profile", async () => {
-      await saveDiskConfig({
+      await saveConfig({
         username: "test@example.com",
         password: "password123",
         organizationUrl: "https://example.com",
@@ -106,7 +106,7 @@ describe("config with profile-based system", () => {
         installDir: tempDir,
       });
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.auth).toEqual({
         username: "test@example.com",
@@ -117,7 +117,7 @@ describe("config with profile-based system", () => {
     });
 
     it("should save and load profile without auth", async () => {
-      await saveDiskConfig({
+      await saveConfig({
         username: null,
         password: null,
         organizationUrl: null,
@@ -127,7 +127,7 @@ describe("config with profile-based system", () => {
         installDir: tempDir,
       });
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.auth).toBeNull();
       expect(loaded?.profile).toEqual({
@@ -136,14 +136,14 @@ describe("config with profile-based system", () => {
     });
 
     it("should return null when config file does not exist", async () => {
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
       expect(loaded).toBeNull();
     });
 
     it("should handle malformed config gracefully", async () => {
       await fs.writeFile(mockConfigPath, "invalid json {");
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
       expect(loaded).toBeNull();
     });
 
@@ -153,7 +153,7 @@ describe("config with profile-based system", () => {
         JSON.stringify({ sendSessionTranscript: "enabled" }),
       );
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.sendSessionTranscript).toBe("enabled");
     });
@@ -164,7 +164,7 @@ describe("config with profile-based system", () => {
         JSON.stringify({ sendSessionTranscript: "disabled" }),
       );
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.sendSessionTranscript).toBe("disabled");
     });
@@ -172,13 +172,13 @@ describe("config with profile-based system", () => {
     it("should default sendSessionTranscript to enabled when field is missing", async () => {
       await fs.writeFile(mockConfigPath, JSON.stringify({}));
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.sendSessionTranscript).toBe("enabled");
     });
 
     it("should save and load sendSessionTranscript", async () => {
-      await saveDiskConfig({
+      await saveConfig({
         username: null,
         password: null,
         organizationUrl: null,
@@ -186,7 +186,7 @@ describe("config with profile-based system", () => {
         installDir: tempDir,
       });
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.sendSessionTranscript).toBe("disabled");
     });
@@ -197,7 +197,7 @@ describe("config with profile-based system", () => {
         JSON.stringify({ autoupdate: "enabled" }),
       );
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.autoupdate).toBe("enabled");
     });
@@ -208,7 +208,7 @@ describe("config with profile-based system", () => {
         JSON.stringify({ autoupdate: "disabled" }),
       );
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.autoupdate).toBe("disabled");
     });
@@ -216,13 +216,13 @@ describe("config with profile-based system", () => {
     it("should default autoupdate to enabled when field is missing", async () => {
       await fs.writeFile(mockConfigPath, JSON.stringify({}));
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.autoupdate).toBe("enabled");
     });
 
     it("should save and load autoupdate", async () => {
-      await saveDiskConfig({
+      await saveConfig({
         username: null,
         password: null,
         organizationUrl: null,
@@ -230,118 +230,9 @@ describe("config with profile-based system", () => {
         installDir: tempDir,
       });
 
-      const loaded = await loadDiskConfig({ installDir: tempDir });
+      const loaded = await loadConfig({ installDir: tempDir });
 
       expect(loaded?.autoupdate).toBe("disabled");
-    });
-  });
-
-  describe("generateConfig", () => {
-    it("should generate paid config with profile from diskConfig", () => {
-      const diskConfig: DiskConfig = {
-        auth: {
-          username: "test@example.com",
-          password: "password123",
-          organizationUrl: "https://example.com",
-        },
-        profile: {
-          baseProfile: "senior-swe",
-        },
-        installDir: tempDir,
-      };
-
-      const config = generateConfig({ diskConfig, installDir: tempDir });
-
-      expect(config.installType).toBe("paid");
-      expect(config.profile).toEqual({
-        baseProfile: "senior-swe",
-      });
-    });
-
-    it("should generate free config with profile from diskConfig", () => {
-      const diskConfig: DiskConfig = {
-        auth: null,
-        profile: {
-          baseProfile: "amol",
-        },
-        installDir: tempDir,
-      };
-
-      const config = generateConfig({ diskConfig, installDir: tempDir });
-
-      expect(config.installType).toBe("free");
-      expect(config.profile).toEqual({
-        baseProfile: "amol",
-      });
-    });
-
-    it("should use default profile (senior-swe) when diskConfig has no profile", () => {
-      const diskConfig: DiskConfig = {
-        auth: null,
-        profile: null,
-        installDir: tempDir,
-      };
-
-      const config = generateConfig({ diskConfig, installDir: tempDir });
-
-      expect(config.installType).toBe("free");
-      expect(config.profile).toEqual({
-        baseProfile: "senior-swe",
-      });
-    });
-
-    it("should use default profile (senior-swe) when diskConfig is null", () => {
-      const config = generateConfig({ diskConfig: null, installDir: tempDir });
-
-      expect(config.installType).toBe("free");
-      expect(config.profile).toEqual({
-        baseProfile: "senior-swe",
-      });
-    });
-
-    it("should set sendSessionTranscript to 'enabled' for paid users by default", () => {
-      const diskConfig: DiskConfig = {
-        auth: {
-          username: "test@example.com",
-          password: "password123",
-          organizationUrl: "https://example.com",
-        },
-        profile: { baseProfile: "senior-swe" },
-        installDir: tempDir,
-      };
-
-      const config = generateConfig({ diskConfig, installDir: tempDir });
-
-      expect(config.sendSessionTranscript).toBe("enabled");
-    });
-
-    it("should preserve existing sendSessionTranscript preference for paid users", () => {
-      const diskConfig: DiskConfig = {
-        auth: {
-          username: "test@example.com",
-          password: "password123",
-          organizationUrl: "https://example.com",
-        },
-        profile: { baseProfile: "senior-swe" },
-        sendSessionTranscript: "disabled",
-        installDir: tempDir,
-      };
-
-      const config = generateConfig({ diskConfig, installDir: tempDir });
-
-      expect(config.sendSessionTranscript).toBe("disabled");
-    });
-
-    it("should set sendSessionTranscript to null for free users", () => {
-      const diskConfig: DiskConfig = {
-        auth: null,
-        profile: { baseProfile: "senior-swe" },
-        installDir: tempDir,
-      };
-
-      const config = generateConfig({ diskConfig, installDir: tempDir });
-
-      expect(config.sendSessionTranscript).toBeNull();
     });
   });
 
@@ -350,7 +241,7 @@ describe("config with profile-based system", () => {
       const customDir = path.join(tempDir, "custom-project");
       await fs.mkdir(customDir, { recursive: true });
 
-      await saveDiskConfig({
+      await saveConfig({
         username: "test@example.com",
         password: "password123",
         organizationUrl: "https://example.com",
@@ -389,7 +280,7 @@ describe("config with profile-based system", () => {
         }),
       );
 
-      const loaded = await loadDiskConfig({ installDir: customDir });
+      const loaded = await loadConfig({ installDir: customDir });
 
       expect(loaded?.auth).toEqual({
         username: "custom@example.com",
@@ -402,7 +293,7 @@ describe("config with profile-based system", () => {
       const customDir = path.join(tempDir, "empty-project");
       await fs.mkdir(customDir, { recursive: true });
 
-      const loaded = await loadDiskConfig({ installDir: customDir });
+      const loaded = await loadConfig({ installDir: customDir });
       expect(loaded).toBeNull();
     });
 
@@ -410,7 +301,7 @@ describe("config with profile-based system", () => {
       const customDir = path.join(tempDir, "custom-project");
       await fs.mkdir(customDir, { recursive: true });
 
-      await saveDiskConfig({
+      await saveConfig({
         username: null,
         password: null,
         organizationUrl: null,
@@ -440,21 +331,40 @@ describe("config with profile-based system", () => {
         }),
       );
 
-      const loaded = await loadDiskConfig({ installDir: customDir });
+      const loaded = await loadConfig({ installDir: customDir });
       expect(loaded?.installDir).toBe(customDir);
     });
+  });
+});
 
-    it("should include installDir in generated config", () => {
-      const customDir = "/custom/project/path";
-      const diskConfig: DiskConfig = {
-        auth: null,
-        profile: { baseProfile: "senior-swe" },
-        installDir: customDir,
-      };
+describe("isPaidInstall", () => {
+  it("should return true when config has auth with all fields", () => {
+    const config: Config = {
+      auth: {
+        username: "test@example.com",
+        password: "password123",
+        organizationUrl: "https://example.com",
+      },
+      installDir: "/test/dir",
+    };
 
-      const config = generateConfig({ diskConfig, installDir: customDir });
+    expect(isPaidInstall({ config })).toBe(true);
+  });
 
-      expect(config.installDir).toBe(customDir);
-    });
+  it("should return false when config has no auth", () => {
+    const config: Config = {
+      installDir: "/test/dir",
+    };
+
+    expect(isPaidInstall({ config })).toBe(false);
+  });
+
+  it("should return false when config has auth set to null", () => {
+    const config: Config = {
+      auth: null,
+      installDir: "/test/dir",
+    };
+
+    expect(isPaidInstall({ config })).toBe(false);
   });
 });

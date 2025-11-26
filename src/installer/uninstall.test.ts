@@ -40,7 +40,7 @@ vi.mock("@/installer/config.js", async () => {
       }
       return mockConfigPath;
     },
-    loadDiskConfig: async (args: { installDir: string }) => {
+    loadConfig: async (args: { installDir: string }) => {
       // For ancestor tests, load from real filesystem
       if (args.installDir.includes("uninstall-ancestor-")) {
         const configPath = path.join(args.installDir, ".nori-config.json");
@@ -61,8 +61,11 @@ vi.mock("@/installer/config.js", async () => {
           return null;
         }
       }
-      // For old tests, use mock
-      return mockLoadedConfig;
+      // For old tests, use mock but add installDir from args
+      if (mockLoadedConfig != null) {
+        return { ...mockLoadedConfig, installDir: args.installDir };
+      }
+      return null;
     },
   };
 });

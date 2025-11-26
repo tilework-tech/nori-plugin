@@ -147,15 +147,12 @@ const getAvailableProfiles = async (args: {
  * @param args.installDir - Installation directory
  * @param args.existingDiskConfig - Existing disk configuration (if any)
  *
- * @returns Configuration and disk config to save, or null if user cancels
+ * @returns Runtime configuration, or null if user cancels
  */
 export const generatePromptConfig = async (args: {
   installDir: string;
   existingDiskConfig: DiskConfig | null;
-}): Promise<{
-  config: Config;
-  diskConfigToSave: DiskConfig;
-} | null> => {
+}): Promise<Config | null> => {
   const { installDir, existingDiskConfig } = args;
 
   // Check if user wants to reuse existing config
@@ -182,11 +179,10 @@ export const generatePromptConfig = async (args: {
 
     if (useExisting.match(/^[Yy]$/)) {
       info({ message: "Using existing configuration..." });
-      const config = generateConfig({
+      return generateConfig({
         diskConfig: existingDiskConfig,
         installDir,
       });
-      return { config, diskConfigToSave: existingDiskConfig };
     }
 
     console.log();
@@ -299,12 +295,7 @@ export const generatePromptConfig = async (args: {
     installDir,
   };
 
-  return {
-    config: {
-      ...generateConfig({ diskConfig, installDir }),
-    },
-    diskConfigToSave: diskConfig,
-  };
+  return generateConfig({ diskConfig, installDir });
 };
 
 /**
@@ -408,17 +399,15 @@ export const interactive = async (args?: {
   });
 
   // Generate configuration through prompts
-  const promptResult = await generatePromptConfig({
+  const config = await generatePromptConfig({
     installDir: normalizedInstallDir,
     existingDiskConfig,
   });
 
-  if (promptResult == null) {
+  if (config == null) {
     info({ message: "Installation cancelled." });
     process.exit(0);
   }
-
-  const { config } = promptResult;
 
   // Track installation start
   trackEvent({
@@ -440,7 +429,6 @@ export const interactive = async (args?: {
   }
 
   // Run all loaders (including profiles)
-  // Note: configLoader will save the config to disk
   const registry = LoaderRegistry.getInstance();
   const loaders = registry.getAll();
 

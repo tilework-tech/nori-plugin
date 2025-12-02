@@ -39,26 +39,6 @@ export type TrackEventResponse = {
 };
 
 export const analyticsApi = {
-  generateDailyReport: async (
-    args?: GenerateDailyReportRequest | null,
-  ): Promise<GenerateDailyReportResponse> => {
-    return apiRequest<GenerateDailyReportResponse>({
-      path: "/analytics/daily-report",
-      method: "POST",
-      body: args || {},
-    });
-  },
-
-  generateUserReport: async (
-    args: GenerateUserReportRequest,
-  ): Promise<GenerateUserReportResponse> => {
-    return apiRequest<GenerateUserReportResponse>({
-      path: "/analytics/user-report",
-      method: "POST",
-      body: args,
-    });
-  },
-
   trackEvent: async (args: TrackEventRequest): Promise<TrackEventResponse> => {
     // Get base URL from config, falling back to default analytics endpoint
     let baseUrl = DEFAULT_ANALYTICS_URL;

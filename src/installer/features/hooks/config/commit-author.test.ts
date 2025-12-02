@@ -174,7 +174,7 @@ describe("commit-author hook", () => {
 
     expect(exitCode).toBe(0);
     expect(output?.hookSpecificOutput?.updatedInput?.command).toContain(
-      "Co-Authored-By: Nori <noreply@tilework.tech>",
+      "Co-Authored-By: Nori <contact@tilework.tech>",
     );
     expect(output?.hookSpecificOutput?.updatedInput?.command).toContain(
       "🤖 Generated with [Nori](https://nori.ai)",
@@ -236,7 +236,7 @@ describe("commit-author hook", () => {
 
     // Should still add Nori attribution
     expect(modifiedCommand).toContain(
-      "Co-Authored-By: Nori <noreply@tilework.tech>",
+      "Co-Authored-By: Nori <contact@tilework.tech>",
     );
   });
 
@@ -262,7 +262,7 @@ describe("commit-author hook", () => {
 
     expect(modifiedCommand).toContain("fix: bug");
     expect(modifiedCommand).toContain(
-      "Co-Authored-By: Nori <noreply@tilework.tech>",
+      "Co-Authored-By: Nori <contact@tilework.tech>",
     );
   });
 
@@ -300,7 +300,7 @@ EOF
       "Co-Authored-By: Claude <noreply@anthropic.com>",
     );
     expect(modifiedCommand).toContain(
-      "Co-Authored-By: Nori <noreply@tilework.tech>",
+      "Co-Authored-By: Nori <contact@tilework.tech>",
     );
 
     // Should preserve the original message

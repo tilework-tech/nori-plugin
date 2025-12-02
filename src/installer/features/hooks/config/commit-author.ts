@@ -60,7 +60,7 @@ const replaceAttribution = (args: { command: string }): string => {
   // First, try to replace existing Claude attribution
   let modifiedCommand = command.replace(
     claudeAttributionPattern,
-    "Co-Authored-By: Nori <noreply@tilework.tech>",
+    "Co-Authored-By: Nori <contact@tilework.tech>",
   );
 
   // Check if Claude Code URL pattern exists and replace it
@@ -83,7 +83,7 @@ const replaceAttribution = (args: { command: string }): string => {
     const eofPattern = /(EOF\s*\n\s*\))/;
     modifiedCommand = command.replace(
       eofPattern,
-      `🤖 Generated with [Nori](https://nori.ai)\n\nCo-Authored-By: Nori <noreply@tilework.tech>\nEOF\n)`,
+      `🤖 Generated with [Nori](https://nori.ai)\n\nCo-Authored-By: Nori <contact@tilework.tech>\nEOF\n)`,
     );
     return modifiedCommand;
   }
@@ -95,7 +95,7 @@ const replaceAttribution = (args: { command: string }): string => {
 
   if (match) {
     const [fullMatch, flag, quote, originalMessage] = match;
-    const newMessage = `${originalMessage}\\n\\n🤖 Generated with [Nori](https://nori.ai)\\n\\nCo-Authored-By: Nori <noreply@tilework.tech>`;
+    const newMessage = `${originalMessage}\\n\\n🤖 Generated with [Nori](https://nori.ai)\\n\\nCo-Authored-By: Nori <contact@tilework.tech>`;
     modifiedCommand = command.replace(
       fullMatch,
       `${flag} ${quote}${newMessage}${quote}`,

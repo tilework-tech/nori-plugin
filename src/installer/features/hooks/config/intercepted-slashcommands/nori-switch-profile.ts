@@ -14,6 +14,8 @@ import type {
   InterceptedSlashCommand,
 } from "./types.js";
 
+import { formatError, formatSuccess } from "./format.js";
+
 /**
  * List available profiles in a directory
  * @param args - The function arguments
@@ -120,7 +122,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (allInstallations.length === 0) {
     return {
       decision: "block",
-      reason: `No Nori installation found.`,
+      reason: formatError({ message: `No Nori installation found.` }),
     };
   }
 
@@ -133,7 +135,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (profiles.length === 0) {
     return {
       decision: "block",
-      reason: `No profiles found in ${profilesDir}.\n\nRun 'nori-ai install' to install profiles.`,
+      reason: formatError({
+        message: `No profiles found in ${profilesDir}.\n\nRun 'nori-ai install' to install profiles.`,
+      }),
     };
   }
 
@@ -141,7 +145,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (profileName == null) {
     return {
       decision: "block",
-      reason: `Available profiles: ${profiles.join(", ")}\n\nUsage: /nori-switch-profile <profile-name>`,
+      reason: formatSuccess({
+        message: `Available profiles: ${profiles.join(", ")}\n\nUsage: /nori-switch-profile <profile-name>`,
+      }),
     };
   }
 
@@ -149,7 +155,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (!profiles.includes(profileName)) {
     return {
       decision: "block",
-      reason: `Profile "${profileName}" not found.\n\nAvailable profiles: ${profiles.join(", ")}`,
+      reason: formatError({
+        message: `Profile "${profileName}" not found.\n\nAvailable profiles: ${profiles.join(", ")}`,
+      }),
     };
   }
 
@@ -177,13 +185,17 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
 
     return {
       decision: "block",
-      reason: `Profile switched to "${profileName}"${profileDescription ? `: ${profileDescription}` : ""}.\n\nRestart Claude Code to apply the changes.`,
+      reason: formatSuccess({
+        message: `Profile switched to "${profileName}"${profileDescription ? `: ${profileDescription}` : ""}.\n\nRestart Claude Code to apply the changes.`,
+      }),
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     return {
       decision: "block",
-      reason: `Failed to switch profile: ${errorMessage}`,
+      reason: formatError({
+        message: `Failed to switch profile: ${errorMessage}`,
+      }),
     };
   }
 };

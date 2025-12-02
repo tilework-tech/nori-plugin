@@ -13,7 +13,8 @@
 - Present plan to me and ask for feedback.
   - If I have feedback, modify the plan. Repeat until I approve.
 <system-reminder>Do not stop here. Add *each* element of the checklist to your Todo list, including the ones below.</system-reminder>
-- Use test driven development. Read and follow `{{skills_dir}}/test-driven-development/SKILL.md`
+- Use test driven development. Read and follow `{{skills_dir}}/test-driven-development/SKILL.md`.
+<system-reminder>Remember tests for all features first before writing any implementation</system-reminder>
 - Move immediately to the next step in your TodoList. Do *NOT* just present your work and wait around.
 - Update documentation, INCLUDING out of date documentation. Read and follow `{{skills_dir}}/updating-noridocs/SKILL.md`
 - Finish development with final checks. Read and follow `{{skills_dir}}/finishing-a-development-branch/SKILL.md`

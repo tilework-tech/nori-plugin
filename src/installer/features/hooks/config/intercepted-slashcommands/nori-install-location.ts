@@ -11,6 +11,8 @@ import type {
   InterceptedSlashCommand,
 } from "./types.js";
 
+import { formatError, formatSuccess } from "./format.js";
+
 /**
  * Run the nori-install-location command
  * @param args - The function arguments
@@ -28,14 +30,18 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (allInstallations.length === 0) {
     return {
       decision: "block",
-      reason: `No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.`,
+      reason: formatError({
+        message: `No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.`,
+      }),
     };
   }
 
   if (allInstallations.length === 1) {
     return {
       decision: "block",
-      reason: `Nori installation directory:\n\n${allInstallations[0]}`,
+      reason: formatSuccess({
+        message: `Nori installation directory:\n\n${allInstallations[0]}`,
+      }),
     };
   }
 
@@ -46,7 +52,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
 
   return {
     decision: "block",
-    reason: `Nori installation directories (closest first):\n\n${installList}`,
+    reason: formatSuccess({
+      message: `Nori installation directories (closest first):\n\n${installList}`,
+    }),
   };
 };
 

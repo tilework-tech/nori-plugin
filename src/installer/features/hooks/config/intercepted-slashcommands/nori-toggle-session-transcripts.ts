@@ -14,6 +14,8 @@ import type {
   InterceptedSlashCommand,
 } from "./types.js";
 
+import { formatError, formatSuccess } from "./format.js";
+
 /**
  * Run the nori-toggle-session-transcripts command
  * @param args - The function arguments
@@ -31,7 +33,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (allInstallations.length === 0) {
     return {
       decision: "block",
-      reason: `No Nori installation found.`,
+      reason: formatError({ message: `No Nori installation found.` }),
     };
   }
 
@@ -65,12 +67,16 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (newValue === "enabled") {
     return {
       decision: "block",
-      reason: `Session transcripts are now ENABLED. Your conversations will be summarized and stored.`,
+      reason: formatSuccess({
+        message: `Session transcripts are now ENABLED. Your conversations will be summarized and stored.`,
+      }),
     };
   } else {
     return {
       decision: "block",
-      reason: `Session transcripts are now DISABLED. Your conversations will not be summarized or stored.`,
+      reason: formatSuccess({
+        message: `Session transcripts are now DISABLED. Your conversations will not be summarized or stored.`,
+      }),
     };
   }
 };

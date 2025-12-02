@@ -14,6 +14,8 @@ import type {
   InterceptedSlashCommand,
 } from "./types.js";
 
+import { formatError, formatSuccess } from "./format.js";
+
 /**
  * Run the nori-toggle-autoupdate command
  * @param args - The function arguments
@@ -31,7 +33,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (allInstallations.length === 0) {
     return {
       decision: "block",
-      reason: `No Nori installation found.`,
+      reason: formatError({ message: `No Nori installation found.` }),
     };
   }
 
@@ -63,12 +65,16 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (newValue === "enabled") {
     return {
       decision: "block",
-      reason: `Autoupdate is now ENABLED. Nori Profiles will automatically update when a new version is available.`,
+      reason: formatSuccess({
+        message: `Autoupdate is now ENABLED. Nori Profiles will automatically update when a new version is available.`,
+      }),
     };
   } else {
     return {
       decision: "block",
-      reason: `Autoupdate is now DISABLED. You will be notified of new versions but must update manually with 'npx nori-ai install'.`,
+      reason: formatSuccess({
+        message: `Autoupdate is now DISABLED. You will be notified of new versions but must update manually with 'npx nori-ai install'.`,
+      }),
     };
   }
 };

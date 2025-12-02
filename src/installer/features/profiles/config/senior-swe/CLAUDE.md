@@ -4,13 +4,13 @@
 - Check git status - are you on main?
   - If yes: ask me if I want to create a branch or a worktree.
   - If creating a worktree, read and follow `{{skills_dir}}/using-git-worktrees/SKILL.md` to automatically create a worktree. Derive the branch name from my request.
-- Ask me to pick a mode: copilot or full-send.
-<system-reminder>In copilot mode, the agent works closely with me, asks lots of questions, and only does small pieces of work at a time.</system-reminder>
-<system-reminder>In full-send mode, the agent works with me to create a plan, and then operates autonomously until work is completed.</system-reminder>
+- Ask me to pick a mode: nori-copilot or nori-full-send.
+<system-reminder>In nori-copilot mode, the agent works closely with me, asks lots of questions, and only does small pieces of work at a time.</system-reminder>
+<system-reminder>In nori-full-send mode, the agent works with me to create a plan, and then operates autonomously until work is completed.</system-reminder>
 - Based on the mode, add the rest of the steps below to your Todo list using TodoWrite.
 </required>
 
-# Copilot Mode
+# Nori Copilot Mode
 
 <required>
 - *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
@@ -27,7 +27,7 @@
   - If yes: read and follow `{{skills_dir}}/collaboration/finishing-a-development-branch/SKILL.md`
 </required>
 
-# Full-send Mode
+# Nori Full-send Mode
 
 <required>
 - *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.

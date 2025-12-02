@@ -147,7 +147,7 @@ describe("slashCommandsLoader", () => {
       expect(content.length).toBeGreaterThan(0);
     });
 
-    it("should include allowed-tools in nori-install-location.md for auto-execute permission", async () => {
+    it("should install nori-install-location.md as hook-intercepted command", async () => {
       const config: Config = { installDir: tempDir };
 
       await slashCommandsLoader.install({ config });
@@ -158,10 +158,10 @@ describe("slashCommandsLoader", () => {
       );
       const content = await fs.readFile(installLocationPath, "utf-8");
 
-      // Slash commands using !`command` syntax require allowed-tools frontmatter
-      // to grant Claude Code permission to execute the command
-      expect(content).toContain("allowed-tools:");
-      expect(content).toContain("Bash(nori-ai");
+      // Hook-intercepted commands don't need allowed-tools since
+      // they are executed directly by the hook without LLM processing
+      expect(content).toContain("description:");
+      expect(content).toContain("intercepted by a hook");
     });
 
     it("should include allowed-tools in nori-debug.md for auto-execute permission", async () => {

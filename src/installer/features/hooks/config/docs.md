@@ -44,6 +44,8 @@ When an update is available (latestVersion is valid AND greater than installedVe
 
 - `nori-toggle-session-transcripts.ts`: Toggles the `sendSessionTranscript` field in `.nori-config.json` between "enabled" and "disabled". Default state (missing field) is treated as enabled.
 
+**Slash Command Markdown Structure for Hook-Intercepted Commands**: Hook-intercepted slash commands still have corresponding `.md` files in the profiles slashcommands directories (e.g., `nori-switch-profile.md`, `nori-toggle-autoupdate.md`). These markdown files serve two purposes: (1) the frontmatter `description` appears in Claude Code's command palette, (2) the body provides user-facing documentation. Critically, these files do NOT need `allowed-tools` frontmatter because the hook intercepts and executes the command directly - the LLM never processes the slash command body. Only non-intercepted slash commands (like `nori-debug.md`) that use the `!command` syntax need `allowed-tools` to grant Claude Code permission to execute commands.
+
 ### Things to Know
 
 Hook execution is controlled by @/plugin/src/installer/features/hooks/loader.ts configuration: paid installations install all seven hooks (summarize, summarize-notification, autoupdate, nested-install-warning, notify, slash-command-intercept, commit-author), free installations get autoupdate, nested-install-warning, notify, slash-command-intercept, and commit-author. The summarize-notification hook must be registered before summarize hook in loader.ts to ensure synchronous user notification appears before async background summarization.

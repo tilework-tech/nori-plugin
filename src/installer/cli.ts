@@ -8,119 +8,13 @@
 
 import { Command } from "commander";
 
-import { handshake } from "@/api/index.js";
-import {
-  loadConfig,
-  validateConfig,
-  getDefaultProfile,
-  isPaidInstall,
-} from "@/installer/config.js";
-import { LoaderRegistry } from "@/installer/features/loaderRegistry.js";
+import { checkMain } from "@/installer/check.js";
 import { registerInstallCommand } from "@/installer/install.js";
 import { error, success, info } from "@/installer/logger.js";
 import { switchProfile } from "@/installer/profiles.js";
 import { registerUninstallCommand } from "@/installer/uninstall.js";
 import { getCurrentPackageVersion } from "@/installer/version.js";
 import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
-
-/**
- * Run validation checks on Nori installation
- * @param args - Configuration arguments
- * @param args.installDir - Custom installation directory (optional)
- */
-const checkMain = async (args?: {
-  installDir?: string | null;
-}): Promise<void> => {
-  // Normalize installDir to a definite string value
-  const installDir = normalizeInstallDir({ installDir: args?.installDir });
-
-  console.log("");
-  info({ message: "Running Nori Profiles validation checks..." });
-  console.log("");
-
-  let hasErrors = false;
-
-  // Check config
-  info({ message: "Checking configuration..." });
-  const configResult = await validateConfig({ installDir });
-  if (configResult.valid) {
-    success({ message: `   ✓ ${configResult.message}` });
-  } else {
-    error({ message: `   ✗ ${configResult.message}` });
-    if (configResult.errors) {
-      for (const err of configResult.errors) {
-        info({ message: `     - ${err}` });
-      }
-    }
-    hasErrors = true;
-  }
-  console.log("");
-
-  // Load config
-  const existingConfig = await loadConfig({ installDir });
-  const config = existingConfig ?? {
-    profile: getDefaultProfile(),
-    installDir,
-  };
-
-  // Check server connectivity (paid mode only)
-  if (isPaidInstall({ config })) {
-    info({ message: "Testing server connection..." });
-    try {
-      const response = await handshake();
-      success({
-        message: `   ✓ Server authentication successful (user: ${response.user})`,
-      });
-    } catch (err: any) {
-      error({ message: "   ✗ Server authentication failed" });
-      info({ message: `     - ${err.message}` });
-      hasErrors = true;
-    }
-    console.log("");
-  }
-
-  // Run validation for all loaders
-  const registry = LoaderRegistry.getInstance();
-  const loaders = registry.getAll();
-
-  info({ message: "Checking feature installations..." });
-
-  for (const loader of loaders) {
-    if (loader.validate) {
-      try {
-        const result = await loader.validate({ config });
-        if (result.valid) {
-          success({ message: `   ✓ ${loader.name}: ${result.message}` });
-        } else {
-          error({ message: `   ✗ ${loader.name}: ${result.message}` });
-          if (result.errors) {
-            for (const err of result.errors) {
-              info({ message: `     - ${err}` });
-            }
-          }
-          hasErrors = true;
-        }
-      } catch (err: any) {
-        error({ message: `   ✗ ${loader.name}: Validation failed` });
-        info({ message: `     - ${err.message}` });
-        hasErrors = true;
-      }
-    }
-  }
-
-  console.log("");
-  console.log("=".repeat(70));
-
-  if (hasErrors) {
-    error({ message: "Validation completed with errors" });
-    process.exit(1);
-  } else {
-    success({ message: "All validation checks passed!" });
-    info({
-      message: `Installation mode: ${isPaidInstall({ config }) ? "paid" : "free"}`,
-    });
-  }
-};
 
 /**
  * Register the 'check' command with commander

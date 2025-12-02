@@ -204,6 +204,11 @@ TIPS=(
     "Nori Tip: Use the systematic-debugging skill when bugs occur - it ensures root cause analysis"
     "Nori Tip: The root-cause-tracing skill helps trace errors backward through the call stack"
     "Nori Tip: Try using the webapp-testing skill to debug UI/UX failures"
+    "Nori Tip: Create custom profiles with /nori-create-profile - clone and customize to your workflow"
+    "Nori Tip: Nori can take screenshots - ask it to analyze your screen for visual UI debugging"
+    "Nori Tip: Get automated code review before PRs with the nori-code-reviewer subagent"
+    "Nori Tip: Use the handle-large-tasks skill to split complex work for better context management"
+    "Nori Tip: Control automatic updates with /nori-toggle-autoupdate"
 )
 
 # Check for install-in-progress marker

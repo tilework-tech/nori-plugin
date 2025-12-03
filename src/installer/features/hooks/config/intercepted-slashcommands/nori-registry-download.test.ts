@@ -1,5 +1,5 @@
 /**
- * Tests for nori-download-profile intercepted slash command
+ * Tests for nori-registry-download intercepted slash command
  */
 
 import * as fs from "fs/promises";
@@ -21,9 +21,9 @@ import { registrarApi } from "@/api/registrar.js";
 
 import type { HookInput } from "./types.js";
 
-import { noriDownloadProfile } from "./nori-download-profile.js";
+import { noriRegistryDownload } from "./nori-registry-download.js";
 
-describe("nori-download-profile", () => {
+describe("nori-registry-download", () => {
   let testDir: string;
   let configPath: string;
   let profilesDir: string;
@@ -33,7 +33,7 @@ describe("nori-download-profile", () => {
 
     // Create test directory structure simulating a Nori installation
     testDir = await fs.mkdtemp(
-      path.join(tmpdir(), "nori-download-profile-test-"),
+      path.join(tmpdir(), "nori-registry-download-test-"),
     );
     configPath = path.join(testDir, ".nori-config.json");
     profilesDir = path.join(testDir, ".claude", "profiles");
@@ -76,34 +76,34 @@ describe("nori-download-profile", () => {
 
   describe("matchers", () => {
     it("should have valid regex matchers", () => {
-      expect(noriDownloadProfile.matchers).toBeInstanceOf(Array);
-      expect(noriDownloadProfile.matchers.length).toBeGreaterThan(0);
+      expect(noriRegistryDownload.matchers).toBeInstanceOf(Array);
+      expect(noriRegistryDownload.matchers.length).toBeGreaterThan(0);
 
-      for (const matcher of noriDownloadProfile.matchers) {
+      for (const matcher of noriRegistryDownload.matchers) {
         expect(() => new RegExp(matcher)).not.toThrow();
       }
     });
 
-    it("should match /nori-download-profile package-name", () => {
-      const hasMatch = noriDownloadProfile.matchers.some((m) => {
+    it("should match /nori-registry-download package-name", () => {
+      const hasMatch = noriRegistryDownload.matchers.some((m) => {
         const regex = new RegExp(m, "i");
-        return regex.test("/nori-download-profile my-profile");
+        return regex.test("/nori-registry-download my-profile");
       });
       expect(hasMatch).toBe(true);
     });
 
-    it("should match /nori-download-profile package-name@version", () => {
-      const hasVersionMatcher = noriDownloadProfile.matchers.some((m) => {
+    it("should match /nori-registry-download package-name@version", () => {
+      const hasVersionMatcher = noriRegistryDownload.matchers.some((m) => {
         const regex = new RegExp(m, "i");
-        return regex.test("/nori-download-profile my-profile@1.0.0");
+        return regex.test("/nori-registry-download my-profile@1.0.0");
       });
       expect(hasVersionMatcher).toBe(true);
     });
 
-    it("should match /nori-download-profile without package name (shows help)", () => {
-      const matchesWithoutPackage = noriDownloadProfile.matchers.some((m) => {
+    it("should match /nori-registry-download without package name (shows help)", () => {
+      const matchesWithoutPackage = noriRegistryDownload.matchers.some((m) => {
         const regex = new RegExp(m, "i");
-        return regex.test("/nori-download-profile");
+        return regex.test("/nori-registry-download");
       });
       expect(matchesWithoutPackage).toBe(true);
     });
@@ -112,27 +112,29 @@ describe("nori-download-profile", () => {
   describe("run function", () => {
     it("should show help message when no package name provided", async () => {
       const input = createInput({
-        prompt: "/nori-download-profile",
+        prompt: "/nori-registry-download",
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
       expect(result!.reason).toContain("Usage:");
-      expect(result!.reason).toContain("/nori-download-profile <package-name>");
+      expect(result!.reason).toContain(
+        "/nori-registry-download <package-name>",
+      );
     });
 
     it("should return error when no installation found", async () => {
       const noInstallDir = await fs.mkdtemp(
-        path.join(tmpdir(), "nori-download-no-install-"),
+        path.join(tmpdir(), "nori-registry-download-no-install-"),
       );
 
       try {
         const input = createInput({
-          prompt: "/nori-download-profile test-profile",
+          prompt: "/nori-registry-download test-profile",
           cwd: noInstallDir,
         });
-        const result = await noriDownloadProfile.run({ input });
+        const result = await noriRegistryDownload.run({ input });
 
         expect(result).not.toBeNull();
         expect(result!.decision).toBe("block");
@@ -152,10 +154,10 @@ describe("nori-download-profile", () => {
       );
 
       const input = createInput({
-        prompt: "/nori-download-profile test-profile",
+        prompt: "/nori-registry-download test-profile",
         cwd: nestedDir,
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
@@ -168,9 +170,9 @@ describe("nori-download-profile", () => {
       await fs.mkdir(existingProfileDir, { recursive: true });
 
       const input = createInput({
-        prompt: "/nori-download-profile test-profile",
+        prompt: "/nori-registry-download test-profile",
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
@@ -194,9 +196,9 @@ describe("nori-download-profile", () => {
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
 
       const input = createInput({
-        prompt: "/nori-download-profile test-profile",
+        prompt: "/nori-registry-download test-profile",
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
@@ -217,9 +219,9 @@ describe("nori-download-profile", () => {
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
 
       const input = createInput({
-        prompt: "/nori-download-profile test-profile",
+        prompt: "/nori-registry-download test-profile",
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
@@ -231,9 +233,9 @@ describe("nori-download-profile", () => {
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
 
       const input = createInput({
-        prompt: "/nori-download-profile test-profile@2.0.0",
+        prompt: "/nori-registry-download test-profile@2.0.0",
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(registrarApi.downloadTarball).toHaveBeenCalledWith({
@@ -248,9 +250,9 @@ describe("nori-download-profile", () => {
       );
 
       const input = createInput({
-        prompt: "/nori-download-profile test-profile",
+        prompt: "/nori-registry-download test-profile",
       });
-      const result = await noriDownloadProfile.run({ input });
+      const result = await noriRegistryDownload.run({ input });
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");

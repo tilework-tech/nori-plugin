@@ -1,6 +1,6 @@
 /**
  * Intercepted slash command for searching profile packages
- * Handles /nori-search-profiles <query> command
+ * Handles /nori-registry-search <query> command
  */
 
 import { registrarApi } from "@/api/registrar.js";
@@ -12,6 +12,8 @@ import type {
   InterceptedSlashCommand,
 } from "./types.js";
 
+import { formatError, formatSuccess } from "./format.js";
+
 /**
  * Parse search query from prompt
  * @param prompt - The user prompt to parse
@@ -19,7 +21,7 @@ import type {
  * @returns The search query or null if invalid
  */
 const parseQuery = (prompt: string): string | null => {
-  const match = prompt.trim().match(/^\/nori-search-profiles\s+(.+)$/i);
+  const match = prompt.trim().match(/^\/nori-registry-search\s+(.+)$/i);
 
   if (!match) {
     return null;
@@ -29,7 +31,7 @@ const parseQuery = (prompt: string): string | null => {
 };
 
 /**
- * Run the nori-search-profiles command
+ * Run the nori-registry-search command
  * @param args - The function arguments
  * @param args.input - The hook input containing prompt and cwd
  *
@@ -44,7 +46,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (query == null) {
     return {
       decision: "block",
-      reason: `Search for profile packages in the Nori registrar.\n\nUsage: /nori-search-profiles <query>\n\nExamples:\n  /nori-search-profiles typescript\n  /nori-search-profiles react developer`,
+      reason: formatSuccess({
+        message: `Search for profile packages in the Nori registrar.\n\nUsage: /nori-registry-search <query>\n\nExamples:\n  /nori-registry-search typescript\n  /nori-registry-search react developer`,
+      }),
     };
   }
 
@@ -54,7 +58,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   if (allInstallations.length === 0) {
     return {
       decision: "block",
-      reason: `No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.`,
+      reason: formatError({
+        message: `No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.`,
+      }),
     };
   }
 
@@ -65,7 +71,9 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     if (packages.length === 0) {
       return {
         decision: "block",
-        reason: `No profiles found matching "${query}".\n\nTry a different search term or browse the registrar at https://registrar.tilework.tech`,
+        reason: formatSuccess({
+          message: `No profiles found matching "${query}".\n\nTry a different search term or browse the registrar at https://registrar.tilework.tech`,
+        }),
       };
     }
 
@@ -77,24 +85,28 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
 
     return {
       decision: "block",
-      reason: `Found ${packages.length} profile(s) matching "${query}":\n\n${resultLines.join("\n\n")}\n\nTo install a profile, use: /nori-download-profile <package-name>`,
+      reason: formatSuccess({
+        message: `Found ${packages.length} profile(s) matching "${query}":\n\n${resultLines.join("\n\n")}\n\nTo install a profile, use: /nori-registry-download <package-name>`,
+      }),
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     return {
       decision: "block",
-      reason: `Failed to search profiles:\n${errorMessage}`,
+      reason: formatError({
+        message: `Failed to search profiles:\n${errorMessage}`,
+      }),
     };
   }
 };
 
 /**
- * nori-search-profiles intercepted slash command
+ * nori-registry-search intercepted slash command
  */
-export const noriSearchProfiles: InterceptedSlashCommand = {
+export const noriRegistrySearch: InterceptedSlashCommand = {
   matchers: [
-    "^\\/nori-search-profiles\\s*$", // Bare command (no query) - shows help
-    "^\\/nori-search-profiles\\s+.+$", // Command with query
+    "^\\/nori-registry-search\\s*$", // Bare command (no query) - shows help
+    "^\\/nori-registry-search\\s+.+$", // Command with query
   ],
   run,
 };

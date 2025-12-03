@@ -5,10 +5,10 @@ allowed-tools: Bash(nori-ai:*)
 
 Search the Nori package registrar for profile packages.
 
-Usage: /nori-search-profiles <query>
+Usage: /nori-registry-search <query>
 
 Examples:
-- /nori-search-profiles typescript
-- /nori-search-profiles react developer
+- /nori-registry-search typescript
+- /nori-registry-search react developer
 
 This command searches the registrar and displays matching profile packages with their descriptions.

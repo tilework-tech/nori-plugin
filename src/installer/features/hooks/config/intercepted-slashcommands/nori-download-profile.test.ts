@@ -28,6 +28,18 @@ const GREEN = "\x1b[0;32m";
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m"; // No Color / Reset
 
+/**
+ * Strip ANSI escape codes from a string for plain text comparison
+ *
+ * @param str - The string containing ANSI codes
+ *
+ * @returns The string with ANSI codes removed
+ */
+const stripAnsi = (str: string): string => {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, "");
+};
+
 describe("nori-download-profile", () => {
   let testDir: string;
   let configPath: string;
@@ -123,8 +135,9 @@ describe("nori-download-profile", () => {
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
-      expect(result!.reason).toContain("Usage:");
-      expect(result!.reason).toContain("/nori-download-profile <package-name>");
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Usage:");
+      expect(plainReason).toContain("/nori-download-profile <package-name>");
     });
 
     it("should return error when no installation found", async () => {
@@ -141,7 +154,9 @@ describe("nori-download-profile", () => {
 
         expect(result).not.toBeNull();
         expect(result!.decision).toBe("block");
-        expect(result!.reason).toContain("No Nori installation found");
+        expect(stripAnsi(result!.reason!)).toContain(
+          "No Nori installation found",
+        );
       } finally {
         await fs.rm(noInstallDir, { recursive: true, force: true });
       }
@@ -179,7 +194,7 @@ describe("nori-download-profile", () => {
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
-      expect(result!.reason).toContain("already exists");
+      expect(stripAnsi(result!.reason!)).toContain("already exists");
     });
 
     it("should download and extract non-gzipped tarball on success", async () => {

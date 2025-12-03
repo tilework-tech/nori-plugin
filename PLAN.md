@@ -1,197 +1,73 @@
-# Registry Upload Command Implementation Plan
+# Multi-Registry Search Implementation Plan
 
-**Goal:** Add `/nori-registry-upload <profile-name>` slash command to upload profiles to the Nori registrar, with support for multiple registry authentications.
+**Goal:** Modify `/nori-registry-search` to search across all configured registries (public + private) and display results grouped by registry URL.
 
 **Architecture:**
-- Add `registryAuths` array to Config type to store credentials for multiple registries
-- Create new intercepted slash command following the existing pattern (`nori-download-profile`, `nori-search-profiles`)
-- Add registrar API function for authenticated profile uploads using Firebase auth
-- Create skeleton slash command markdown file
+- Modify `nori-registry-search.ts` to iterate through all registries in `config.registryAuths` plus the public registry
+- Create a parameterized search function that can call any registry URL with optional authentication
+- Aggregate results and display them grouped by registry URL with the format specified
 
-**Tech Stack:** TypeScript, Firebase Auth, Node.js fetch API, tar/gzip
+**Tech Stack:** TypeScript, Firebase Auth (for private registries), Node.js fetch API
 
 ---
 
 ## Testing Plan
 
-I will add unit tests for:
-1. **Config loading/saving with registryAuths** - Test that `loadConfig` correctly parses the new `registryAuths` array and `saveConfig` correctly persists it
-2. **Registry auth lookup** - Test finding the correct auth for a given registry URL
-3. **Intercepted slash command** - Test the command matcher, argument parsing, error handling, and successful upload flow
-4. **Registrar API upload function** - Test the authenticated upload API call with proper headers and multipart form data
+I will add tests for the following behaviors:
+
+1. **Search public registry only (no registryAuths configured)** - When no private registries are configured, search only the public registry and display results under its URL
+2. **Search multiple registries** - When registryAuths contains private registries, search all of them plus the public registry
+3. **Display format** - Results should be grouped by registry URL with package name, version, and description
+4. **Authentication for private registries** - Private registries should use Bearer token from Firebase auth
+5. **Error handling per registry** - If one registry fails, other results should still be displayed
+6. **No results across all registries** - Display appropriate message when no packages found anywhere
 
 The tests will mock:
-- File system operations (for config loading)
-- `fetch` (for API calls)
-- Firebase auth (for token generation)
+- `fetch` (for API calls to both public and private registries)
+- `getRegistryAuthToken` (for private registry authentication)
+- `loadConfig` (for config with registryAuths)
 
 NOTE: I will write *all* tests before I add any implementation behavior.
 
 ---
 
-## Step 1: Update Config Type
+## Step 1: Create Parameterized Search Function
 
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/installer/config.ts`
+**File:** `/home/amol/code/nori/nori-profiles/.worktrees/multi-registry-search/src/api/registrar.ts`
 
-### 1.1 Add RegistryAuth Type
+### 1.1 Add New Search Function That Accepts Registry URL
 
-Add new type definition after the existing `Config` type (around line 29):
+The current `searchPackages` function hardcodes `REGISTRAR_URL`. Add a new function that accepts a registry URL and optional auth token:
 
 ```typescript
-export type RegistryAuth = {
-  username: string;
-  password: string;
+/**
+ * Search packages on a specific registry
+ * @param args - Search parameters including registry URL
+ * @returns Array of matching packages
+ */
+searchPackagesOnRegistry: async (args: {
+  query: string;
   registryUrl: string;
-};
-```
+  authToken?: string | null;
+  limit?: number | null;
+  offset?: number | null;
+}): Promise<Array<Package>> => {
+  const { query, registryUrl, authToken, limit, offset } = args;
 
-### 1.2 Update Config Type
+  const params = new URLSearchParams({ q: query });
+  if (limit != null) params.set("limit", limit.toString());
+  if (offset != null) params.set("offset", offset.toString());
 
-Add `registryAuths` field to Config type:
+  const url = `${registryUrl}/api/packages/search?${params.toString()}`;
 
-```typescript
-export type Config = {
-  auth?: {
-    username: string;
-    password: string;
-    organizationUrl: string;
-  } | null;
-  profile?: {
-    baseProfile: string;
-  } | null;
-  sendSessionTranscript?: "enabled" | "disabled" | null;
-  autoupdate?: "enabled" | "disabled" | null;
-  installDir: string;
-  registryAuths?: Array<RegistryAuth> | null;  // NEW
-};
-```
-
-### 1.3 Update loadConfig Function
-
-In `loadConfig` (around line 140), add parsing for `registryAuths`:
-
-```typescript
-// Check if registryAuths exists and is valid array
-if (Array.isArray(config.registryAuths)) {
-  const validAuths = config.registryAuths.filter(
-    (auth: any) =>
-      auth &&
-      typeof auth === "object" &&
-      typeof auth.username === "string" &&
-      typeof auth.password === "string" &&
-      typeof auth.registryUrl === "string"
-  );
-  if (validAuths.length > 0) {
-    result.registryAuths = validAuths;
+  const headers: Record<string, string> = {};
+  if (authToken != null) {
+    headers["Authorization"] = `Bearer ${authToken}`;
   }
-}
-```
-
-### 1.4 Update saveConfig Function
-
-In `saveConfig` (add new parameter and handling):
-
-```typescript
-// Add registryAuths if provided
-if (registryAuths != null && registryAuths.length > 0) {
-  config.registryAuths = registryAuths;
-}
-```
-
-### 1.5 Update configSchema
-
-Add registryAuths to JSON schema validation:
-
-```typescript
-registryAuths: {
-  type: "array",
-  items: {
-    type: "object",
-    properties: {
-      username: { type: "string" },
-      password: { type: "string" },
-      registryUrl: { type: "string" },
-    },
-    required: ["username", "password", "registryUrl"],
-  },
-},
-```
-
----
-
-## Step 2: Add Helper Function for Registry Auth Lookup
-
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/installer/config.ts`
-
-Add function to find auth for a specific registry URL:
-
-```typescript
-export const getRegistryAuth = (args: {
-  config: Config;
-  registryUrl: string;
-}): RegistryAuth | null => {
-  const { config, registryUrl } = args;
-  if (config.registryAuths == null) {
-    return null;
-  }
-  return config.registryAuths.find(
-    (auth) => normalizeUrl({ baseUrl: auth.registryUrl }) === normalizeUrl({ baseUrl: registryUrl })
-  ) ?? null;
-};
-```
-
----
-
-## Step 3: Add Registrar API Upload Function
-
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/api/registrar.ts`
-
-### 3.1 Add Types
-
-```typescript
-export type UploadProfileRequest = {
-  packageName: string;
-  version: string;
-  archiveData: ArrayBuffer;
-  description?: string | null;
-};
-
-export type UploadProfileResponse = {
-  name: string;
-  version: string;
-  description?: string | null;
-  tarballSha: string;
-  createdAt: string;
-};
-```
-
-### 3.2 Add Upload Function
-
-The registrar currently doesn't accept Bearer tokens directly in the existing API client. We need to create an authenticated upload function that:
-1. Gets Firebase auth token from stored credentials
-2. Makes multipart form upload to `PUT /api/packages/:packageName/profile`
-
-```typescript
-uploadProfile: async (
-  args: UploadProfileRequest & { authToken: string }
-): Promise<UploadProfileResponse> => {
-  const { packageName, version, archiveData, description, authToken } = args;
-
-  const formData = new FormData();
-  formData.append("archive", new Blob([archiveData]), `${packageName}.tgz`);
-  formData.append("version", version);
-  if (description != null) {
-    formData.append("description", description);
-  }
-
-  const url = `${REGISTRAR_URL}/api/packages/${packageName}/profile`;
 
   const response = await fetch(url, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-    },
-    body: formData,
+    method: "GET",
+    headers,
   });
 
   if (!response.ok) {
@@ -201,328 +77,279 @@ uploadProfile: async (
     throw new Error(errorData.error ?? `HTTP ${response.status}`);
   }
 
-  return (await response.json()) as UploadProfileResponse;
+  return (await response.json()) as Array<Package>;
 };
 ```
 
 ---
 
-## Step 4: Create Registry Auth Manager
+## Step 2: Add Types for Multi-Registry Results
 
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/api/registryAuth.ts` (NEW FILE)
+**File:** `/home/amol/code/nori/nori-profiles/.worktrees/multi-registry-search/src/installer/features/hooks/config/intercepted-slashcommands/nori-registry-search.ts`
 
-This module handles Firebase authentication for registry operations:
+### 2.1 Define Result Type
 
 ```typescript
-import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, type Auth } from "firebase/auth";
-
-import type { RegistryAuth } from "@/installer/config.js";
-
-// Registry-specific Firebase config (same project as main app)
-const firebaseConfig = {
-  apiKey: "AIzaSyC54HqlGrkyANVFKGDQi3LobO5moDOuafk",
-  authDomain: "tilework-e18c5.firebaseapp.com",
-  projectId: "tilework-e18c5",
-  // ... rest of config
-};
-
-// Cache for auth tokens per registry
-const tokenCache = new Map<string, { token: string; expiry: number }>();
-
-export const getRegistryAuthToken = async (args: {
-  registryAuth: RegistryAuth;
-}): Promise<string> => {
-  const { registryAuth } = args;
-  const cacheKey = registryAuth.registryUrl;
-
-  // Check cache
-  const cached = tokenCache.get(cacheKey);
-  if (cached && Date.now() < cached.expiry) {
-    return cached.token;
-  }
-
-  // Initialize Firebase and sign in
-  // Note: Using same Firebase project - credentials work across registries
-  const app = initializeApp(firebaseConfig, `registry-${cacheKey}`);
-  const auth = getAuth(app);
-
-  const userCredential = await signInWithEmailAndPassword(
-    auth,
-    registryAuth.username,
-    registryAuth.password
-  );
-
-  const token = await userCredential.user.getIdToken();
-
-  // Cache with 55 minute expiry
-  tokenCache.set(cacheKey, {
-    token,
-    expiry: Date.now() + 55 * 60 * 1000,
-  });
-
-  return token;
+type RegistrySearchResult = {
+  registryUrl: string;
+  packages: Array<Package>;
+  error?: string | null;
 };
 ```
 
 ---
 
-## Step 5: Create Intercepted Slash Command
+## Step 3: Update Search Slash Command
 
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/installer/features/hooks/config/intercepted-slashcommands/nori-registry-upload.ts` (NEW FILE)
+**File:** `/home/amol/code/nori/nori-profiles/.worktrees/multi-registry-search/src/installer/features/hooks/config/intercepted-slashcommands/nori-registry-search.ts`
 
-### 5.1 Parse Function
+### 3.1 Add Imports
 
 ```typescript
-const parseUploadArgs = (
-  prompt: string
-): { profileName: string; version?: string | null } | null => {
-  // Match: /nori-registry-upload <profile-name> [version]
-  const match = prompt
-    .trim()
-    .match(/^\/nori-registry-upload\s+([a-z0-9-]+)(?:\s+(\d+\.\d+\.\d+.*))?$/i);
+import { loadConfig } from "@/installer/config.js";
+import { getRegistryAuthToken } from "@/api/registryAuth.js";
+import { REGISTRAR_URL, registrarApi, type Package } from "@/api/registrar.js";
+```
 
-  if (!match) {
-    return null;
+### 3.2 Create Multi-Registry Search Function
+
+```typescript
+/**
+ * Search across all configured registries
+ * @param args - Search parameters
+ * @returns Array of results per registry
+ */
+const searchAllRegistries = async (args: {
+  query: string;
+  installDir: string;
+}): Promise<Array<RegistrySearchResult>> => {
+  const { query, installDir } = args;
+  const results: Array<RegistrySearchResult> = [];
+
+  // Load config to get registry auths
+  const config = await loadConfig({ installDir });
+
+  // Always search public registry (no auth required)
+  try {
+    const packages = await registrarApi.searchPackagesOnRegistry({
+      query,
+      registryUrl: REGISTRAR_URL,
+    });
+    results.push({ registryUrl: REGISTRAR_URL, packages });
+  } catch (err) {
+    results.push({
+      registryUrl: REGISTRAR_URL,
+      packages: [],
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
-  return {
-    profileName: match[1],
-    version: match[2] ?? null,
-  };
+  // Search private registries if configured
+  if (config?.registryAuths != null) {
+    for (const registryAuth of config.registryAuths) {
+      try {
+        // Get auth token for this registry
+        const authToken = await getRegistryAuthToken({ registryAuth });
+
+        const packages = await registrarApi.searchPackagesOnRegistry({
+          query,
+          registryUrl: registryAuth.registryUrl,
+          authToken,
+        });
+        results.push({ registryUrl: registryAuth.registryUrl, packages });
+      } catch (err) {
+        results.push({
+          registryUrl: registryAuth.registryUrl,
+          packages: [],
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
+  return results;
 };
 ```
 
-### 5.2 Create Tarball Function
+### 3.3 Update Run Function to Use Multi-Registry Search
+
+Update the `run` function to:
+1. Call `searchAllRegistries` instead of `registrarApi.searchPackages`
+2. Format results grouped by registry URL
+3. Include version in package display (requires fetching packument or updating API response)
+
+### 3.4 Format Results Function
 
 ```typescript
-const createProfileTarball = async (args: {
-  profileDir: string;
-}): Promise<Buffer> => {
-  // Use tar library to create tarball of profile directory
-  // Similar to how nori-download-profile extracts tarballs
+/**
+ * Format multi-registry search results for display
+ * @param args - The results to format
+ * @returns Formatted string
+ */
+const formatSearchResults = (args: {
+  results: Array<RegistrySearchResult>;
+  query: string;
+}): string => {
+  const { results, query } = args;
+  const lines: Array<string> = [];
+
+  let totalPackages = 0;
+
+  for (const result of results) {
+    if (result.error != null) {
+      lines.push(`${result.registryUrl}`);
+      lines.push(`  -> Error: ${result.error}`);
+      lines.push("");
+      continue;
+    }
+
+    if (result.packages.length === 0) {
+      continue; // Skip registries with no results
+    }
+
+    totalPackages += result.packages.length;
+    lines.push(result.registryUrl);
+    for (const pkg of result.packages) {
+      const description = pkg.description ? `: ${pkg.description}` : "";
+      // Note: Package type doesn't include version - would need packument call
+      // For now, show name only; can enhance later
+      lines.push(`  -> ${pkg.name}${description}`);
+    }
+    lines.push("");
+  }
+
+  if (totalPackages === 0) {
+    return `No profiles found matching "${query}" in any registry.`;
+  }
+
+  return lines.join("\n").trim();
 };
 ```
 
-### 5.3 Main Run Function
+---
+
+## Step 4: Update Run Function
+
+**File:** `/home/amol/code/nori/nori-profiles/.worktrees/multi-registry-search/src/installer/features/hooks/config/intercepted-slashcommands/nori-registry-search.ts`
+
+Replace the existing search logic with:
 
 ```typescript
 const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   const { input } = args;
   const { prompt, cwd } = input;
 
-  // Parse arguments
-  const uploadArgs = parseUploadArgs(prompt);
-  if (uploadArgs == null) {
+  // Parse query from prompt
+  const query = parseQuery(prompt);
+  if (query == null) {
     return {
       decision: "block",
       reason: formatSuccess({
-        message: `Upload a profile to the Nori registry.\n\nUsage: /nori-registry-upload <profile-name> [version]\n\nExamples:\n  /nori-registry-upload my-profile\n  /nori-registry-upload my-profile 1.0.0\n\nRequires registry authentication in .nori-config.json`,
+        message: `Search for profile packages across all configured registries.\n\nUsage: /nori-registry-search <query>\n\nExamples:\n  /nori-registry-search typescript\n  /nori-registry-search react developer`,
       }),
     };
   }
 
-  const { profileName, version } = uploadArgs;
-  const uploadVersion = version ?? "1.0.0"; // Default to 1.0.0
-
   // Find installation directory
   const allInstallations = getInstallDirs({ currentDir: cwd });
+
   if (allInstallations.length === 0) {
     return {
       decision: "block",
       reason: formatError({
-        message: "No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.",
+        message: `No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.`,
       }),
     };
   }
 
   const installDir = allInstallations[0];
 
-  // Load config and check for registry auth
-  const config = await loadConfig({ installDir });
-  if (config == null) {
-    return {
-      decision: "block",
-      reason: formatError({
-        message: "Could not load Nori configuration.",
-      }),
-    };
-  }
-
-  const registryAuth = getRegistryAuth({
-    config,
-    registryUrl: REGISTRAR_URL,
-  });
-
-  if (registryAuth == null) {
-    return {
-      decision: "block",
-      reason: formatError({
-        message: `No registry authentication configured for ${REGISTRAR_URL}.\n\nAdd registry credentials to .nori-config.json:\n{\n  "registryAuths": [{\n    "username": "your-email@example.com",\n    "password": "your-password",\n    "registryUrl": "${REGISTRAR_URL}"\n  }]\n}`,
-      }),
-    };
-  }
-
-  // Check profile exists
-  const profileDir = path.join(installDir, ".claude", "profiles", profileName);
+  // Search all registries
   try {
-    await fs.access(profileDir);
-  } catch {
-    return {
-      decision: "block",
-      reason: formatError({
-        message: `Profile "${profileName}" not found at:\n${profileDir}`,
-      }),
-    };
-  }
+    const results = await searchAllRegistries({ query, installDir });
+    const formattedResults = formatSearchResults({ results, query });
 
-  // Get auth token
-  let authToken: string;
-  try {
-    authToken = await getRegistryAuthToken({ registryAuth });
-  } catch (err) {
-    return {
-      decision: "block",
-      reason: formatError({
-        message: `Authentication failed: ${err instanceof Error ? err.message : String(err)}`,
-      }),
-    };
-  }
+    // Check if we have any packages
+    const hasPackages = results.some((r) => r.packages.length > 0);
 
-  // Create tarball and upload
-  try {
-    const tarballData = await createProfileTarball({ profileDir });
-    const result = await registrarApi.uploadProfile({
-      packageName: profileName,
-      version: uploadVersion,
-      archiveData: tarballData,
-      authToken,
-    });
+    if (!hasPackages) {
+      return {
+        decision: "block",
+        reason: formatSuccess({
+          message: `No profiles found matching "${query}" in any registry.\n\nTry a different search term.`,
+        }),
+      };
+    }
 
     return {
       decision: "block",
       reason: formatSuccess({
-        message: `Successfully uploaded "${profileName}@${result.version}" to the Nori registry.\n\nOthers can install it with:\n/nori-download-profile ${profileName}`,
+        message: `Search results for "${query}":\n\n${formattedResults}\n\nTo install a profile, use: /nori-registry-download <package-name>`,
       }),
     };
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
     return {
       decision: "block",
       reason: formatError({
-        message: `Upload failed: ${err instanceof Error ? err.message : String(err)}`,
+        message: `Failed to search profiles:\n${errorMessage}`,
       }),
     };
   }
 };
-```
-
-### 5.4 Export Command
-
-```typescript
-export const noriRegistryUpload: InterceptedSlashCommand = {
-  matchers: [
-    "^\\/nori-registry-upload\\s*$", // Bare command - shows help
-    "^\\/nori-registry-upload\\s+[a-z0-9-]+(?:\\s+\\d+\\.\\d+\\.\\d+.*)?\\s*$", // With args
-  ],
-  run,
-};
-```
-
----
-
-## Step 6: Register Command
-
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/installer/features/hooks/config/intercepted-slashcommands/registry.ts`
-
-Add import and register:
-
-```typescript
-import { noriRegistryUpload } from "./nori-registry-upload.js";
-
-export const interceptedSlashCommands: Array<InterceptedSlashCommand> = [
-  noriDownloadProfile,
-  noriInstallLocation,
-  noriRegistryUpload,  // NEW
-  noriSearchProfiles,
-  noriSwitchProfile,
-  noriToggleAutoupdate,
-  noriToggleSessionTranscripts,
-];
-```
-
----
-
-## Step 7: Create Slash Command Markdown
-
-**File:** `/home/amol/code/nori/nori-profiles/.worktrees/registry-upload-command/src/installer/features/profiles/config/_mixins/_base/slashcommands/nori-registry-upload.md` (NEW FILE)
-
-```markdown
----
-description: Upload a profile to the Nori registry
-allowed-tools: Bash(nori-ai:*)
----
-
-Upload a local profile to the Nori package registry.
-
-Usage: /nori-registry-upload <profile-name> [version]
-
-Examples:
-- /nori-registry-upload my-profile
-- /nori-registry-upload my-profile 1.0.0
-
-This command packages the specified profile and uploads it to the Nori registry.
-
-Requires registry authentication configured in .nori-config.json.
 ```
 
 ---
 
 ## Edge Cases
 
-1. **Profile doesn't exist** - Return error with path where profile was expected
-2. **No registry auth configured** - Return error with instructions for adding auth
-3. **Auth token expired/invalid** - Let Firebase throw, catch and display auth error
-4. **Network failure** - Let fetch throw, catch and display network error
-5. **Version conflict (already exists)** - Registrar returns 409, display appropriate error
-6. **Invalid profile structure** - Registrar returns 400, display validation error
-7. **User not authorized for package** - Registrar returns 403, display permission error
-8. **Multiple Nori installations** - Use closest installation (same as download command)
+1. **No Nori installation found** - Return error with install instructions
+2. **Config file doesn't exist** - Proceed with public registry only
+3. **No registryAuths configured** - Proceed with public registry only
+4. **Private registry auth fails** - Show error for that registry, continue with others
+5. **Private registry network error** - Show error for that registry, continue with others
+6. **Public registry error** - Show error for public registry, continue with private ones
+7. **No results in any registry** - Display "No profiles found" message
+8. **Some registries have results, some don't** - Only show registries with results (or errors)
 
 ---
 
 ## Questions
 
-1. **Version defaulting**: Should we default to "1.0.0" for first upload, or require version? Current plan defaults to "1.0.0".
+1. **Version display**: The current `Package` type from search doesn't include version. The user's requested format shows `foo-bar@1.3.1`. Should we:
+   - a) Add a packument call for each package to get latest version (more API calls, slower)
+   - b) Update the search API to return version (requires backend change)
+   - c) Display without version for now (simpler, matches current behavior)
 
-2. **Profile validation**: Should we validate the profile structure locally before upload (check for CLAUDE.md, etc.), or let the server validate?
+2. **Registry URL normalization**: Should we normalize registry URLs before display (remove trailing slashes, etc.)?
 
-3. **Tarball format**: The server accepts both `.tgz` (gzipped) and plain `.tar`. Should we gzip for smaller upload size?
+3. **Description truncation**: Should we truncate long descriptions in the output?
 
 ---
 
 ## Testing Details
 
-Tests will verify:
-- Config type correctly parses/saves `registryAuths` array
-- `getRegistryAuth` finds correct auth by URL (with normalization)
-- Slash command shows help when called without args
-- Slash command returns error when profile not found
-- Slash command returns error when no registry auth configured
-- Slash command successfully uploads profile (mocked API)
-- API upload function sends correct multipart form data with auth header
+Tests will verify these BEHAVIORS:
+- Search returns results grouped by registry URL
+- Public registry is always searched (no auth needed)
+- Private registries are searched with authentication
+- Auth failures for one registry don't prevent searching others
+- Network failures for one registry don't prevent searching others
+- Empty results display appropriate message
+- Format matches expected output (`https://url\n  -> package: description`)
 
-Tests focus on BEHAVIOR (command parsing, auth lookup, error messages) rather than implementation details.
+Tests focus on integration behavior, not implementation details.
 
 ---
 
 ## Implementation Details
 
-- Follow existing intercepted slash command pattern from `nori-download-profile.ts`
+- Follow existing intercepted slash command pattern from `nori-registry-download.ts`
 - Use named parameters pattern: `const fn = (args: { foo: string }) => {}`
 - Use `@/` imports throughout
 - Use `== null` for null checks
 - Reuse existing utilities: `getInstallDirs`, `loadConfig`, `formatSuccess`, `formatError`
-- Use same Firebase config as existing auth (both systems use same Firebase project)
-- Use `tar` library already in dependencies for creating tarballs
+- Reuse `getRegistryAuthToken` from `@/api/registryAuth.js` for private registry auth
+- Add new `searchPackagesOnRegistry` to `registrarApi` to support custom registry URLs
 
 ---

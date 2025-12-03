@@ -234,6 +234,113 @@ describe("registrarApi", () => {
     });
   });
 
+  describe("searchPackagesOnRegistry", () => {
+    it("should search packages on a custom registry URL without auth", async () => {
+      const mockPackages = [
+        {
+          id: "pkg-1",
+          name: "custom-profile",
+          description: "A custom profile",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01T00:00:00.000Z",
+          updatedAt: "2024-01-01T00:00:00.000Z",
+        },
+      ];
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockPackages),
+      });
+
+      const result = await registrarApi.searchPackagesOnRegistry({
+        query: "custom",
+        registryUrl: "https://custom.registry.com",
+      });
+
+      expect(result).toEqual(mockPackages);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://custom.registry.com/api/packages/search?q=custom",
+        expect.objectContaining({
+          method: "GET",
+        }),
+      );
+    });
+
+    it("should include Authorization header when authToken is provided", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await registrarApi.searchPackagesOnRegistry({
+        query: "test",
+        registryUrl: "https://private.registry.com",
+        authToken: "secret-token-123",
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://private.registry.com/api/packages/search?q=test",
+        expect.objectContaining({
+          method: "GET",
+          headers: expect.objectContaining({
+            Authorization: "Bearer secret-token-123",
+          }),
+        }),
+      );
+    });
+
+    it("should not include Authorization header when authToken is null", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await registrarApi.searchPackagesOnRegistry({
+        query: "test",
+        registryUrl: "https://public.registry.com",
+        authToken: null,
+      });
+
+      const callArgs = mockFetch.mock.calls[0];
+      expect(callArgs[1].headers).toEqual({});
+    });
+
+    it("should pass limit and offset query params", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await registrarApi.searchPackagesOnRegistry({
+        query: "test",
+        registryUrl: "https://custom.registry.com",
+        limit: 5,
+        offset: 10,
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://custom.registry.com/api/packages/search?q=test&limit=5&offset=10",
+        expect.anything(),
+      );
+    });
+
+    it("should throw error on non-OK response", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: "Unauthorized" }),
+      });
+
+      await expect(
+        registrarApi.searchPackagesOnRegistry({
+          query: "test",
+          registryUrl: "https://private.registry.com",
+          authToken: "invalid-token",
+        }),
+      ).rejects.toThrow("Unauthorized");
+    });
+  });
+
   describe("uploadProfile", () => {
     it("should upload profile with multipart form data", async () => {
       const mockResponse = {

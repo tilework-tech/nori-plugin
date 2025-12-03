@@ -43,8 +43,9 @@ const NORI_INSTALL_LOCATION_SCRIPT = path.resolve(
 const runHookScript = async (args: {
   scriptPath: string;
   stdinData: string;
+  testName?: string | null;
 }): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
-  const { scriptPath, stdinData } = args;
+  const { scriptPath, stdinData, testName } = args;
 
   return new Promise((resolve) => {
     const child = spawn("node", [scriptPath], {
@@ -63,6 +64,19 @@ const runHookScript = async (args: {
     });
 
     child.on("close", (code) => {
+      // DEBUG: Always log if exit code is non-zero
+      if (code !== 0) {
+        const label = testName ?? "unknown";
+        process.stderr.write(
+          `\nDEBUG runHookScript [${label}]: exitCode=${code}\n`,
+        );
+        process.stderr.write(
+          `DEBUG runHookScript [${label}]: stderr=${stderr}\n`,
+        );
+        process.stderr.write(
+          `DEBUG runHookScript [${label}]: stdout=${stdout.slice(0, 200)}\n`,
+        );
+      }
       resolve({
         stdout,
         stderr,
@@ -309,7 +323,11 @@ describe("slash-command-intercept hook", () => {
         hook_event_name: "UserPromptSubmit",
       });
 
-      const result = await runHookScript({ scriptPath, stdinData });
+      const result = await runHookScript({
+        scriptPath,
+        stdinData,
+        testName: "nori-install-location",
+      });
 
       expect(result.exitCode).toBe(0);
 
@@ -332,7 +350,11 @@ describe("slash-command-intercept hook", () => {
         hook_event_name: "UserPromptSubmit",
       });
 
-      const result = await runHookScript({ scriptPath, stdinData });
+      const result = await runHookScript({
+        scriptPath,
+        stdinData,
+        testName: "pass-through-non-matching",
+      });
 
       // Should exit successfully with no output (pass through)
       expect(result.exitCode).toBe(0);
@@ -345,6 +367,7 @@ describe("slash-command-intercept hook", () => {
       const result = await runHookScript({
         scriptPath,
         stdinData: "not valid json",
+        testName: "malformed-stdin",
       });
 
       // Should exit successfully but pass through (no output)
@@ -358,6 +381,7 @@ describe("slash-command-intercept hook", () => {
       const result = await runHookScript({
         scriptPath,
         stdinData: "",
+        testName: "empty-stdin",
       });
 
       // Should exit successfully but pass through (no output)

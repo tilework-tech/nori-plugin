@@ -46,6 +46,8 @@ export type SearchPackagesRequest = {
   query: string;
   limit?: number | null;
   offset?: number | null;
+  registryUrl?: string | null;
+  authToken?: string | null;
 };
 
 export type SearchPackagesOnRegistryRequest = {
@@ -58,11 +60,15 @@ export type SearchPackagesOnRegistryRequest = {
 
 export type GetPackumentRequest = {
   packageName: string;
+  registryUrl?: string | null;
+  authToken?: string | null;
 };
 
 export type DownloadTarballRequest = {
   packageName: string;
   version?: string | null;
+  registryUrl?: string | null;
+  authToken?: string | null;
 };
 
 export type UploadProfileRequest = {
@@ -91,7 +97,8 @@ export const registrarApi = {
   searchPackages: async (
     args: SearchPackagesRequest,
   ): Promise<Array<Package>> => {
-    const { query, limit, offset } = args;
+    const { query, limit, offset, registryUrl, authToken } = args;
+    const baseUrl = registryUrl ?? REGISTRAR_URL;
 
     const params = new URLSearchParams({ q: query });
     if (limit != null) {
@@ -101,10 +108,16 @@ export const registrarApi = {
       params.set("offset", offset.toString());
     }
 
-    const url = `${REGISTRAR_URL}/api/packages/search?${params.toString()}`;
+    const url = `${baseUrl}/api/packages/search?${params.toString()}`;
+
+    const headers: Record<string, string> = {};
+    if (authToken != null) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
 
     const response = await fetch(url, {
       method: "GET",
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
 
     if (!response.ok) {
@@ -165,12 +178,19 @@ export const registrarApi = {
    * @returns The package packument
    */
   getPackument: async (args: GetPackumentRequest): Promise<Packument> => {
-    const { packageName } = args;
+    const { packageName, registryUrl, authToken } = args;
+    const baseUrl = registryUrl ?? REGISTRAR_URL;
 
-    const url = `${REGISTRAR_URL}/api/packages/${packageName}`;
+    const url = `${baseUrl}/api/packages/${packageName}`;
+
+    const headers: Record<string, string> = {};
+    if (authToken != null) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
 
     const response = await fetch(url, {
       method: "GET",
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
 
     if (!response.ok) {
@@ -194,12 +214,17 @@ export const registrarApi = {
   downloadTarball: async (
     args: DownloadTarballRequest,
   ): Promise<ArrayBuffer> => {
-    const { packageName } = args;
+    const { packageName, registryUrl, authToken } = args;
+    const baseUrl = registryUrl ?? REGISTRAR_URL;
     let { version } = args;
 
     // If no version specified, resolve latest from packument
     if (version == null) {
-      const packument = await registrarApi.getPackument({ packageName });
+      const packument = await registrarApi.getPackument({
+        packageName,
+        registryUrl,
+        authToken,
+      });
       version = packument["dist-tags"].latest;
 
       if (version == null) {
@@ -208,10 +233,16 @@ export const registrarApi = {
     }
 
     const tarballFilename = `${packageName}-${version}.tgz`;
-    const url = `${REGISTRAR_URL}/api/packages/${packageName}/tarball/${tarballFilename}`;
+    const url = `${baseUrl}/api/packages/${packageName}/tarball/${tarballFilename}`;
+
+    const headers: Record<string, string> = {};
+    if (authToken != null) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
 
     const response = await fetch(url, {
       method: "GET",
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
 
     if (!response.ok) {

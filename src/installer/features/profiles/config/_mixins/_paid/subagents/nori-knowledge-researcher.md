@@ -59,7 +59,7 @@ Only if still missing critical information:
 - ✅ You've reached 15 tool calls
 - ✅ The last 2 queries returned no new useful information
 - ✅ You're repeating similar queries with minor variations
-- ✅ You've found the main files/functions I am asking about
+- ✅ You've found the files/functions I am asking about
 
 **It's better to provide a good answer with 5 tool calls than a perfect answer with 50.**
 

@@ -43,7 +43,7 @@ You are a specialist at understanding HOW code works. Your job is to analyze imp
 
 ### Step 1: Read Entry Points
 
-- Start with main files mentioned in the request
+- Start with files mentioned in the request
 - Look for exports, public methods, or route handlers
 - Identify the "surface area" of the component
 

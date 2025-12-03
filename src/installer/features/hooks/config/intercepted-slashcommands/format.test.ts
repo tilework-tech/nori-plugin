@@ -72,3 +72,37 @@ describe("formatError", () => {
     expect(result).toBe(`${RED}Error${NC}\n${RED}${NC}\n${RED}Details${NC}`);
   });
 });
+
+describe("soft wrap handling", () => {
+  it("should pre-wrap long lines and apply colors to each wrapped line", () => {
+    // Create a message longer than 80 chars (default terminal width)
+    const longMessage = "a".repeat(100);
+    const result = formatSuccess({ message: longMessage });
+
+    // The message should be wrapped into multiple lines
+    const lines = result.split("\n");
+    expect(lines.length).toBeGreaterThan(1);
+
+    // Each line should start with GREEN and end with NC
+    for (const line of lines) {
+      expect(line.startsWith(GREEN)).toBe(true);
+      expect(line.endsWith(NC)).toBe(true);
+    }
+  });
+
+  it("should handle mix of explicit newlines and long lines", () => {
+    // First line is short, second line is long
+    const message = "Short\n" + "b".repeat(100);
+    const result = formatSuccess({ message });
+
+    const lines = result.split("\n");
+    // Should have at least 3 lines: "Short", and the long line wrapped
+    expect(lines.length).toBeGreaterThanOrEqual(3);
+
+    // Each line should have proper color codes
+    for (const line of lines) {
+      expect(line.startsWith(GREEN)).toBe(true);
+      expect(line.endsWith(NC)).toBe(true);
+    }
+  });
+});

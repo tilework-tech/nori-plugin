@@ -46,7 +46,15 @@ When an update is available (latestVersion is valid AND greater than installedVe
 
 - `nori-toggle-session-transcripts.ts`: Toggles the `sendSessionTranscript` field in `.nori-config.json` between "enabled" and "disabled". Default state (missing field) is treated as enabled.
 
-- `nori-registry-search.ts`: Handles `/nori-registry-search <query>` to search for profile packages in the Nori registrar. Uses registrarApi.searchPackages() from @/plugin/src/api/registrar.ts. Returns formatted list of matching packages with descriptions, or error message if no results found.
+- `nori-registry-search.ts`: Handles `/nori-registry-search <query>` to search for profile packages across all configured registries (public + private). The command always searches the public registrar at `REGISTRAR_URL`, then iterates through any private registries in `config.registryAuths` using `getRegistryAuthToken()` for authentication. Uses `registrarApi.searchPackagesOnRegistry()` from @/plugin/src/api/registrar.ts to search each registry with optional Bearer token. Deduplicates registries using `normalizeUrl()` to avoid searching the same registry twice (e.g., if a private registry URL matches the public one). Results are grouped by registry URL in the output format:
+  ```
+  https://registrar.tilework.tech
+    -> package-name: Description...
+
+  https://private.registry.com
+    -> another-package: Description...
+  ```
+  Error handling is per-registry: failures in one registry don't prevent searching others. Registries with no results are omitted from output; registries with errors display the error message under their URL.
 
 - `nori-registry-download.ts`: Handles `/nori-registry-download <package-name>[@version]` to download and install profile packages from the Nori registrar. Uses registrarApi.downloadTarball() to fetch the tarball, then extracts it using the `tar` npm package with zlib gzip decompression. Installs profiles to `{installDir}/.claude/profiles/{packageName}/`. Checks for existing installations and refuses to overwrite. Requires exactly one Nori installation to be detected (errors if multiple installations found).
 

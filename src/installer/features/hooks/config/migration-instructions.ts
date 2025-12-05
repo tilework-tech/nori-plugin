@@ -7,23 +7,11 @@
  * It checks for pending migrations and instructs users how to complete them.
  */
 
-import * as fs from "fs";
-import * as path from "path";
-
 import { error } from "@/installer/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
 import { formatError } from "./intercepted-slashcommands/format.js";
-
-/**
- * Migration instruction interface
- * Each migration defines a trigger function that returns:
- * - A message string if migration is needed
- * - null if no migration is needed
- */
-type MigrationInstruction = {
-  trigger: (args: { installDir: string }) => string | null;
-};
+import { migrationInstructions } from "./migration-instructions/registry.js";
 
 /**
  * Output hook result with systemMessage
@@ -38,61 +26,6 @@ const logToClaudeSession = (args: { message: string }): void => {
   };
 
   console.log(JSON.stringify(output));
-};
-
-/**
- * Check if profiles exist in old .claude/profiles/ location
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- *
- * @returns Migration message or null
- */
-const checkOldProfilesLocation: MigrationInstruction = {
-  trigger: (args: { installDir: string }): string | null => {
-    const { installDir } = args;
-
-    const oldProfilesDir = path.join(installDir, ".claude", "profiles");
-
-    // Check if directory exists
-    if (!fs.existsSync(oldProfilesDir)) {
-      return null;
-    }
-
-    // Get directory entries, filtering out hidden files
-    let entries: Array<string>;
-    try {
-      entries = fs
-        .readdirSync(oldProfilesDir)
-        .filter((entry) => !entry.startsWith("."));
-    } catch {
-      return null;
-    }
-
-    // Check if there are any non-hidden entries (profiles)
-    if (entries.length === 0) {
-      return null;
-    }
-
-    // Build migration message
-    const newProfilesDir = path.join(installDir, ".nori", "profiles");
-    let message = "⚠️ **Profile Migration Required**\n\n";
-    message += `Found profiles in old location: ${oldProfilesDir}\n\n`;
-    message += "**Profiles found:**\n";
-    for (const entry of entries) {
-      message += `- ${entry}\n`;
-    }
-    message += "\n**To migrate, move your profiles to the new location:**\n";
-    message += `\`mv ${oldProfilesDir}/* ${newProfilesDir}/\`\n`;
-
-    return message;
-  },
-};
-
-/**
- * Dictionary of all migration instructions
- */
-const migrationInstructions: Record<string, MigrationInstruction> = {
-  oldProfilesLocation: checkOldProfilesLocation,
 };
 
 /**
@@ -141,7 +74,7 @@ export const main = async (args?: {
 };
 
 // Export for testing
-export { logToClaudeSession, migrationInstructions };
+export { logToClaudeSession };
 
 // Run if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {

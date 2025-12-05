@@ -13,7 +13,6 @@ import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir = "";
-let mockNoriDir = "";
 
 vi.mock("@/installer/env.js", () => ({
   getClaudeDir: () => mockClaudeDir,
@@ -22,8 +21,7 @@ vi.mock("@/installer/env.js", () => ({
   getClaudeCommandsDir: () => path.join(mockClaudeDir, "commands"),
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
-  getNoriDir: () => mockNoriDir,
-  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
   MCP_ROOT: "/mock/mcp/root",
 }));
 
@@ -33,23 +31,19 @@ import { profilesLoader, _testing } from "./loader.js";
 describe("profilesLoader", () => {
   let tempDir: string;
   let claudeDir: string;
-  let noriDir: string;
   let profilesDir: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "profiles-test-"));
     claudeDir = path.join(tempDir, ".claude");
-    noriDir = path.join(tempDir, ".nori");
-    profilesDir = path.join(noriDir, "profiles");
+    profilesDir = path.join(claudeDir, "profiles");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
-    mockNoriDir = noriDir;
 
     // Create directories
     await fs.mkdir(claudeDir, { recursive: true });
-    await fs.mkdir(noriDir, { recursive: true });
   });
 
   afterEach(async () => {

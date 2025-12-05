@@ -56,7 +56,7 @@ describe("registry-download", () => {
       path.join(tmpdir(), "nori-registry-download-test-"),
     );
     configPath = path.join(testDir, ".nori-config.json");
-    profilesDir = path.join(testDir, ".nori", "profiles");
+    profilesDir = path.join(testDir, ".claude", "profiles");
 
     // Create initial config
     await fs.writeFile(
@@ -262,7 +262,7 @@ describe("registry-download", () => {
       );
       const customProfilesDir = path.join(
         customInstallDir,
-        ".nori",
+        ".claude",
         "profiles",
       );
       await fs.mkdir(customProfilesDir, { recursive: true });

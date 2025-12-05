@@ -7,11 +7,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-import {
-  getClaudeCommandsDir,
-  getClaudeDir,
-  getNoriProfilesDir,
-} from "@/installer/env.js";
+import { getClaudeDir, getClaudeCommandsDir } from "@/installer/env.js";
 import { success, info, warn } from "@/installer/logger.js";
 import { substituteTemplatePaths } from "@/utils/template.js";
 
@@ -37,8 +33,8 @@ const getConfigDir = (args: {
   installDir: string;
 }): string => {
   const { profileName, installDir } = args;
-  const noriProfilesDir = getNoriProfilesDir({ installDir });
-  return path.join(noriProfilesDir, profileName, "slashcommands");
+  const claudeDir = getClaudeDir({ installDir });
+  return path.join(claudeDir, "profiles", profileName, "slashcommands");
 };
 
 /**
@@ -91,9 +87,9 @@ const registerSlashCommands = async (args: {
       const commandName = file.replace(/\.md$/, "");
       success({ message: `✓ /${commandName} slash command registered` });
       registeredCount++;
-    } catch (err) {
+    } catch {
       warn({
-        message: `Slash command definition not found at ${commandSrc}, skipping. Error: ${err instanceof Error ? err.message : String(err)}`,
+        message: `Slash command definition not found at ${commandSrc}, skipping`,
       });
       skippedCount++;
     }

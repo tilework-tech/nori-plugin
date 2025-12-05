@@ -11,7 +11,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock modules - initialize with temp values
 let mockClaudeDir = "/tmp/test-claude";
-let mockNoriDir = "/tmp/test-nori";
 let mockConfigPath = "/tmp/test-config.json";
 
 vi.mock("@/installer/env.js", () => ({
@@ -23,8 +22,7 @@ vi.mock("@/installer/env.js", () => ({
   getClaudeCommandsDir: () => path.join(mockClaudeDir, "commands"),
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
-  getNoriDir: () => mockNoriDir,
-  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
   MCP_ROOT: "/mock/mcp/root",
 }));
 
@@ -60,7 +58,6 @@ import { runUninstall } from "./uninstall.js";
 describe("uninstall cleanup", () => {
   let tempDir: string;
   let claudeDir: string;
-  let noriDir: string;
   let agentsDir: string;
   let commandsDir: string;
   let profilesDir: string;
@@ -76,10 +73,9 @@ describe("uninstall cleanup", () => {
       path.join(os.tmpdir(), "uninstall-cleanup-test-"),
     );
     claudeDir = path.join(tempDir, ".claude");
-    noriDir = path.join(tempDir, ".nori");
     agentsDir = path.join(claudeDir, "agents");
     commandsDir = path.join(claudeDir, "commands");
-    profilesDir = path.join(noriDir, "profiles");
+    profilesDir = path.join(claudeDir, "profiles");
     configPath = path.join(tempDir, ".nori-config.json");
 
     // CRITICAL: Mock cwd to point to temp directory
@@ -87,15 +83,13 @@ describe("uninstall cleanup", () => {
 
     // Set mock paths
     mockClaudeDir = claudeDir;
-    mockNoriDir = noriDir;
     mockConfigPath = configPath;
 
     // Reset mock config
     mockLoadedConfig = null;
 
-    // Create base directories
+    // Create base claude directory
     await fs.mkdir(claudeDir, { recursive: true });
-    await fs.mkdir(noriDir, { recursive: true });
   });
 
   afterEach(async () => {
@@ -114,7 +108,7 @@ describe("uninstall cleanup", () => {
       // Set up free config
       const config = { installDir: tempDir };
 
-      // Install profiles first (creates ~/.nori/profiles/senior-swe/subagents/)
+      // Install profiles first (creates ~/.claude/profiles/senior-swe/subagents/)
       await profilesLoader.run({ config });
 
       // Install subagents (copies files to ~/.claude/agents/)
@@ -148,7 +142,7 @@ describe("uninstall cleanup", () => {
       // Set up free config
       const config = { installDir: tempDir };
 
-      // Install profiles first (creates ~/.nori/profiles/senior-swe/slashcommands/)
+      // Install profiles first (creates ~/.claude/profiles/senior-swe/slashcommands/)
       await profilesLoader.run({ config });
 
       // Install slash commands (copies files to ~/.claude/commands/)

@@ -7,12 +7,12 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 import { loadConfig, saveConfig } from "@/installer/config.js";
-import { getNoriProfilesDir } from "@/installer/env.js";
+import { getClaudeProfilesDir } from "@/installer/env.js";
 import { success, info } from "@/installer/logger.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
 /**
- * List all available profiles from ~/.nori/profiles/
+ * List all available profiles from ~/.claude/profiles/
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
  *
@@ -22,7 +22,7 @@ export const listProfiles = async (args: {
   installDir: string;
 }): Promise<Array<string>> => {
   const { installDir } = args;
-  const profilesDir = getNoriProfilesDir({ installDir });
+  const profilesDir = getClaudeProfilesDir({ installDir });
   const profiles: Array<string> = [];
 
   try {
@@ -71,7 +71,7 @@ export const switchProfile = async (args: {
   // Normalize installDir at entry point
   const installDir = normalizeInstallDir({ installDir: args.installDir });
 
-  const profilesDir = getNoriProfilesDir({ installDir });
+  const profilesDir = getClaudeProfilesDir({ installDir });
 
   // 1. Verify profile exists by checking for CLAUDE.md in profile directory
   const profileDir = path.join(profilesDir, profileName);

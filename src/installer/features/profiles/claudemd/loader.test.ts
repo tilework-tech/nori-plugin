@@ -15,7 +15,6 @@ import type { Config } from "@/installer/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir: string;
-let mockNoriDir: string;
 let mockClaudeMdFile: string;
 
 vi.mock("@/installer/env.js", () => ({
@@ -25,8 +24,7 @@ vi.mock("@/installer/env.js", () => ({
   getClaudeCommandsDir: () => path.join(mockClaudeDir, "commands"),
   getClaudeMdFile: () => mockClaudeMdFile,
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
-  getNoriDir: () => mockNoriDir,
-  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
   MCP_ROOT: "/mock/mcp/root",
 }));
 
@@ -36,27 +34,23 @@ import { claudeMdLoader } from "./loader.js";
 describe("claudeMdLoader", () => {
   let tempDir: string;
   let claudeDir: string;
-  let noriDir: string;
   let claudeMdPath: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "claudemd-test-"));
     claudeDir = path.join(tempDir, ".claude");
-    noriDir = path.join(tempDir, ".nori");
     claudeMdPath = path.join(claudeDir, "CLAUDE.md");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
-    mockNoriDir = noriDir;
     mockClaudeMdFile = claudeMdPath;
 
-    // Create .claude and .nori directories
+    // Create .claude directory
     await fs.mkdir(claudeDir, { recursive: true });
-    await fs.mkdir(noriDir, { recursive: true });
 
-    // Run profiles loader to populate ~/.nori/profiles/ directory with composed profiles
-    // This is required since feature loaders now read from ~/.nori/profiles/
+    // Run profiles loader to populate ~/.claude/profiles/ directory with composed profiles
+    // This is required since feature loaders now read from ~/.claude/profiles/
     const config: Config = { installDir: tempDir };
     await profilesLoader.run({ config });
   });

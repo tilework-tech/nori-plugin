@@ -21,12 +21,12 @@ vi.mock("@/api/registryAuth.js", () => ({
   getRegistryAuthToken: vi.fn(),
 }));
 
+import { profileRegistryApi } from "@/api/profileRegistry.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 
 import type { HookInput } from "./types.js";
 
 import { noriRegistryUpload } from "./nori-registry-upload.js";
-import { profileRegistryApi } from "@/api/profileRegistry.js";
 
 // ANSI color codes for verification
 const GREEN = "\x1b[0;32m";

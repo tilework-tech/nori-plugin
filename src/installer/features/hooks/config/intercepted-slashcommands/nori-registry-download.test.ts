@@ -29,13 +29,16 @@ vi.mock("@/api/registryAuth.js", () => ({
   getRegistryAuthToken: vi.fn(),
 }));
 
+import {
+  profileRegistryApi,
+  PROFILE_REGISTRY_URL,
+} from "@/api/profileRegistry.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig, getRegistryAuth } from "@/installer/config.js";
 
 import type { HookInput } from "./types.js";
 
 import { noriRegistryDownload } from "./nori-registry-download.js";
-import { profileRegistryApi, PROFILE_REGISTRY_URL } from "@/api/profileRegistry.js";
 
 // ANSI color codes for verification
 const GREEN = "\x1b[0;32m";
@@ -224,8 +227,12 @@ describe("nori-registry-download", () => {
       // Create a non-gzipped tarball (matching current registrar behavior)
       const mockTarball = await createMockTarball({ gzip: false });
 
-      vi.mocked(profileRegistryApi.getProfileMetadata).mockResolvedValue(mockProfileMetadata);
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.getProfileMetadata).mockResolvedValue(
+        mockProfileMetadata,
+      );
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile",
@@ -250,7 +257,9 @@ describe("nori-registry-download", () => {
       // Also support gzipped tarballs for future compatibility
       const mockTarball = await createMockTarball({ gzip: true });
 
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile",
@@ -264,7 +273,9 @@ describe("nori-registry-download", () => {
 
     it("should pass version to downloadTarball when specified", async () => {
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile@2.0.0",
@@ -299,7 +310,9 @@ describe("nori-registry-download", () => {
   describe("ANSI color formatting", () => {
     it("should format success download with green color codes", async () => {
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile",
@@ -432,7 +445,9 @@ describe("nori-registry-download", () => {
           "1.0.0": { name: "test-profile", version: "1.0.0" },
         },
       });
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile",
@@ -482,7 +497,9 @@ describe("nori-registry-download", () => {
           },
         });
 
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile",
@@ -585,7 +602,9 @@ describe("nori-registry-download", () => {
         },
       });
 
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt:
@@ -703,7 +722,9 @@ describe("nori-registry-download", () => {
           },
         });
 
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       const input = createInput({
         prompt: "/nori-registry-download test-profile",

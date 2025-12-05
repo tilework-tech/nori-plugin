@@ -22,12 +22,15 @@ vi.mock("@/api/registryAuth.js", () => ({
   getRegistryAuthToken: vi.fn(),
 }));
 
+import {
+  profileRegistryApi,
+  PROFILE_REGISTRY_URL,
+} from "@/api/profileRegistry.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 
 import type { HookInput } from "./types.js";
 
 import { noriRegistrySearch } from "./nori-registry-search.js";
-import { profileRegistryApi, PROFILE_REGISTRY_URL } from "@/api/profileRegistry.js";
 
 // ANSI color codes for verification
 const GREEN = "\x1b[0;32m";
@@ -209,7 +212,9 @@ describe("nori-registry-search", () => {
     });
 
     it("should display no results message when empty", async () => {
-      vi.mocked(profileRegistryApi.searchProfilesOnRegistry).mockResolvedValue([]);
+      vi.mocked(profileRegistryApi.searchProfilesOnRegistry).mockResolvedValue(
+        [],
+      );
 
       const input = createInput({
         prompt: "/nori-registry-search nonexistent",
@@ -237,7 +242,9 @@ describe("nori-registry-search", () => {
     });
 
     it("should pass multi-word query to API", async () => {
-      vi.mocked(profileRegistryApi.searchProfilesOnRegistry).mockResolvedValue([]);
+      vi.mocked(profileRegistryApi.searchProfilesOnRegistry).mockResolvedValue(
+        [],
+      );
 
       const input = createInput({
         prompt: "/nori-registry-search typescript react developer",
@@ -280,7 +287,9 @@ describe("nori-registry-search", () => {
     });
 
     it("should format no results message with green color codes", async () => {
-      vi.mocked(profileRegistryApi.searchProfilesOnRegistry).mockResolvedValue([]);
+      vi.mocked(profileRegistryApi.searchProfilesOnRegistry).mockResolvedValue(
+        [],
+      );
 
       const input = createInput({
         prompt: "/nori-registry-search nonexistent",
@@ -439,7 +448,9 @@ describe("nori-registry-search", () => {
       expect(plainReason).toContain("-> private-profile");
 
       // Verify both registries were searched
-      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(2);
+      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(
+        2,
+      );
 
       // Verify private registry was called with auth token
       expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledWith(
@@ -488,7 +499,9 @@ describe("nori-registry-search", () => {
       await noriRegistrySearch.run({ input });
 
       // Should only search once (public registry), not twice
-      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(1);
+      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(
+        1,
+      );
     });
 
     it("should continue searching other registries when one fails with error", async () => {

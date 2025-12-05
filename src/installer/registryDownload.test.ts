@@ -37,11 +37,14 @@ const mockConsoleError = vi
   .spyOn(console, "error")
   .mockImplementation(() => undefined);
 
+import {
+  profileRegistryApi,
+  PROFILE_REGISTRY_URL,
+} from "@/api/profileRegistry.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig, getRegistryAuth } from "@/installer/config.js";
 
 import { registryDownloadMain } from "./registryDownload.js";
-import { profileRegistryApi, PROFILE_REGISTRY_URL } from "@/api/profileRegistry.js";
 
 describe("registry-download", () => {
   let testDir: string;
@@ -95,7 +98,9 @@ describe("registry-download", () => {
       });
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "test-profile",
@@ -145,7 +150,9 @@ describe("registry-download", () => {
       });
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "test-profile@2.0.0",
@@ -242,7 +249,9 @@ describe("registry-download", () => {
 
     it("should support gzipped tarballs", async () => {
       const mockTarball = await createMockTarball({ gzip: true });
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "gzipped-profile",
@@ -272,7 +281,9 @@ describe("registry-download", () => {
       );
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       try {
         await registryDownloadMain({
@@ -310,19 +321,23 @@ describe("registry-download", () => {
       vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
 
       // Package only exists in public registry
-      vi.mocked(profileRegistryApi.getProfileMetadata).mockImplementation(async (args) => {
-        if (args.registryUrl === PROFILE_REGISTRY_URL) {
-          return {
-            name: "test-profile",
-            "dist-tags": { latest: "1.0.0" },
-            versions: { "1.0.0": { name: "test-profile", version: "1.0.0" } },
-          };
-        }
-        throw new Error("Not found");
-      });
+      vi.mocked(profileRegistryApi.getProfileMetadata).mockImplementation(
+        async (args) => {
+          if (args.registryUrl === PROFILE_REGISTRY_URL) {
+            return {
+              name: "test-profile",
+              "dist-tags": { latest: "1.0.0" },
+              versions: { "1.0.0": { name: "test-profile", version: "1.0.0" } },
+            };
+          }
+          throw new Error("Not found");
+        },
+      );
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "test-profile",
@@ -365,29 +380,31 @@ describe("registry-download", () => {
       vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
 
       // Package exists in BOTH registries
-      vi.mocked(profileRegistryApi.getProfileMetadata).mockImplementation(async (args) => {
-        if (args.registryUrl === PROFILE_REGISTRY_URL) {
-          return {
-            name: "test-profile",
-            description: "Public version",
-            "dist-tags": { latest: "1.0.0" },
-            versions: {
-              "1.0.0": { name: "test-profile", version: "1.0.0" },
-            } as Record<string, { name: string; version: string }>,
-          };
-        }
-        if (args.registryUrl === privateRegistryUrl) {
-          return {
-            name: "test-profile",
-            description: "Private version",
-            "dist-tags": { latest: "2.0.0" },
-            versions: {
-              "2.0.0": { name: "test-profile", version: "2.0.0" },
-            } as Record<string, { name: string; version: string }>,
-          };
-        }
-        throw new Error("Not found");
-      });
+      vi.mocked(profileRegistryApi.getProfileMetadata).mockImplementation(
+        async (args) => {
+          if (args.registryUrl === PROFILE_REGISTRY_URL) {
+            return {
+              name: "test-profile",
+              description: "Public version",
+              "dist-tags": { latest: "1.0.0" },
+              versions: {
+                "1.0.0": { name: "test-profile", version: "1.0.0" },
+              } as Record<string, { name: string; version: string }>,
+            };
+          }
+          if (args.registryUrl === privateRegistryUrl) {
+            return {
+              name: "test-profile",
+              description: "Private version",
+              "dist-tags": { latest: "2.0.0" },
+              versions: {
+                "2.0.0": { name: "test-profile", version: "2.0.0" },
+              } as Record<string, { name: string; version: string }>,
+            };
+          }
+          throw new Error("Not found");
+        },
+      );
 
       await registryDownloadMain({
         profileSpec: "test-profile",
@@ -426,21 +443,25 @@ describe("registry-download", () => {
       vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
 
       // Package only exists in private registry
-      vi.mocked(profileRegistryApi.getProfileMetadata).mockImplementation(async (args) => {
-        if (args.registryUrl === privateRegistryUrl) {
-          return {
-            name: "private-profile",
-            "dist-tags": { latest: "1.0.0" },
-            versions: {
-              "1.0.0": { name: "private-profile", version: "1.0.0" },
-            },
-          };
-        }
-        throw new Error("Not found");
-      });
+      vi.mocked(profileRegistryApi.getProfileMetadata).mockImplementation(
+        async (args) => {
+          if (args.registryUrl === privateRegistryUrl) {
+            return {
+              name: "private-profile",
+              "dist-tags": { latest: "1.0.0" },
+              versions: {
+                "1.0.0": { name: "private-profile", version: "1.0.0" },
+              },
+            };
+          }
+          throw new Error("Not found");
+        },
+      );
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "private-profile",
@@ -482,7 +503,9 @@ describe("registry-download", () => {
       });
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "test-profile",
@@ -539,7 +562,9 @@ describe("registry-download", () => {
       });
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "private-profile",
@@ -604,7 +629,9 @@ describe("registry-download", () => {
       });
 
       const mockTarball = await createMockTarball();
-      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(mockTarball);
+      vi.mocked(profileRegistryApi.downloadTarball).mockResolvedValue(
+        mockTarball,
+      );
 
       await registryDownloadMain({
         profileSpec: "test-profile",

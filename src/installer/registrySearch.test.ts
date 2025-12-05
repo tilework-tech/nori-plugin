@@ -35,11 +35,14 @@ const mockConsoleError = vi
   .spyOn(console, "error")
   .mockImplementation(() => undefined);
 
+import {
+  profileRegistryApi,
+  PROFILE_REGISTRY_URL,
+} from "@/api/profileRegistry.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig } from "@/installer/config.js";
 
 import { registrySearchMain } from "./registrySearch.js";
-import { profileRegistryApi, PROFILE_REGISTRY_URL } from "@/api/profileRegistry.js";
 
 /**
  * Strip ANSI escape codes from a string for plain text comparison
@@ -197,7 +200,9 @@ describe("registry-search", () => {
       expect(output).toContain("-> private-profile");
 
       // Verify both registries were searched
-      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(2);
+      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(
+        2,
+      );
 
       // Verify private registry was called with auth token
       expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledWith(
@@ -241,7 +246,9 @@ describe("registry-search", () => {
       await registrySearchMain({ query: "test", installDir: testDir });
 
       // Should only search once (public registry), not twice
-      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(1);
+      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(
+        1,
+      );
     });
 
     it("should continue searching other registries when one fails with error", async () => {
@@ -486,7 +493,9 @@ describe("registry-search", () => {
       await registrySearchMain({ query: "test", installDir: testDir });
 
       // Should only search public registry
-      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(1);
+      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(
+        1,
+      );
       expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledWith(
         expect.objectContaining({
           registryUrl: PROFILE_REGISTRY_URL,
@@ -515,7 +524,9 @@ describe("registry-search", () => {
       await registrySearchMain({ query: "test", installDir: testDir });
 
       // Should only search public registry
-      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(1);
+      expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledTimes(
+        1,
+      );
       expect(profileRegistryApi.searchProfilesOnRegistry).toHaveBeenCalledWith(
         expect.objectContaining({
           registryUrl: PROFILE_REGISTRY_URL,

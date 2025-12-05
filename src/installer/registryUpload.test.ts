@@ -35,11 +35,11 @@ const mockConsoleError = vi
   .spyOn(console, "error")
   .mockImplementation(() => undefined);
 
+import { profileRegistryApi } from "@/api/profileRegistry.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig, getRegistryAuth } from "@/installer/config.js";
 
 import { registryUploadMain } from "./registryUpload.js";
-import { profileRegistryApi } from "@/api/profileRegistry.js";
 
 describe("registry-upload", () => {
   let testDir: string;

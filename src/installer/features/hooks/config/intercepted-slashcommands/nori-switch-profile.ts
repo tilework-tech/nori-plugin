@@ -127,23 +127,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   }
 
   const installDir = allInstallations[0]; // Use closest installation
-  const profilesDir = path.join(installDir, ".nori", "profiles");
-
-  // Check for legacy .claude/profiles directory and warn if it exists
-  const legacyProfilesDir = path.join(installDir, ".claude", "profiles");
-  let legacyWarning = "";
-  try {
-    await fs.access(legacyProfilesDir);
-    const legacyEntries = await fs.readdir(legacyProfilesDir, {
-      withFileTypes: true,
-    });
-    const legacyProfiles = legacyEntries.filter((e) => e.isDirectory());
-    if (legacyProfiles.length > 0) {
-      legacyWarning = `\n\n⚠️  Found legacy profiles in ${legacyProfilesDir}.\nProfiles are now stored in ${profilesDir}.\nTo migrate, move your custom profiles: mv ${legacyProfilesDir}/* ${profilesDir}/`;
-    }
-  } catch {
-    // No legacy profiles directory, that's fine
-  }
+  const profilesDir = path.join(installDir, ".claude", "profiles");
 
   // List available profiles
   const profiles = await listProfiles({ profilesDir });
@@ -162,7 +146,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatSuccess({
-        message: `Available profiles: ${profiles.join(", ")}\n\nUsage: /nori-switch-profile <profile-name>${legacyWarning}`,
+        message: `Available profiles: ${profiles.join(", ")}\n\nUsage: /nori-switch-profile <profile-name>`,
       }),
     };
   }

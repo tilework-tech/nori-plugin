@@ -13,8 +13,7 @@ import {
   getClaudeCommandsDir,
   getClaudeMdFile,
   getClaudeSkillsDir,
-  getNoriDir,
-  getNoriProfilesDir,
+  getClaudeProfilesDir,
   getClaudeHomeDir,
   getClaudeHomeSettingsFile,
 } from "./env.js";
@@ -96,32 +95,15 @@ describe("getClaudeSkillsDir", () => {
   });
 });
 
-describe("getNoriDir", () => {
-  it("should return process.cwd()/.nori when installDir is cwd", () => {
-    const result = getNoriDir({ installDir: process.cwd() });
-    expect(result).toBe(path.join(process.cwd(), ".nori"));
+describe("getClaudeProfilesDir", () => {
+  it("should return profiles dir in default claude dir", () => {
+    const result = getClaudeProfilesDir({ installDir: process.cwd() });
+    expect(result).toBe(path.join(process.cwd(), ".claude", "profiles"));
   });
 
-  it("should return custom installDir/.nori when installDir provided", () => {
-    const result = getNoriDir({ installDir: "/custom/path" });
-    expect(result).toBe("/custom/path/.nori");
-  });
-
-  it("should preserve tilde in installDir (no expansion)", () => {
-    const result = getNoriDir({ installDir: "~/project" });
-    expect(result).toBe("~/project/.nori");
-  });
-});
-
-describe("getNoriProfilesDir", () => {
-  it("should return profiles dir in default nori dir", () => {
-    const result = getNoriProfilesDir({ installDir: process.cwd() });
-    expect(result).toBe(path.join(process.cwd(), ".nori", "profiles"));
-  });
-
-  it("should return profiles dir in custom nori dir", () => {
-    const result = getNoriProfilesDir({ installDir: "/custom/path" });
-    expect(result).toBe("/custom/path/.nori/profiles");
+  it("should return profiles dir in custom claude dir", () => {
+    const result = getClaudeProfilesDir({ installDir: "/custom/path" });
+    expect(result).toBe("/custom/path/.claude/profiles");
   });
 });
 

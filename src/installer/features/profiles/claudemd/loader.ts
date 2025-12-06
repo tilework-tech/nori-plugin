@@ -9,11 +9,7 @@ import { fileURLToPath } from "url";
 
 import { glob } from "glob";
 
-import {
-  getClaudeDir,
-  getClaudeMdFile,
-  getNoriProfilesDir,
-} from "@/installer/env.js";
+import { getClaudeDir, getClaudeMdFile } from "@/installer/env.js";
 import { success, info } from "@/installer/logger.js";
 import {
   formatInstallPath,
@@ -42,8 +38,8 @@ const getProfileClaudeMd = (args: {
   installDir: string;
 }): string => {
   const { profileName, installDir } = args;
-  const noriProfilesDir = getNoriProfilesDir({ installDir });
-  return path.join(noriProfilesDir, profileName, "CLAUDE.md");
+  const claudeDir = getClaudeDir({ installDir });
+  return path.join(claudeDir, "profiles", profileName, "CLAUDE.md");
 };
 
 /**
@@ -195,10 +191,8 @@ const generateSkillsList = async (args: {
 
   try {
     // Get skills directory for the profile from installed profiles
-    const noriProfilesDir = getNoriProfilesDir({ installDir });
-    const skillsDir = path.join(noriProfilesDir, profileName, "skills");
-    // Skills are installed to .claude/skills, so we need claudeDir for skill path formatting
     const claudeDir = getClaudeDir({ installDir });
+    const skillsDir = path.join(claudeDir, "profiles", profileName, "skills");
 
     // Find all skill files
     const skillFiles = await findSkillFiles({ dir: skillsDir });

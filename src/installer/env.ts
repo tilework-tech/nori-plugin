@@ -82,27 +82,14 @@ export const getClaudeSkillsDir = (args: { installDir: string }): string => {
 };
 
 /**
- * Get the Nori directory path
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- *
- * @returns Absolute path to the .nori directory
- */
-export const getNoriDir = (args: { installDir: string }): string => {
-  const { installDir } = args;
-  return path.join(installDir, ".nori");
-};
-
-/**
- * Get the Nori profiles directory path
- * Profiles are now stored in .nori/profiles instead of .claude/profiles
+ * Get the Claude profiles directory path
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
  *
  * @returns Absolute path to the profiles directory
  */
-export const getNoriProfilesDir = (args: { installDir: string }): string => {
-  return path.join(getNoriDir(args), "profiles");
+export const getClaudeProfilesDir = (args: { installDir: string }): string => {
+  return path.join(getClaudeDir(args), "profiles");
 };
 
 /**

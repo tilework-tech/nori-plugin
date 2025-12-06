@@ -1,6 +1,6 @@
 /**
  * Profiles feature loader
- * Installs profile templates to ~/.nori/profiles/
+ * Installs profile templates to ~/.claude/profiles/
  */
 
 import * as fs from "fs/promises";
@@ -8,7 +8,10 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 
 import { isPaidInstall, type Config } from "@/installer/config.js";
-import { getNoriProfilesDir, getClaudeSettingsFile } from "@/installer/env.js";
+import {
+  getClaudeProfilesDir,
+  getClaudeSettingsFile,
+} from "@/installer/env.js";
 import {
   readProfileMetadata,
   type ProfileMetadata,
@@ -117,10 +120,10 @@ const getMixinPaths = (args: { metadata: ProfileMetadata }): Array<string> => {
 };
 
 /**
- * Install profile templates to ~/.nori/profiles/
+ * Install profile templates to ~/.claude/profiles/
  * Handles profile composition by resolving inheritance from base profiles
  *
- * This function copies built-in profiles from the nori-ai package to ~/.nori/profiles/.
+ * This function copies built-in profiles from the nori-ai package to ~/.claude/profiles/.
  * Built-in profiles are ALWAYS overwritten to ensure they stay up-to-date.
  * Custom profiles (those that don't exist in the nori-ai package) are never touched.
  *
@@ -130,14 +133,14 @@ const getMixinPaths = (args: { metadata: ProfileMetadata }): Array<string> => {
 const installProfiles = async (args: { config: Config }): Promise<void> => {
   const { config } = args;
 
-  const noriProfilesDir = getNoriProfilesDir({
+  const claudeProfilesDir = getClaudeProfilesDir({
     installDir: config.installDir,
   });
 
   info({ message: "Installing Nori profiles..." });
 
   // Create profiles directory if it doesn't exist
-  await fs.mkdir(noriProfilesDir, { recursive: true });
+  await fs.mkdir(claudeProfilesDir, { recursive: true });
 
   let installedCount = 0;
   let skippedCount = 0;
@@ -155,7 +158,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
     }
 
     const profileSrcDir = path.join(PROFILE_TEMPLATES_DIR, entry.name);
-    const profileDestDir = path.join(noriProfilesDir, entry.name);
+    const profileDestDir = path.join(claudeProfilesDir, entry.name);
 
     try {
       // User-facing profile - must have CLAUDE.md
@@ -258,7 +261,7 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
         installedCount === 1 ? "" : "s"
       }`,
     });
-    info({ message: `Profiles directory: ${noriProfilesDir}` });
+    info({ message: `Profiles directory: ${claudeProfilesDir}` });
   }
   if (skippedCount > 0) {
     warn({
@@ -286,7 +289,7 @@ const configureProfilesPermissions = async (args: {
   const claudeSettingsFile = getClaudeSettingsFile({
     installDir: config.installDir,
   });
-  const noriProfilesDir = getNoriProfilesDir({
+  const claudeProfilesDir = getClaudeProfilesDir({
     installDir: config.installDir,
   });
 
@@ -317,14 +320,14 @@ const configureProfilesPermissions = async (args: {
   }
 
   // Add profiles directory if not already present
-  const profilesPath = noriProfilesDir;
+  const profilesPath = claudeProfilesDir;
   if (!settings.permissions.additionalDirectories.includes(profilesPath)) {
     settings.permissions.additionalDirectories.push(profilesPath);
   }
 
   // Write back to file
   await fs.writeFile(claudeSettingsFile, JSON.stringify(settings, null, 2));
-  success({ message: `✓ Configured permissions for ${noriProfilesDir}` });
+  success({ message: `✓ Configured permissions for ${claudeProfilesDir}` });
 };
 
 /**
@@ -337,17 +340,17 @@ const configureProfilesPermissions = async (args: {
 const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
   const { config } = args;
 
-  const noriProfilesDir = getNoriProfilesDir({
+  const claudeProfilesDir = getClaudeProfilesDir({
     installDir: config.installDir,
   });
 
   info({ message: "Removing built-in Nori profiles..." });
 
   try {
-    await fs.access(noriProfilesDir);
+    await fs.access(claudeProfilesDir);
 
     // Read all profile directories
-    const entries = await fs.readdir(noriProfilesDir, {
+    const entries = await fs.readdir(claudeProfilesDir, {
       withFileTypes: true,
     });
 
@@ -360,7 +363,7 @@ const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
         continue;
       }
 
-      const profileDir = path.join(noriProfilesDir, entry.name);
+      const profileDir = path.join(claudeProfilesDir, entry.name);
       const profileJsonPath = path.join(profileDir, "profile.json");
 
       try {
@@ -402,10 +405,10 @@ const uninstallProfiles = async (args: { config: Config }): Promise<void> => {
 
   // Remove parent directory if empty
   try {
-    const files = await fs.readdir(noriProfilesDir);
+    const files = await fs.readdir(claudeProfilesDir);
     if (files.length === 0) {
-      await fs.rmdir(noriProfilesDir);
-      success({ message: `✓ Removed empty directory: ${noriProfilesDir}` });
+      await fs.rmdir(claudeProfilesDir);
+      success({ message: `✓ Removed empty directory: ${claudeProfilesDir}` });
     }
   } catch {
     // Directory doesn't exist or couldn't be removed, which is fine
@@ -429,7 +432,7 @@ const removeProfilesPermissions = async (args: {
   const claudeSettingsFile = getClaudeSettingsFile({
     installDir: config.installDir,
   });
-  const noriProfilesDir = getNoriProfilesDir({
+  const claudeProfilesDir = getClaudeProfilesDir({
     installDir: config.installDir,
   });
 
@@ -440,7 +443,7 @@ const removeProfilesPermissions = async (args: {
     const settings = JSON.parse(content);
 
     if (settings.permissions?.additionalDirectories) {
-      const profilesPath = noriProfilesDir;
+      const profilesPath = claudeProfilesDir;
       settings.permissions.additionalDirectories =
         settings.permissions.additionalDirectories.filter(
           (dir: string) => dir !== profilesPath,
@@ -476,7 +479,7 @@ const validate = async (args: {
 }): Promise<ValidationResult> => {
   const { config } = args;
 
-  const noriProfilesDir = getNoriProfilesDir({
+  const claudeProfilesDir = getClaudeProfilesDir({
     installDir: config.installDir,
   });
   const claudeSettingsFile = getClaudeSettingsFile({
@@ -487,9 +490,9 @@ const validate = async (args: {
 
   // Check if profiles directory exists
   try {
-    await fs.access(noriProfilesDir);
+    await fs.access(claudeProfilesDir);
   } catch {
-    errors.push(`Profiles directory not found at ${noriProfilesDir}`);
+    errors.push(`Profiles directory not found at ${claudeProfilesDir}`);
     errors.push('Run "nori-ai install" to create the profiles directory');
     return {
       valid: false,
@@ -499,7 +502,7 @@ const validate = async (args: {
   }
 
   // Check if required profile directories are present
-  // Note: _base is NOT checked here because it's never installed to ~/.nori/profiles/
+  // Note: _base is NOT checked here because it's never installed to ~/.claude/profiles/
   // It only exists in source templates for composition
   const requiredProfiles = [
     "senior-swe",
@@ -511,7 +514,7 @@ const validate = async (args: {
   const missingProfiles: Array<string> = [];
 
   for (const profile of requiredProfiles) {
-    const profileDir = path.join(noriProfilesDir, profile);
+    const profileDir = path.join(claudeProfilesDir, profile);
     const claudeMdPath = path.join(profileDir, "CLAUDE.md");
     const profileJsonPath = path.join(profileDir, "profile.json");
 
@@ -546,7 +549,7 @@ const validate = async (args: {
     const settings = JSON.parse(content);
 
     if (
-      !settings.permissions?.additionalDirectories?.includes(noriProfilesDir)
+      !settings.permissions?.additionalDirectories?.includes(claudeProfilesDir)
     ) {
       errors.push(
         "Profiles directory not configured in permissions.additionalDirectories",
@@ -579,7 +582,7 @@ const validate = async (args: {
  */
 export const profilesLoader: Loader = {
   name: "profiles",
-  description: "Install Nori profile templates to ~/.nori/profiles/",
+  description: "Install Nori profile templates to ~/.claude/profiles/",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installProfiles({ config });

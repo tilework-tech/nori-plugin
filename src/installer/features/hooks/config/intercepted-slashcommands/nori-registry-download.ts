@@ -334,7 +334,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   }
 
   const installDir = allInstallations[0];
-  const profilesDir = path.join(installDir, ".nori", "profiles");
+  const profilesDir = path.join(installDir, ".claude", "profiles");
   const targetDir = path.join(profilesDir, profileName);
 
   // Check if profile already exists

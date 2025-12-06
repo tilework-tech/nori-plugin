@@ -41,15 +41,11 @@ describe("detectNoriPollution", () => {
     );
     fs.writeFileSync(path.join(tempDir, ".nori-notifications.log"), "logs");
 
-    // Create Nori directories in .claude
+    // Create Nori directories
     const claudeDir = path.join(tempDir, ".claude");
     fs.mkdirSync(claudeDir);
     fs.mkdirSync(path.join(claudeDir, "skills"));
-
-    // Create Nori directories in .nori (profiles now go here)
-    const noriDir = path.join(tempDir, ".nori");
-    fs.mkdirSync(noriDir);
-    fs.mkdirSync(path.join(noriDir, "profiles"));
+    fs.mkdirSync(path.join(claudeDir, "profiles"));
 
     // Create Nori-managed CLAUDE.md
     fs.writeFileSync(
@@ -61,7 +57,7 @@ describe("detectNoriPollution", () => {
     expect(pollution).toContain(".nori-config.json");
     expect(pollution).toContain(".nori-notifications.log");
     expect(pollution).toContain(".claude/skills");
-    expect(pollution).toContain(".nori/profiles");
+    expect(pollution).toContain(".claude/profiles");
     expect(pollution).toContain(".claude/CLAUDE.md");
   });
 });

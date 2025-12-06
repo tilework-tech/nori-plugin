@@ -11,7 +11,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock modules - initialize with temp values
 let mockClaudeDir = "/tmp/test-claude";
-const mockNoriDir = "/tmp/test-nori";
 let mockConfigPath = "/tmp/test-config.json";
 
 vi.mock("@/installer/env.js", () => ({
@@ -23,8 +22,7 @@ vi.mock("@/installer/env.js", () => ({
   getClaudeCommandsDir: () => path.join(mockClaudeDir, "commands"),
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
-  getNoriDir: () => mockNoriDir,
-  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
   MCP_ROOT: "/mock/mcp/root",
 }));
 

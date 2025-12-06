@@ -65,11 +65,11 @@ const main = async (): Promise<void> => {
 
   // Find all paid skill script files in the build output across all tier-specific mixins
   // Patterns:
-  // - build/src/cli/features/profiles/config/_mixins/_paid/skills/paid-*/script.js
-  // - build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js
+  // - build/src/cli/agents/claude/profiles/config/_mixins/_paid/skills/paid-*/script.js
+  // - build/src/cli/agents/claude/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js
   const skillPatterns = [
-    "build/src/cli/features/profiles/config/_mixins/_paid/skills/paid-*/script.js",
-    "build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
+    "build/src/cli/agents/claude/profiles/config/_mixins/_paid/skills/paid-*/script.js",
+    "build/src/cli/agents/claude/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
   ];
 
   const skillFilesArrays = await Promise.all(
@@ -84,11 +84,14 @@ const main = async (): Promise<void> => {
   const skillFiles = skillFilesArrays.flat();
 
   // Find all hook script files in the build output
-  // Pattern: build/src/cli/features/hooks/config/*.js (excluding test files)
-  const hookFiles = await glob("build/src/cli/features/hooks/config/*.js", {
-    cwd: process.cwd(),
-    absolute: true,
-  });
+  // Pattern: build/src/cli/agents/claude/hooks/config/*.js (excluding test files)
+  const hookFiles = await glob(
+    "build/src/cli/agents/claude/hooks/config/*.js",
+    {
+      cwd: process.cwd(),
+      absolute: true,
+    },
+  );
 
   // Filter out test files from hooks
   const filteredHookFiles = hookFiles.filter(
@@ -101,12 +104,12 @@ const main = async (): Promise<void> => {
     console.warn("⚠ No scripts found to bundle");
     console.warn("Expected patterns:");
     console.warn(
-      "  - build/src/cli/features/profiles/config/_mixins/_paid/skills/paid-*/script.js",
+      "  - build/src/cli/agents/claude/profiles/config/_mixins/_paid/skills/paid-*/script.js",
     );
     console.warn(
-      "  - build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
+      "  - build/src/cli/agents/claude/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
     );
-    console.warn("  - build/src/cli/features/hooks/config/*.js");
+    console.warn("  - build/src/cli/agents/claude/hooks/config/*.js");
     return;
   }
 

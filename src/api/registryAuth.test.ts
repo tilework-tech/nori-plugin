@@ -4,7 +4,7 @@
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import type { RegistryAuth } from "@/installer/config.js";
+import type { RegistryAuth } from "@/cli/config.js";
 
 import {
   getRegistryAuthToken,

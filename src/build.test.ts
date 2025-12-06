@@ -84,7 +84,7 @@ describe.sequential("build process", () => {
       // Note: We don't check install output - it's expected to succeed
       // The real validation happens with the check command below
       execSync(
-        `node build/src/installer/cli.js install --non-interactive --install-dir "${tempDir}"`,
+        `node build/src/cli/cli.js install --non-interactive --install-dir "${tempDir}"`,
         {
           cwd: pluginDir,
           encoding: "utf-8",
@@ -104,7 +104,7 @@ describe.sequential("build process", () => {
       let checkOutput = "";
       try {
         checkOutput = execSync(
-          `node build/src/installer/cli.js check --install-dir "${tempDir}"`,
+          `node build/src/cli/cli.js check --install-dir "${tempDir}"`,
           {
             cwd: pluginDir,
             encoding: "utf-8",
@@ -188,11 +188,11 @@ ${stderr || "(empty)"}`,
       const mixinDirs = [
         path.join(
           buildDir,
-          "src/installer/features/profiles/config/_mixins/_paid/skills",
+          "src/cli/features/profiles/config/_mixins/_paid/skills",
         ),
         path.join(
           buildDir,
-          "src/installer/features/profiles/config/_mixins/_docs-paid/skills",
+          "src/cli/features/profiles/config/_mixins/_docs-paid/skills",
         ),
       ];
 
@@ -238,7 +238,7 @@ ${stderr || "(empty)"}`,
       // Find all paid skill script.js files in the _mixins/_paid directory
       const paidSkillsDir = path.join(
         buildDir,
-        "src/installer/features/profiles/config/_mixins/_paid/skills",
+        "src/cli/features/profiles/config/_mixins/_paid/skills",
       );
 
       const scriptPaths: Array<string> = [];
@@ -298,7 +298,7 @@ ${stderr || "(empty)"}`,
       // Find all paid skill script.js files in the _mixins/_paid directory
       const paidSkillsDir = path.join(
         buildDir,
-        "src/installer/features/profiles/config/_mixins/_paid/skills",
+        "src/cli/features/profiles/config/_mixins/_paid/skills",
       );
 
       const scriptPaths: Array<string> = [];
@@ -404,7 +404,7 @@ ${stderr || "(empty)"}`,
       let output = "";
 
       try {
-        output = execSync("node build/src/installer/cli.js", {
+        output = execSync("node build/src/cli/cli.js", {
           encoding: "utf-8",
           stdio: "pipe",
           env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -432,7 +432,7 @@ ${stderr || "(empty)"}`,
 
       try {
         // Run with --help on the install command to avoid actual installation
-        output = execSync("node build/src/installer/cli.js install --help", {
+        output = execSync("node build/src/cli/cli.js install --help", {
           encoding: "utf-8",
           stdio: "pipe",
           env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },

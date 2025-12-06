@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from "fs";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
 
-import { getConfigPath } from "@/installer/config.js";
+import { getConfigPath } from "@/cli/config.js";
 import { getFirebase, configureFirebase } from "@/providers/firebase.js";
 import { getInstallDirs } from "@/utils/path.js";
 import { normalizeUrl } from "@/utils/url.js";

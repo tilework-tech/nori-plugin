@@ -6,7 +6,7 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, type Auth } from "firebase/auth";
 
-import type { RegistryAuth } from "@/installer/config.js";
+import type { RegistryAuth } from "@/cli/config.js";
 
 // Firebase config (shared with nori-registrar)
 const firebaseConfig = {

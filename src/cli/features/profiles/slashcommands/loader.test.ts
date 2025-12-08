@@ -177,6 +177,34 @@ describe("slashCommandsLoader", () => {
       expect(content).toContain("allowed-tools:");
       expect(content).toContain("Bash(nori-ai");
     });
+
+    it("should install nori-modify-registry-auth.md slash command", async () => {
+      const config: Config = { installDir: tempDir };
+
+      await slashCommandsLoader.install({ config });
+
+      // Verify nori-modify-registry-auth.md exists
+      const modifyRegistryAuthPath = path.join(
+        commandsDir,
+        "nori-modify-registry-auth.md",
+      );
+      const exists = await fs
+        .access(modifyRegistryAuthPath)
+        .then(() => true)
+        .catch(() => false);
+
+      expect(exists).toBe(true);
+
+      // Verify file has required frontmatter
+      const content = await fs.readFile(modifyRegistryAuthPath, "utf-8");
+      expect(content).toContain("description:");
+
+      // Verify allowed-tools for config file operations
+      expect(content).toContain("allowed-tools:");
+      expect(content).toContain("Read(");
+      expect(content).toContain("Write(");
+      expect(content).toContain(".nori-config.json");
+    });
   });
 
   describe("uninstall", () => {

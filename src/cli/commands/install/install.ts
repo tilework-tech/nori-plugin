@@ -19,6 +19,7 @@ import {
   displaySeaweedBed,
 } from "@/cli/commands/install/asciiArt.js";
 import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
+import { promptRegistryAuths } from "@/cli/commands/install/registryAuthPrompt.js";
 import {
   loadConfig,
   getDefaultProfile,
@@ -290,6 +291,12 @@ export const generatePromptConfig = async (args: {
     console.log();
   }
 
+  // Prompt for private registry authentication
+  console.log();
+  const registryAuths = await promptRegistryAuths({
+    existingRegistryAuths: existingConfig?.registryAuths ?? null,
+  });
+
   // Build config directly
   return {
     auth: auth ?? null,
@@ -297,6 +304,7 @@ export const generatePromptConfig = async (args: {
       baseProfile: selectedProfileName,
     },
     installDir,
+    registryAuths: registryAuths ?? null,
   };
 };
 

@@ -48,6 +48,8 @@ const installConfig = async (args: { config: Config }): Promise<void> => {
     profile: config.profile ?? null,
     sendSessionTranscript,
     autoupdate: existingConfig?.autoupdate,
+    registryAuths:
+      config.registryAuths ?? existingConfig?.registryAuths ?? null,
     installDir: config.installDir,
   });
 

@@ -57,9 +57,10 @@ export const registerXCommand = (args: { program: Command }): void => {
 
 ### Things to Know
 
-The `install/` directory contains command-specific utilities that were previously at the root of `src/cli/`:
+The `install/` directory contains command-specific utilities:
 - `asciiArt.ts` - ASCII banners displayed during installation
 - `installState.ts` - Helper to check for existing installations (wraps version.ts)
+- `registryAuthPrompt.ts` - Prompts for private registry authentication during interactive install. Collects registry URL, username, and password (hidden input). Supports preserving existing registryAuths from config and adding multiple registries. Uses `RegistryAuth` type from `@/cli/config.js`.
 
 The `install-location/` command was extracted from inline definition in cli.ts to follow the same pattern as other commands.
 

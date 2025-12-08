@@ -380,6 +380,21 @@ export const registryDownloadMain = async (args: {
       throw extractErr;
     }
 
+    // Write .nori-version file for update tracking
+    const installedVersion =
+      version ?? selectedRegistry.packument["dist-tags"].latest;
+    await fs.writeFile(
+      path.join(targetDir, ".nori-version"),
+      JSON.stringify(
+        {
+          version: installedVersion,
+          registryUrl: selectedRegistry.registryUrl,
+        },
+        null,
+        2,
+      ),
+    );
+
     const versionStr = version ? `@${version}` : " (latest)";
     console.log("");
     success({

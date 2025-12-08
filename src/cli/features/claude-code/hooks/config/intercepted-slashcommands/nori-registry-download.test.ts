@@ -294,6 +294,73 @@ describe("nori-registry-download", () => {
       expect(result!.decision).toBe("block");
       expect(stripAnsi(result!.reason!)).toContain("Failed");
     });
+
+    it("should write .nori-version file after successful download", async () => {
+      const mockPackument = {
+        name: "test-profile",
+        "dist-tags": { latest: "1.2.3" },
+        versions: {
+          "1.2.3": { name: "test-profile", version: "1.2.3" },
+        },
+      };
+
+      const mockTarball = await createMockTarball({ gzip: false });
+
+      vi.mocked(registrarApi.getPackument).mockResolvedValue(mockPackument);
+      vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
+
+      const input = createInput({
+        prompt: "/nori-registry-download test-profile",
+      });
+      const result = await noriRegistryDownload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(stripAnsi(result!.reason!)).toContain("Downloaded");
+
+      // Verify .nori-version file was created
+      const versionFilePath = path.join(
+        profilesDir,
+        "test-profile",
+        ".nori-version",
+      );
+      const versionFileContent = await fs.readFile(versionFilePath, "utf-8");
+      const versionInfo = JSON.parse(versionFileContent);
+
+      expect(versionInfo.version).toBe("1.2.3");
+      expect(versionInfo.registryUrl).toBe(REGISTRAR_URL);
+    });
+
+    it("should write explicit version to .nori-version when specified", async () => {
+      const mockPackument = {
+        name: "test-profile",
+        "dist-tags": { latest: "2.0.0" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+          "2.0.0": { name: "test-profile", version: "2.0.0" },
+        },
+      };
+
+      const mockTarball = await createMockTarball({ gzip: false });
+
+      vi.mocked(registrarApi.getPackument).mockResolvedValue(mockPackument);
+      vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
+
+      const input = createInput({
+        prompt: "/nori-registry-download test-profile@1.0.0",
+      });
+      await noriRegistryDownload.run({ input });
+
+      // Verify .nori-version file contains the explicit version
+      const versionFilePath = path.join(
+        profilesDir,
+        "test-profile",
+        ".nori-version",
+      );
+      const versionFileContent = await fs.readFile(versionFilePath, "utf-8");
+      const versionInfo = JSON.parse(versionFileContent);
+
+      expect(versionInfo.version).toBe("1.0.0");
+    });
   });
 
   describe("ANSI color formatting", () => {
@@ -726,6 +793,133 @@ describe("nori-registry-download", () => {
       expect(result).not.toBeNull();
       const plainReason = stripAnsi(result!.reason!);
       expect(plainReason).toContain("registry-url");
+    });
+  });
+
+  describe("list versions feature", () => {
+    it("should match command with --list-versions flag", () => {
+      const hasMatch = noriRegistryDownload.matchers.some((m) => {
+        const regex = new RegExp(m, "i");
+        return regex.test("/nori-registry-download --list-versions my-profile");
+      });
+      expect(hasMatch).toBe(true);
+    });
+
+    it("should list all available versions when --list-versions flag is used", async () => {
+      // Config with no private registries
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        profile: { baseProfile: "senior-swe" },
+        registryAuths: null,
+      });
+
+      // Package found with multiple versions
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        description: "A test profile",
+        "dist-tags": { latest: "2.0.0", beta: "2.1.0-beta.1" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+          "1.1.0": { name: "test-profile", version: "1.1.0" },
+          "2.0.0": { name: "test-profile", version: "2.0.0" },
+          "2.1.0-beta.1": { name: "test-profile", version: "2.1.0-beta.1" },
+        },
+        time: {
+          "1.0.0": "2024-01-01T00:00:00.000Z",
+          "1.1.0": "2024-02-01T00:00:00.000Z",
+          "2.0.0": "2024-03-01T00:00:00.000Z",
+          "2.1.0-beta.1": "2024-04-01T00:00:00.000Z",
+        },
+      });
+
+      const input = createInput({
+        prompt: "/nori-registry-download --list-versions test-profile",
+      });
+      const result = await noriRegistryDownload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      // Should list all versions
+      expect(plainReason).toContain("1.0.0");
+      expect(plainReason).toContain("1.1.0");
+      expect(plainReason).toContain("2.0.0");
+      expect(plainReason).toContain("2.1.0-beta.1");
+
+      // Should indicate which is latest
+      expect(plainReason).toContain("latest");
+
+      // Should NOT have downloaded anything
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+    });
+
+    it("should list versions with registry URL specified", async () => {
+      // Config with private registry
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        profile: { baseProfile: "senior-swe" },
+        registryAuths: [
+          {
+            username: "test@example.com",
+            password: "password",
+            registryUrl: "https://private-registry.com",
+          },
+        ],
+      });
+
+      vi.mocked(getRegistryAuth).mockReturnValue({
+        username: "test@example.com",
+        password: "password",
+        registryUrl: "https://private-registry.com",
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("test-auth-token");
+
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "private-profile",
+        "dist-tags": { latest: "1.0.0" },
+        versions: {
+          "1.0.0": { name: "private-profile", version: "1.0.0" },
+        },
+      });
+
+      const input = createInput({
+        prompt:
+          "/nori-registry-download --list-versions private-profile https://private-registry.com",
+      });
+      const result = await noriRegistryDownload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      expect(plainReason).toContain("1.0.0");
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+    });
+
+    it("should return error when package not found with --list-versions", async () => {
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        profile: { baseProfile: "senior-swe" },
+        registryAuths: null,
+      });
+
+      // Package not found
+      vi.mocked(registrarApi.getPackument).mockRejectedValue(
+        new Error("Package not found"),
+      );
+
+      const input = createInput({
+        prompt: "/nori-registry-download --list-versions nonexistent-profile",
+      });
+      const result = await noriRegistryDownload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      expect(plainReason).toContain("not found");
     });
   });
 });

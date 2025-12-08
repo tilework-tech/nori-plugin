@@ -128,6 +128,13 @@ describe("registry-download", () => {
         .join("\n");
       expect(allOutput.toLowerCase()).toContain("download");
       expect(allOutput).toContain("test-profile");
+
+      // Verify .nori-version file was created
+      const versionFilePath = path.join(profileDir, ".nori-version");
+      const versionFileContent = await fs.readFile(versionFilePath, "utf-8");
+      const versionInfo = JSON.parse(versionFileContent);
+      expect(versionInfo.version).toBe("1.0.0");
+      expect(versionInfo.registryUrl).toBe(REGISTRAR_URL);
     });
 
     it("should handle version specification", async () => {

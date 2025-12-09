@@ -24,11 +24,11 @@
   - If I have feedback, modify the plan. Repeat until I approve.
 <system-reminder> During implementation, after each step in the plan, check with me about progress.</system-reminder>
 - Ask if me wants to follow test driven development.
-  - If yes: use test driven development. Read and follow `{{skills_dir}}/testing/test-driven-development/SKILL.md`
+  - If yes: use test driven development. Read and follow `{{skills_dir}}/test-driven-development/SKILL.md`
 - Ask if me wants to update docs.
-  - If yes: update documentation, INCLUDING out of date documentation. Read and follow `{{skills_dir}}/collaboration/updating-noridocs/SKILL.md`
+  - If yes: update documentation, INCLUDING out of date documentation. Read and follow `{{skills_dir}}/updating-noridocs/SKILL.md`
 - Ask if me wants to create a PR.
-  - If yes: read and follow `{{skills_dir}}/collaboration/finishing-a-development-branch/SKILL.md`
+  - If yes: read and follow `{{skills_dir}}/finishing-a-development-branch/SKILL.md`
 </required>
 
 # Nori Full-send Mode

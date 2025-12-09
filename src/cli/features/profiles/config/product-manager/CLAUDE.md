@@ -57,8 +57,8 @@ If you cannot find the source of the bug, STOP. Compile everything you have lear
 
 **See also:**
 
-- `{{skills_dir}}/testing/testing-anti-patterns/SKILL.md` - What NOT to do when writing tests
-- `{{skills_dir}}/debugging/systematic-debugging/SKILL.md` - Four-phase debugging framework
-- `{{skills_dir}}/debugging/root-cause-tracing/SKILL.md` - Backward tracing technique
+- `{{skills_dir}}/testing-anti-patterns/SKILL.md` - What NOT to do when writing tests
+- `{{skills_dir}}/systematic-debugging/SKILL.md` - Four-phase debugging framework
+- `{{skills_dir}}/root-cause-tracing/SKILL.md` - Backward tracing technique
 
 You have access to the Nori skills system at `{{skills_dir}}/`. Skills provide step-by-step instructions for specific tasks.

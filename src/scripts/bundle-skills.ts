@@ -67,9 +67,11 @@ const main = async (): Promise<void> => {
   // Patterns:
   // - build/src/cli/features/profiles/config/_mixins/_paid/skills/paid-*/script.js
   // - build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js
+  // - build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/nori-sync-docs/script.js (special case: not paid- prefixed)
   const skillPatterns = [
     "build/src/cli/features/profiles/config/_mixins/_paid/skills/paid-*/script.js",
     "build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
+    "build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/nori-sync-docs/script.js",
   ];
 
   const skillFilesArrays = await Promise.all(
@@ -105,6 +107,9 @@ const main = async (): Promise<void> => {
     );
     console.warn(
       "  - build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
+    );
+    console.warn(
+      "  - build/src/cli/features/profiles/config/_mixins/_docs-paid/skills/nori-sync-docs/script.js",
     );
     console.warn("  - build/src/cli/features/hooks/config/*.js");
     return;

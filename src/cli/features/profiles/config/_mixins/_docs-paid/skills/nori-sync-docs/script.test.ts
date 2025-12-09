@@ -1,5 +1,5 @@
 /**
- * Tests for paid-sync-noridocs skill script
+ * Tests for nori-sync-docs skill script
  */
 
 import { execSync } from "child_process";
@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { main, serializeError } from "./script.js";
 
-describe("paid-sync-noridocs script", () => {
+describe("nori-sync-docs script", () => {
   let tempConfigPath: string;
   let originalArgv: Array<string>;
   let originalCwd: string;

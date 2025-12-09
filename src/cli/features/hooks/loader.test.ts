@@ -181,9 +181,27 @@ describe("hooksLoader", () => {
       // Verify hooks are configured
       expect(settings.hooks).toBeDefined();
 
-      // Free mode should NOT have SessionEnd or PreCompact hooks
-      expect(settings.hooks.SessionEnd).toBeUndefined();
+      // Free mode should have SessionEnd hooks (for session-analytics) but NOT PreCompact hooks
+      expect(settings.hooks.SessionEnd).toBeDefined();
       expect(settings.hooks.PreCompact).toBeUndefined();
+
+      // Verify free SessionEnd only has session-analytics (no summarize)
+      let hasSessionAnalytics = false;
+      let hasSummarize = false;
+      for (const hookConfig of settings.hooks.SessionEnd) {
+        if (hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("session-analytics")) {
+              hasSessionAnalytics = true;
+            }
+            if (hook.command && hook.command.includes("summarize")) {
+              hasSummarize = true;
+            }
+          }
+        }
+      }
+      expect(hasSessionAnalytics).toBe(true);
+      expect(hasSummarize).toBe(false);
 
       // Free mode SHOULD have SessionStart hooks (autoupdate)
       expect(settings.hooks.SessionStart).toBeDefined();
@@ -261,8 +279,10 @@ describe("hooksLoader", () => {
       let content = await fs.readFile(settingsPath, "utf-8");
       let settings = JSON.parse(content);
 
-      // Verify free installation (no SessionEnd hooks)
-      expect(settings.hooks.SessionEnd).toBeUndefined();
+      // Verify free installation (has SessionEnd hooks for session-analytics only)
+      expect(settings.hooks.SessionEnd).toBeDefined();
+      // But no PreCompact hooks (those are paid-only)
+      expect(settings.hooks.PreCompact).toBeUndefined();
 
       // Then install paid version
       const paidConfig: Config = {
@@ -414,6 +434,67 @@ describe("hooksLoader", () => {
         }
       }
       expect(hasCommitAuthorHook).toBe(true);
+    });
+
+    it("should configure SessionEnd hook for session-analytics (paid)", async () => {
+      const config: Config = {
+        installDir: tempDir,
+        auth: {
+          username: "test@example.com",
+          password: "testpass",
+          organizationUrl: "https://example.com",
+        },
+      };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify SessionEnd hooks include session-analytics
+      expect(settings.hooks.SessionEnd).toBeDefined();
+      expect(settings.hooks.SessionEnd.length).toBeGreaterThan(0);
+
+      // Find session-analytics hook
+      let hasSessionAnalyticsHook = false;
+      for (const hookConfig of settings.hooks.SessionEnd) {
+        if (hookConfig.matcher === "*" && hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("session-analytics")) {
+              hasSessionAnalyticsHook = true;
+              expect(hook.description).toContain("statistics");
+            }
+          }
+        }
+      }
+      expect(hasSessionAnalyticsHook).toBe(true);
+    });
+
+    it("should configure SessionEnd hook for session-analytics (free)", async () => {
+      const config: Config = { installDir: tempDir };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Verify SessionEnd hooks include session-analytics
+      expect(settings.hooks.SessionEnd).toBeDefined();
+      expect(settings.hooks.SessionEnd.length).toBeGreaterThan(0);
+
+      // Find session-analytics hook
+      let hasSessionAnalyticsHook = false;
+      for (const hookConfig of settings.hooks.SessionEnd) {
+        if (hookConfig.matcher === "*" && hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command && hook.command.includes("session-analytics")) {
+              hasSessionAnalyticsHook = true;
+              expect(hook.description).toContain("statistics");
+            }
+          }
+        }
+      }
+      expect(hasSessionAnalyticsHook).toBe(true);
     });
   });
 
@@ -732,6 +813,7 @@ describe("hooksLoader", () => {
 
       // Check that specific errors are reported
       const errorMessages = result.errors?.join(" ") || "";
+      expect(errorMessages).toContain("session-analytics");
       expect(errorMessages).toContain("summarize-notification");
       expect(errorMessages).toContain("summarize");
     });
@@ -739,7 +821,7 @@ describe("hooksLoader", () => {
     it("should return invalid for free mode when SessionStart hook is missing", async () => {
       const config: Config = { installDir: tempDir };
 
-      // Create settings.json with hooks but missing SessionStart
+      // Create settings.json with hooks but missing SessionStart (and SessionEnd)
       const settings = {
         $schema: "https://json.schemastore.org/claude-code-settings.json",
         hooks: {
@@ -759,7 +841,48 @@ describe("hooksLoader", () => {
       expect(result.message).toContain("has issues");
       expect(result.errors).not.toBeNull();
       expect(result.errors?.length).toBeGreaterThan(0);
-      expect(result.errors?.[0]).toContain("SessionStart");
+      // Now checks for SessionEnd first (session-analytics)
+      expect(result.errors?.some((e) => e.includes("SessionEnd"))).toBe(true);
+    });
+
+    it("should return invalid when session-analytics hook is missing (free mode)", async () => {
+      const config: Config = { installDir: tempDir };
+
+      // Create settings.json with SessionEnd but no session-analytics
+      const settings = {
+        $schema: "https://json.schemastore.org/claude-code-settings.json",
+        hooks: {
+          SessionEnd: [
+            {
+              matcher: "*",
+              hooks: [
+                {
+                  type: "command",
+                  command: "echo test",
+                  description: "Test hook",
+                },
+              ],
+            },
+          ],
+          SessionStart: [],
+        },
+        includeCoAuthoredBy: false,
+      };
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+
+      // Validate
+      if (hooksLoader.validate == null) {
+        throw new Error("validate method not implemented");
+      }
+
+      const result = await hooksLoader.validate({ config });
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toContain("has issues");
+      expect(result.errors).not.toBeNull();
+      expect(result.errors?.some((e) => e.includes("session-analytics"))).toBe(
+        true,
+      );
     });
 
     it("should handle invalid JSON in settings.json", async () => {

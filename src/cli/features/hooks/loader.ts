@@ -256,6 +256,31 @@ const commitAuthorHook: HookInterface = {
 };
 
 /**
+ * Session analytics hook - display skill usage and checklist compliance stats
+ */
+const sessionAnalyticsHook: HookInterface = {
+  name: "session-analytics",
+  description: "Display session statistics at end of session",
+  install: async () => {
+    const scriptPath = path.join(HOOKS_CONFIG_DIR, "session-analytics.js");
+    return [
+      {
+        event: "SessionEnd",
+        matcher: "*",
+        hooks: [
+          {
+            type: "command",
+            command: `node ${scriptPath}`,
+            description:
+              "Display skill usage and checklist compliance statistics",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+/**
  * Configure hooks for automatic conversation memorization (paid version)
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -288,7 +313,9 @@ const configurePaidHooks = async (args: { config: Config }): Promise<void> => {
 
   // Install all hooks for paid version
   // Note: summarizeNotificationHook must run before summarizeHook for proper ordering
+  // Note: sessionAnalyticsHook should run first at SessionEnd to show stats before other messages
   const hooks = [
+    sessionAnalyticsHook,
     summarizeNotificationHook,
     summarizeHook,
     autoupdateHook,
@@ -365,8 +392,9 @@ const configureFreeHooks = async (args: { config: Config }): Promise<void> => {
   // Disable Claude Code's built-in co-author byline
   settings.includeCoAuthoredBy = false;
 
-  // Install notification, autoupdate, nested-install-warning, migration-instructions, slash-command-intercept, and commit-author hooks for free version
+  // Install notification, autoupdate, nested-install-warning, migration-instructions, slash-command-intercept, commit-author, and session-analytics hooks for free version
   const hooks = [
+    sessionAnalyticsHook,
     autoupdateHook,
     nestedInstallWarningHook,
     migrationInstructionsHook,
@@ -501,6 +529,26 @@ const validate = async (args: {
     };
   }
 
+  // Both paid and free modes should have SessionEnd hooks (for session-analytics)
+  if (!settings.hooks.SessionEnd) {
+    errors.push("Missing hook configuration for SessionEnd event");
+  } else {
+    // Check for session-analytics hook (required for both modes)
+    let hasSessionAnalyticsHook = false;
+    for (const hookConfig of settings.hooks.SessionEnd) {
+      if (hookConfig.hooks) {
+        for (const hook of hookConfig.hooks) {
+          if (hook.command && hook.command.includes("session-analytics.js")) {
+            hasSessionAnalyticsHook = true;
+          }
+        }
+      }
+    }
+    if (!hasSessionAnalyticsHook) {
+      errors.push("Missing session-analytics hook for SessionEnd event");
+    }
+  }
+
   // Validate expected hooks for paid mode
   if (isPaidInstall({ config })) {
     const requiredEvents = ["SessionEnd", "PreCompact", "SessionStart"];
@@ -510,7 +558,7 @@ const validate = async (args: {
       }
     }
 
-    // Check if SessionEnd has both notification and summarize hooks
+    // Check if SessionEnd has both notification and summarize hooks (paid only)
     if (settings.hooks.SessionEnd) {
       const sessionEndHooks = settings.hooks.SessionEnd;
       let hasNotificationHook = false;
@@ -540,7 +588,7 @@ const validate = async (args: {
       }
     }
   } else if (!settings.hooks.SessionStart) {
-    // Free mode - just check for notification hook
+    // Free mode - just check for SessionStart hook
     errors.push(
       "Missing hook configuration for SessionStart event (autoupdate)",
     );

@@ -4,12 +4,18 @@
 
 import { spawn } from "child_process";
 import * as path from "path";
-import { fileURLToPath } from "url";
 
 import { describe, it, expect } from "vitest";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Use process.cwd() which points to project root in vitest
+const projectRoot = process.cwd();
+
+// Use the TypeScript source file with tsx for direct execution
+// This avoids race conditions with build.test.ts which cleans the build directory
+const hookScriptPath = path.join(
+  projectRoot,
+  "src/cli/features/hooks/config/commit-author.ts",
+);
 
 type HookInput = {
   session_id: string;
@@ -53,14 +59,9 @@ const runHook = async (args: {
 }> => {
   const { input } = args;
 
-  // Path to the compiled hook script in build directory
-  const hookScript = path.resolve(
-    __dirname,
-    "../../../../../build/src/cli/features/hooks/config/commit-author.js",
-  );
-
   return new Promise((resolve) => {
-    const proc = spawn("node", [hookScript], {
+    // Use npx tsx to run TypeScript file directly
+    const proc = spawn("npx", ["tsx", hookScriptPath], {
       stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
@@ -92,7 +93,7 @@ const runHook = async (args: {
   });
 };
 
-describe("commit-author hook", () => {
+describe("commit-author hook", { timeout: 30000 }, () => {
   it("should pass through non-Bash tools unchanged", async () => {
     const input: HookInput = {
       session_id: "test-session",

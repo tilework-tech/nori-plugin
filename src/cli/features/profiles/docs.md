@@ -63,7 +63,7 @@ The profiles loader executes FIRST in both interactive and non-interactive insta
 - `_docs-paid`: Documentation workflows - paid tier (paid-write-noridoc, paid-read-noridoc, paid-list-noridocs, paid-sync-noridocs skills, nori-sync-docs slash command)
 - `_swe`: Software engineering - free tier (12 skills like TDD/debugging/git-worktrees/building-ui-ux, 3 codebase-analysis subagents)
 - `_swe-paid`: Software engineering - paid tier (reserved for future paid SWE features)
-- `_paid`: Cross-category premium features (paid-recall, paid-memorize, paid-prompt-analysis skills, knowledge-researcher subagent)
+- `_paid`: Cross-category premium features (paid-recall, paid-memorize skills, knowledge-researcher subagent)
 
 ### Creating Category-Specific Tier Mixins
 

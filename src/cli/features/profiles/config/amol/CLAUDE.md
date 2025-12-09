@@ -51,7 +51,6 @@ NEVER ignore test output and system logs.
 Always root cause bugs.
 Never just fix the symptom. Never implement a workaround.
 If you cannot find the source of the bug, STOP. Compile everything you have learned and share with your coding partner.
-Aggressively fix broken things. If you find a bug while doing something else, fix it.
 
 **See also:**
 

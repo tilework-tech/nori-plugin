@@ -18,6 +18,7 @@ import { registerRegistrySearchCommand } from "@/cli/commands/registry-search/re
 import { registerRegistryUploadCommand } from "@/cli/commands/registry-upload/registryUpload.js";
 import { registerSwitchProfileCommand } from "@/cli/commands/switch-profile/profiles.js";
 import { registerUninstallCommand } from "@/cli/commands/uninstall/uninstall.js";
+import { registerUninstallCursorCommand } from "@/cli/commands/uninstall-cursor/uninstallCursor.js";
 import { getCurrentPackageVersion } from "@/cli/version.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
@@ -40,6 +41,8 @@ program
 Examples:
   $ nori-ai install --install-dir ~/my-dir
   $ nori-ai uninstall
+  $ nori-ai install-cursor
+  $ nori-ai uninstall-cursor
   $ nori-ai check
   $ nori-ai install-location
   $ nori-ai switch-profile senior-swe
@@ -56,6 +59,7 @@ Examples:
 // Register all commands
 registerInstallCommand({ program });
 registerInstallCursorCommand({ program });
+registerUninstallCursorCommand({ program });
 registerUninstallCommand({ program });
 registerCheckCommand({ program });
 registerSwitchProfileCommand({ program });

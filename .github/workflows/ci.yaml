@@ -20,7 +20,9 @@ jobs:
           node-version-file: ".nvmrc"
 
       - name: Install dependencies
-        run: npm install
+        # Delete package-lock.json to work around npm bug with platform-specific optional deps
+        # See: https://github.com/npm/cli/issues/4828
+        run: rm -f package-lock.json && npm install
 
       # Explicit build step before lint/test to ensure build artifacts are fresh
       # Note: npm ci runs 'prepare' which also builds, but we rebuild here to

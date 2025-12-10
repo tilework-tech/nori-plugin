@@ -16,7 +16,7 @@ import {
   getDefaultProfile,
   isPaidInstall,
 } from "@/cli/config.js";
-import { LoaderRegistry } from "@/cli/features/claude-code/loaderRegistry.js";
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import { error, success, info, warn } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
 import { getVersionFilePath } from "@/cli/version.js";
@@ -247,15 +247,23 @@ const removeConfigFile = async (args: {
  * @param args.removeGlobalSettings - Whether to remove hooks, statusline, and global slashcommands from ~/.claude (default: false)
  * @param args.installedVersion - Version being uninstalled (for logging)
  * @param args.installDir - Installation directory
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const runUninstall = async (args: {
   removeConfig?: boolean | null;
   removeGlobalSettings?: boolean | null;
   installedVersion?: string | null;
   installDir: string;
+  agent?: string | null;
 }): Promise<void> => {
-  const { removeConfig, removeGlobalSettings, installedVersion, installDir } =
-    args;
+  const {
+    removeConfig,
+    removeGlobalSettings,
+    installedVersion,
+    installDir,
+    agent,
+  } = args;
+  const agentName = agent ?? "claude-code";
 
   // Load config (defaults to free if none exists)
   const existingConfig = await loadConfig({ installDir });
@@ -281,7 +289,8 @@ export const runUninstall = async (args: {
   // During install, profiles must run first to create profile directories.
   // During uninstall, profiles must run last so other loaders can still
   // read from profile directories to know what files to remove.
-  const registry = LoaderRegistry.getInstance();
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  const registry = agentImpl.getLoaderRegistry();
   const loaders = registry.getAllReversed();
 
   // Execute uninstallers sequentially to avoid race conditions
@@ -341,11 +350,14 @@ export const runUninstall = async (args: {
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const interactive = async (args?: {
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
   const installDir = normalizeInstallDir({ installDir: args?.installDir });
+  const agentName = args?.agent ?? "claude-code";
 
   // Prompt for confirmation and configuration
   const result = await generatePromptConfig({ installDir });
@@ -359,6 +371,7 @@ export const interactive = async (args?: {
     removeConfig: true,
     removeGlobalSettings: result.removeGlobalSettings,
     installDir: result.installDir,
+    agent: agentName,
   });
 
   // Display completion message
@@ -393,17 +406,21 @@ export const interactive = async (args?: {
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const noninteractive = async (args?: {
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
   const installDir = normalizeInstallDir({ installDir: args?.installDir });
+  const agentName = args?.agent ?? "claude-code";
 
   // Run uninstall, preserving config and global settings (hooks/statusline/slashcommands)
   await runUninstall({
     removeConfig: false,
     removeGlobalSettings: false,
     installDir,
+    agent: agentName,
   });
 
   // Display completion message
@@ -438,18 +455,20 @@ export const noninteractive = async (args?: {
  * @param args - Configuration arguments
  * @param args.nonInteractive - Whether to run in non-interactive mode (skips prompts, preserves config)
  * @param args.installDir - Custom installation directory (optional, defaults to cwd)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const main = async (args?: {
   nonInteractive?: boolean | null;
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
-  const { nonInteractive, installDir } = args || {};
+  const { nonInteractive, installDir, agent } = args || {};
 
   try {
     if (nonInteractive) {
-      await noninteractive({ installDir });
+      await noninteractive({ installDir, agent });
     } else {
-      await interactive({ installDir });
+      await interactive({ installDir, agent });
     }
   } catch (err: any) {
     error({ message: err.message });
@@ -475,6 +494,7 @@ export const registerUninstallCommand = (args: { program: Command }): void => {
       await main({
         nonInteractive: globalOpts.nonInteractive || null,
         installDir: globalOpts.installDir || null,
+        agent: globalOpts.agent || null,
       });
     });
 };

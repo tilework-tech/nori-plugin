@@ -8,21 +8,33 @@ CLI for Nori Profiles that prompts for configuration, installs features into Cla
 
 ### How it fits into the larger codebase
 
-**CLI Architecture:** The nori-ai CLI command (defined in @/package.json bin) routes to @/src/cli/cli.ts, which uses Commander.js for command routing, argument parsing, validation, and help generation. The CLI defines global options (`--install-dir`, `--non-interactive`) on the main program. Each command lives in its own subdirectory under @/src/cli/commands/ and exports a `registerXCommand({ program })` function that cli.ts imports and calls. Commands access global options via `program.opts()`. The CLI provides automatic `--help`, `--version`, and unknown command detection. Running `nori-ai` with no command shows help. The CLI layer (cli.ts) is responsible ONLY for parsing and routing - all business logic remains in the command modules.
+**CLI Architecture:** The nori-ai CLI command (defined in @/package.json bin) routes to @/src/cli/cli.ts, which uses Commander.js for command routing, argument parsing, validation, and help generation. The CLI defines global options (`--install-dir`, `--non-interactive`, `--agent`) on the main program. Each command lives in its own subdirectory under @/src/cli/commands/ and exports a `registerXCommand({ program })` function that cli.ts imports and calls. Commands access global options via `program.opts()`. The CLI provides automatic `--help`, `--version`, and unknown command detection. Running `nori-ai` with no command shows help. The CLI layer (cli.ts) is responsible ONLY for parsing and routing - all business logic remains in the command modules.
+
+**Global Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-d, --install-dir <path>` | Custom installation directory (default: current working directory) |
+| `-n, --non-interactive` | Run without interactive prompts |
+| `-a, --agent <name>` | AI agent to use (default: "claude-code") |
+
+The `--agent` option enables support for multiple AI agents. Commands use the AgentRegistry (@/src/cli/features/agentRegistry.ts) to look up the agent implementation and obtain agent-specific loaders and environment paths.
 
 **CLI Directory Structure:**
 
 ```
 src/cli/
   cli.ts                 # Main entry point, command registration
-  config.ts              # Config type and persistence
+  config.ts              # Config type and persistence (supports per-agent profiles)
   env.ts                 # Environment detection utilities
   logger.ts              # Console output formatting
   prompt.ts              # User input prompting
   version.ts             # Version tracking for upgrades
   analytics.ts           # GA4 event tracking
-  features/              # Feature loaders by agent type (see @/src/cli/features/claude-code/docs.md)
-    claude-code/         # Claude Code-specific loaders and configurations
+  features/              # Multi-agent abstraction layer (see @/src/cli/features/docs.md)
+    types.ts             # Agent interface and AgentEnvPaths type
+    agentRegistry.ts     # AgentRegistry singleton for agent lookup
+    claude-code/         # Claude Code agent implementation (see @/src/cli/features/claude-code/docs.md)
   commands/              # Command implementations
     install/             # Install command + asciiArt, installState utilities
     uninstall/           # Uninstall command
@@ -68,7 +80,15 @@ The version.ts module manages version tracking for installation upgrades. The ge
 
 The logger.ts module provides console output formatting with ANSI color codes. Standard logging functions (error, success, info, warn, debug) use colors.RED, colors.GREEN, colors.BLUE, colors.YELLOW respectively. Additional formatting helpers (brightCyan, boldWhite, gray) use formatColors for enhanced visual hierarchy in CLI output - these return strings with ANSI codes applied. All log functions in logger.ts also append to /tmp/nori-installer.log asynchronously for debugging. The promptForProfileSelection function in install.ts uses these formatters to display profile options with brightCyan numbers, boldWhite names, and gray indented descriptions, separated by blank lines for improved scannability. The promptForCredentials function displays a wrapped prompt asking users to enter credentials or skip for free tier.
 
-The config.ts module provides a unified `Config` type for both disk persistence and runtime use. The `Config` type contains: auth credentials (username/password/organizationUrl), profile selection (profile.baseProfile), user preferences (sendSessionTranscript, autoupdate), registry authentication (registryAuths array), and the required installDir field. The getConfigPath() function requires { installDir: string } and returns `<installDir>/.nori-config.json`. All config operations (loadConfig, saveConfig, validateConfig) require installDir as a parameter, ensuring consistent path resolution throughout the codebase. User preference fields (sendSessionTranscript, autoupdate) use the 'enabled' | 'disabled' type and default to 'enabled' when not present in config file, maintaining backward compatibility. These fields are loaded by loadConfig() with default fallback, persisted by saveConfig() when provided, and validated by the JSON schema. The config.ts module is used by both the installer (for managing installation settings) and hooks (for reading user preferences like session transcript opt-out or autoupdate disable).
+The config.ts module provides a unified `Config` type for both disk persistence and runtime use. The `Config` type contains: auth credentials (username/password/organizationUrl), profile selection (profile.baseProfile - deprecated), agents (per-agent configuration), user preferences (sendSessionTranscript, autoupdate), registry authentication (registryAuths array), and the required installDir field.
+
+**Multi-Agent Config Structure:** The config supports per-agent profiles via the `agents` field, a `Record<string, AgentConfig>` where each agent has its own profile. For backwards compatibility:
+- The legacy `profile` field is deprecated but still read/written for claude-code
+- `loadConfig()` mirrors legacy `profile` to `agents.claude-code` if `agents` is not present
+- `saveConfig()` writes both `agents` and legacy `profile` (for claude-code) to maintain compatibility with older versions
+- `getAgentProfile({ config, agentName })` retrieves the profile for a specific agent, falling back to legacy `profile` for claude-code
+
+The getConfigPath() function requires { installDir: string } and returns `<installDir>/.nori-config.json`. All config operations (loadConfig, saveConfig, validateConfig) require installDir as a parameter, ensuring consistent path resolution throughout the codebase. User preference fields (sendSessionTranscript, autoupdate) use the 'enabled' | 'disabled' type and default to 'enabled' when not present in config file, maintaining backward compatibility. These fields are loaded by loadConfig() with default fallback, persisted by saveConfig() when provided, and validated by the JSON schema. The config.ts module is used by both the installer (for managing installation settings) and hooks (for reading user preferences like session transcript opt-out or autoupdate disable).
 
 **Registry Authentication:** The `registryAuths` field in Config is an array of `RegistryAuth` objects, each containing `username`, `password`, and `registryUrl`. This enables authentication for package registry operations like profile uploads. The `getRegistryAuth({ config, registryUrl })` helper function looks up credentials for a specific registry URL with trailing slash normalization. Registry auth is separate from the main Nori backend auth (`auth` field) - they use different Firebase projects and serve different purposes (registry operations vs. backend API access). The loadConfig() function validates registryAuths entries, filtering out any with missing required fields.
 

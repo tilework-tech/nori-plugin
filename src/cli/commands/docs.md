@@ -8,7 +8,9 @@ Contains all CLI command implementations for the nori-ai CLI. Each command lives
 
 ### How it fits into the larger codebase
 
-The main CLI entry point (@/src/cli/cli.ts) imports `registerXCommand` functions from each command subdirectory and calls them to register commands with the Commander.js program. Each command module exports a register function that accepts `{ program: Command }` and adds its command definition. Commands access global options (`--install-dir`, `--non-interactive`) via `program.opts()`. Business logic is encapsulated within each command directory - cli.ts only handles routing.
+The main CLI entry point (@/src/cli/cli.ts) imports `registerXCommand` functions from each command subdirectory and calls them to register commands with the Commander.js program. Each command module exports a register function that accepts `{ program: Command }` and adds its command definition. Commands access global options (`--install-dir`, `--non-interactive`, `--agent`) via `program.opts()`. Business logic is encapsulated within each command directory - cli.ts only handles routing.
+
+Commands that interact with agent-specific features (install, uninstall, check, switch-profile) use the AgentRegistry (@/src/cli/features/agentRegistry.ts) to look up the agent implementation by name. The agent provides access to its LoaderRegistry and environment paths. Commands pass the `--agent` option through their call chain to ensure consistent agent context.
 
 ```
 cli.ts
@@ -24,13 +26,18 @@ cli.ts
 ```
 
 Commands use shared utilities from the parent @/src/cli/ directory:
-- `config.ts` - Config type and persistence
+- `config.ts` - Config type and persistence (with per-agent profile support)
 - `logger.ts` - Console output formatting (error, success, info, warn)
 - `prompt.ts` - User input prompting
 - `version.ts` - Version tracking for upgrades
 - `analytics.ts` - GA4 event tracking
 
-Commands also use feature loaders from @/src/cli/features/claude-code/ via the LoaderRegistry for installation/uninstallation operations.
+Commands obtain feature loaders via the AgentRegistry (@/src/cli/features/agentRegistry.ts). The pattern is:
+```typescript
+const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+const registry = agentImpl.getLoaderRegistry();
+const loaders = registry.getAll();
+```
 
 ### Core Implementation
 

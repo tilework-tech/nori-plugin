@@ -26,8 +26,7 @@ import {
   isPaidInstall,
   type Config,
 } from "@/cli/config.js";
-import { getClaudeDir } from "@/cli/env.js";
-import { LoaderRegistry } from "@/cli/features/claude-code/loaderRegistry.js";
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import {
   error,
   success,
@@ -70,13 +69,16 @@ const SOURCE_PROFILES_DIR = path.join(
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
+ * @param args.agent - AI agent to use (defaults to claude-code)
  *
  * @returns Array of available profiles with names and descriptions
  */
 const getAvailableProfiles = async (args: {
   installDir: string;
+  agent?: string | null;
 }): Promise<Array<{ name: string; description: string }>> => {
   const { installDir } = args;
+  const agentName = args.agent ?? "claude-code";
   const profilesMap = new Map<string, { name: string; description: string }>();
 
   // Read from source profiles directory (available profiles in package)
@@ -107,8 +109,9 @@ const getAvailableProfiles = async (args: {
 
   // Read from installed profiles directory (already installed profiles)
   try {
-    const claudeDir = getClaudeDir({ installDir });
-    const installedProfilesDir = path.join(claudeDir, "profiles");
+    const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+    const envPaths = agentImpl.getEnvPaths({ installDir });
+    const installedProfilesDir = envPaths.profilesDir;
     const installedEntries = await fs.readdir(installedProfilesDir, {
       withFileTypes: true,
     });
@@ -316,13 +319,16 @@ export const generatePromptConfig = async (args: {
  * @param args - Configuration arguments
  * @param args.skipUninstall - Whether to skip uninstall step
  * @param args.installDir - Installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const interactive = async (args?: {
   skipUninstall?: boolean | null;
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
-  const { skipUninstall, installDir } = args || {};
+  const { skipUninstall, installDir, agent } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
+  const agentName = agent ?? "claude-code";
 
   // Check for ancestor installations that might cause conflicts
   const allInstallations = getInstallDirs({
@@ -383,7 +389,7 @@ export const interactive = async (args?: {
 
     try {
       execSync(
-        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}"`,
+        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentName}"`,
         {
           stdio: "inherit",
         },
@@ -443,7 +449,8 @@ export const interactive = async (args?: {
   }
 
   // Run all loaders (including profiles)
-  const registry = LoaderRegistry.getInstance();
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  const registry = agentImpl.getLoaderRegistry();
   const loaders = registry.getAll();
 
   info({ message: "Installing features..." });
@@ -507,13 +514,16 @@ export const interactive = async (args?: {
  * @param args - Configuration arguments
  * @param args.skipUninstall - Whether to skip uninstall step
  * @param args.installDir - Installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const noninteractive = async (args?: {
   skipUninstall?: boolean | null;
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
-  const { skipUninstall, installDir } = args || {};
+  const { skipUninstall, installDir, agent } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
+  const agentName = agent ?? "claude-code";
 
   // Check for ancestor installations (warn but continue)
   const allInstallations = getInstallDirs({
@@ -568,7 +578,7 @@ export const noninteractive = async (args?: {
 
     try {
       execSync(
-        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}"`,
+        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentName}"`,
         {
           stdio: "inherit",
         },
@@ -616,7 +626,8 @@ export const noninteractive = async (args?: {
   }
 
   // Run all loaders
-  const registry = LoaderRegistry.getInstance();
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  const registry = agentImpl.getLoaderRegistry();
   const loaders = registry.getAll();
 
   info({ message: "Installing features..." });
@@ -680,19 +691,21 @@ export const noninteractive = async (args?: {
  * @param args.nonInteractive - Whether to run in non-interactive mode
  * @param args.skipUninstall - Whether to skip uninstall step (useful for profile switching)
  * @param args.installDir - Custom installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const main = async (args?: {
   nonInteractive?: boolean | null;
   skipUninstall?: boolean | null;
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
-  const { nonInteractive, skipUninstall, installDir } = args || {};
+  const { nonInteractive, skipUninstall, installDir, agent } = args || {};
 
   try {
     if (nonInteractive) {
-      await noninteractive({ skipUninstall, installDir });
+      await noninteractive({ skipUninstall, installDir, agent });
     } else {
-      await interactive({ skipUninstall, installDir });
+      await interactive({ skipUninstall, installDir, agent });
     }
   } catch (err: any) {
     error({ message: err.message });
@@ -718,6 +731,7 @@ export const registerInstallCommand = (args: { program: Command }): void => {
       await main({
         nonInteractive: globalOpts.nonInteractive || null,
         installDir: globalOpts.installDir || null,
+        agent: globalOpts.agent || null,
       });
     });
 };

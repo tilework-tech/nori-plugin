@@ -7,7 +7,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 import { loadConfig, saveConfig } from "@/cli/config.js";
-import { getClaudeProfilesDir } from "@/cli/env.js";
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import { success, info } from "@/cli/logger.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
@@ -34,6 +34,7 @@ export const registerSwitchProfileCommand = (args: {
       await switchProfile({
         profileName: name,
         installDir: globalOpts.installDir || null,
+        agent: globalOpts.agent || null,
       });
 
       // Run install in non-interactive mode with skipUninstall
@@ -46,22 +47,28 @@ export const registerSwitchProfileCommand = (args: {
         nonInteractive: true,
         skipUninstall: true,
         installDir: globalOpts.installDir || null,
+        agent: globalOpts.agent || null,
       });
     });
 };
 
 /**
- * List all available profiles from ~/.claude/profiles/
+ * List all available profiles from the agent's profiles directory
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
+ * @param args.agent - AI agent to use (defaults to claude-code)
  *
  * @returns Array of profile names
  */
 export const listProfiles = async (args: {
   installDir: string;
+  agent?: string | null;
 }): Promise<Array<string>> => {
   const { installDir } = args;
-  const profilesDir = getClaudeProfilesDir({ installDir });
+  const agentName = args.agent ?? "claude-code";
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  const envPaths = agentImpl.getEnvPaths({ installDir });
+  const profilesDir = envPaths.profilesDir;
   const profiles: Array<string> = [];
 
   try {
@@ -73,15 +80,21 @@ export const listProfiles = async (args: {
       withFileTypes: true,
     });
 
-    // Get all directories that contain a CLAUDE.md file
+    // Get all directories that contain an instructions file (e.g., CLAUDE.md for claude-code)
+    // Extract just the filename from the instructions file path
+    const instructionsFileName = path.basename(envPaths.instructionsFile);
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        const claudeMdPath = path.join(profilesDir, entry.name, "CLAUDE.md");
+        const instructionsPath = path.join(
+          profilesDir,
+          entry.name,
+          instructionsFileName,
+        );
         try {
-          await fs.access(claudeMdPath);
+          await fs.access(instructionsPath);
           profiles.push(entry.name);
         } catch {
-          // Skip directories without CLAUDE.md
+          // Skip directories without instructions file
         }
       }
     }
@@ -101,22 +114,28 @@ export const listProfiles = async (args: {
  * @param args - Function arguments
  * @param args.profileName - Name of profile to switch to
  * @param args.installDir - Custom installation directory (optional, defaults to cwd)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const switchProfile = async (args: {
   profileName: string;
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
   const { profileName } = args;
   // Normalize installDir at entry point
   const installDir = normalizeInstallDir({ installDir: args.installDir });
+  const agentName = args.agent ?? "claude-code";
 
-  const profilesDir = getClaudeProfilesDir({ installDir });
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  const envPaths = agentImpl.getEnvPaths({ installDir });
+  const profilesDir = envPaths.profilesDir;
+  const instructionsFileName = path.basename(envPaths.instructionsFile);
 
-  // 1. Verify profile exists by checking for CLAUDE.md in profile directory
+  // 1. Verify profile exists by checking for instructions file in profile directory
   const profileDir = path.join(profilesDir, profileName);
   try {
-    const claudeMdPath = path.join(profileDir, "CLAUDE.md");
-    await fs.access(claudeMdPath);
+    const instructionsPath = path.join(profileDir, instructionsFileName);
+    await fs.access(instructionsPath);
   } catch {
     throw new Error(`Profile "${profileName}" not found in ${profilesDir}`);
   }
@@ -124,22 +143,31 @@ export const switchProfile = async (args: {
   // 2. Load current config
   const currentConfig = await loadConfig({ installDir });
 
-  // 3. Preserve auth and other settings, update profile
+  // 3. Preserve auth and other settings, update profile for the specific agent
+  const existingAgents = currentConfig?.agents ?? {};
+  const updatedAgents = {
+    ...existingAgents,
+    [agentName]: {
+      ...existingAgents[agentName],
+      profile: { baseProfile: profileName },
+    },
+  };
+
   await saveConfig({
     username: currentConfig?.auth?.username || null,
     password: currentConfig?.auth?.password || null,
     organizationUrl: currentConfig?.auth?.organizationUrl || null,
-    profile: {
-      baseProfile: profileName,
-    },
+    agents: updatedAgents,
     sendSessionTranscript: currentConfig?.sendSessionTranscript ?? null,
     autoupdate: currentConfig?.autoupdate,
     registryAuths: currentConfig?.registryAuths ?? null,
     installDir,
   });
 
-  success({ message: `Switched to "${profileName}" profile` });
+  success({
+    message: `Switched to "${profileName}" profile for ${agentImpl.displayName}`,
+  });
   info({
-    message: `Restart Claude Code to load the new profile configuration`,
+    message: `Restart ${agentImpl.displayName} to load the new profile configuration`,
   });
 };

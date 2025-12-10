@@ -88,7 +88,23 @@ Key behaviors:
 | (n/a) | `transcript_path` (empty string) |
 | `hook_event_name` | `hook_event_name` (mapped to "UserPromptSubmit") |
 
-The adapter routes prompts through the same `interceptedSlashCommands` registry from @/src/cli/features/hooks/config/intercepted-slashcommands/, enabling `/nori-*` slash commands to work instantly without LLM inference.
+The adapter routes prompts through Cursor's own `cursorInterceptedSlashCommands` registry from @/src/cli/features/cursor/hooks/config/intercepted-slashcommands/, enabling `/nori-*` slash commands to work instantly without LLM inference.
+
+**Cursor Intercepted Slash Commands** (hooks/config/intercepted-slashcommands/): Cursor-specific registry of slash commands that execute instantly via hook interception. This is a separate registry from Claude Code's intercepted slash commands at @/src/cli/features/hooks/config/intercepted-slashcommands/. Key architectural differences:
+
+| Aspect | Claude Code Registry | Cursor Registry |
+|--------|---------------------|-----------------|
+| Location | @/src/cli/features/hooks/config/intercepted-slashcommands/ | @/src/cli/features/cursor/hooks/config/intercepted-slashcommands/ |
+| Switch profile | Uses `~/.claude/profiles/`, updates `config.profile.baseProfile` | Uses `getCursorProfilesDir()`, updates `config.cursorProfile.baseProfile` |
+| Toggle commands | Includes `nori-toggle-autoupdate`, `nori-toggle-session-transcripts` | Excludes toggle commands (Claude Code specific features) |
+| Types/Format | Defines `HookInput`, `HookOutput`, `InterceptedSlashCommand` | Re-exports from Claude Code for consistency |
+
+Cursor registry commands:
+- `nori-install-location` - Shows installation directory (IDE-agnostic)
+- `nori-registry-download` - Downloads skills from registry (IDE-agnostic)
+- `nori-registry-search` - Searches skill registry (IDE-agnostic)
+- `nori-registry-upload` - Uploads skills to registry (IDE-agnostic)
+- `nori-switch-profile` - Cursor-specific implementation using Cursor paths
 
 ### Things to Know
 

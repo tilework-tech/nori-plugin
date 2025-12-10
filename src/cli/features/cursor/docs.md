@@ -26,7 +26,7 @@ This directory provides Cursor IDE support parallel to the main Claude Code inst
     - hooks/
 ```
 
-The `install-cursor` command (@/src/cli/commands/install-cursor/installCursor.ts) uses CursorLoaderRegistry to execute all registered Cursor loaders. The cursor profiles loader reuses the same profile template source files from @/src/cli/features/profiles/config/ but writes to `~/.cursor/profiles/` via Cursor-specific path helpers in @/src/cli/env.ts. The `cursor-switch-profile` command (@/src/cli/commands/cursor-switch-profile/cursorSwitchProfile.ts) updates `config.cursorProfile.baseProfile` and then invokes `install-cursor` to reinstall with only the selected profile.
+The `install-cursor` command (@/src/cli/commands/install-cursor/installCursor.ts) uses CursorLoaderRegistry to execute all registered Cursor loaders. The `uninstall-cursor` command (@/src/cli/commands/uninstall-cursor/uninstallCursor.ts) uses `CursorLoaderRegistry.getAllReversed()` to run loader uninstalls in reverse order. The cursor profiles loader reuses the same profile template source files from @/src/cli/features/profiles/config/ but writes to `~/.cursor/profiles/` via Cursor-specific path helpers in @/src/cli/env.ts. The `cursor-switch-profile` command (@/src/cli/commands/cursor-switch-profile/cursorSwitchProfile.ts) updates `config.cursorProfile.baseProfile` and then invokes `install-cursor` to reinstall with only the selected profile.
 
 Cursor environment path helpers (getCursorDir, getCursorSettingsFile, getCursorProfilesDir, getCursorCommandsDir, getCursorHomeDir, getCursorHomeSettingsFile, getCursorHooksFile, getCursorHomeHooksFile) in @/src/cli/env.ts parallel the existing Claude path helpers.
 

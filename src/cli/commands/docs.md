@@ -15,6 +15,7 @@ cli.ts
   |
   +-- registerInstallCommand({ program })              --> commands/install/install.ts
   +-- registerInstallCursorCommand({ program })        --> commands/install-cursor/installCursor.ts
+  +-- registerUninstallCursorCommand({ program })      --> commands/uninstall-cursor/uninstallCursor.ts
   +-- registerUninstallCommand({ program })            --> commands/uninstall/uninstall.ts
   +-- registerCheckCommand({ program })                --> commands/check/check.ts
   +-- registerSwitchProfileCommand({ program })        --> commands/switch-profile/profiles.ts
@@ -73,6 +74,8 @@ The `install-cursor/` command installs Nori components to Cursor IDE. It uses Cu
 The command always installs to the user's home directory (os.homedir()) and does not support the `--install-dir` option.
 
 The `cursor-switch-profile/` command switches the active Cursor profile. It updates `config.cursorProfile.baseProfile` in the config file, then runs `install-cursor` to reinstall only the selected profile. Like `install-cursor`, it always uses `os.homedir()` and does not support `--install-dir`. The command verifies the profile exists in `~/.cursor/profiles/` before switching by checking for a CLAUDE.md file.
+
+The `uninstall-cursor/` command removes Nori profiles from Cursor IDE. It uses `CursorLoaderRegistry.getAllReversed()` to get loaders in reverse order (mirroring the standard uninstall pattern) and calls each loader's `uninstall()` method. Like `install-cursor`, it always operates on the user's home directory and does not support custom install directories.
 
 Tests within each command directory use the same temp directory isolation pattern as other tests in the codebase, passing `installDir` explicitly to functions rather than mocking `process.env.HOME`.
 

@@ -1,15 +1,15 @@
 /**
  * Cursor beforeSubmitPrompt hook adapter
  * Transforms Cursor input format to Claude Code UserPromptSubmit format
- * and routes to the existing slash command interceptor
+ * and routes to Cursor-specific slash command interceptor
  */
-
-import { interceptedSlashCommands } from "@/cli/features/hooks/config/intercepted-slashcommands/registry.js";
 
 import type {
   HookInput,
   HookOutput,
-} from "@/cli/features/hooks/config/intercepted-slashcommands/types.js";
+} from "./intercepted-slashcommands/types.js";
+
+import { cursorInterceptedSlashCommands } from "./intercepted-slashcommands/registry.js";
 
 /**
  * Cursor beforeSubmitPrompt input format
@@ -123,8 +123,8 @@ const main = async (): Promise<void> => {
   // Transform to Claude Code format
   const claudeInput = transformCursorInput({ input: cursorInput });
 
-  // Try each registered command
-  for (const command of interceptedSlashCommands) {
+  // Try each registered Cursor command
+  for (const command of cursorInterceptedSlashCommands) {
     // Check if any matcher matches the prompt
     const trimmedPrompt = prompt.trim();
     let matched = false;

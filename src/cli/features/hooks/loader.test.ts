@@ -497,6 +497,75 @@ describe("hooksLoader", () => {
       expect(hasStatisticsNotificationHook).toBe(true);
       expect(hasStatisticsHook).toBe(true);
     });
+
+    it("should order SessionEnd hooks with async summarize hook LAST (paid)", async () => {
+      // This test verifies the fix for statistics/notification messages not displaying.
+      // The bug: summarize.ts outputs { async: true } which causes Claude Code to stop
+      // reading stdout. Any hooks that run AFTER summarize have their systemMessage lost.
+      // The fix: reorder hooks so summarize (async) runs last in SessionEnd.
+      const config: Config = {
+        installDir: tempDir,
+        auth: {
+          username: "test@example.com",
+          password: "testpass",
+          organizationUrl: "https://example.com",
+        },
+      };
+
+      await hooksLoader.run({ config });
+
+      const content = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(content);
+
+      // Get all SessionEnd hook commands in order
+      const sessionEndHooks = settings.hooks.SessionEnd;
+      const hookCommands: Array<string> = [];
+      for (const hookConfig of sessionEndHooks) {
+        if (hookConfig.hooks) {
+          for (const hook of hookConfig.hooks) {
+            if (hook.command) {
+              hookCommands.push(hook.command);
+            }
+          }
+        }
+      }
+
+      // Find indices of relevant hooks
+      const summarizeNotificationIndex = hookCommands.findIndex((cmd) =>
+        cmd.includes("summarize-notification"),
+      );
+      const summarizeIndex = hookCommands.findIndex(
+        (cmd) =>
+          cmd.includes("summarize.js") &&
+          !cmd.includes("summarize-notification"),
+      );
+      const statisticsNotificationIndex = hookCommands.findIndex((cmd) =>
+        cmd.includes("statistics-notification"),
+      );
+      const statisticsIndex = hookCommands.findIndex(
+        (cmd) =>
+          cmd.includes("statistics.js") &&
+          !cmd.includes("statistics-notification"),
+      );
+
+      // All hooks should exist
+      expect(summarizeNotificationIndex).toBeGreaterThanOrEqual(0);
+      expect(summarizeIndex).toBeGreaterThanOrEqual(0);
+      expect(statisticsNotificationIndex).toBeGreaterThanOrEqual(0);
+      expect(statisticsIndex).toBeGreaterThanOrEqual(0);
+
+      // Summarize (async) hook must be LAST among SessionEnd hooks
+      // because it outputs { async: true } which stops stdout reading
+      expect(summarizeIndex).toBeGreaterThan(summarizeNotificationIndex);
+      expect(summarizeIndex).toBeGreaterThan(statisticsNotificationIndex);
+      expect(summarizeIndex).toBeGreaterThan(statisticsIndex);
+
+      // Notification hooks should come before their main hooks
+      expect(summarizeNotificationIndex).toBeLessThan(
+        statisticsNotificationIndex,
+      );
+      expect(statisticsNotificationIndex).toBeLessThan(statisticsIndex);
+    });
   });
 
   describe("uninstall", () => {

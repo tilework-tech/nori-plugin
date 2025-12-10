@@ -338,12 +338,15 @@ const configurePaidHooks = async (args: { config: Config }): Promise<void> => {
   settings.includeCoAuthoredBy = false;
 
   // Install all hooks for paid version
-  // Note: notification hooks must run before their async counterparts for proper ordering
+  // IMPORTANT: Hook ordering matters for SessionEnd event!
+  // The summarize hook outputs { async: true } which causes Claude Code to stop
+  // reading stdout. Therefore, summarize must be LAST among SessionEnd hooks so
+  // that notification hooks and statistics can output their systemMessages first.
   const hooks = [
     summarizeNotificationHook,
-    summarizeHook,
     statisticsNotificationHook,
     statisticsHook,
+    summarizeHook, // Must be last SessionEnd hook (outputs async:true)
     autoupdateHook,
     nestedInstallWarningHook,
     migrationInstructionsHook,

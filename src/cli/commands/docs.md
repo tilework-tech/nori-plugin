@@ -13,15 +13,16 @@ The main CLI entry point (@/plugin/src/cli/cli.ts) imports `registerXCommand` fu
 ```
 cli.ts
   |
-  +-- registerInstallCommand({ program })        --> commands/install/install.ts
-  +-- registerInstallCursorCommand({ program })  --> commands/install-cursor/installCursor.ts
-  +-- registerUninstallCommand({ program })      --> commands/uninstall/uninstall.ts
-  +-- registerCheckCommand({ program })          --> commands/check/check.ts
-  +-- registerSwitchProfileCommand({ program })  --> commands/switch-profile/profiles.ts
-  +-- registerInstallLocationCommand({ program })--> commands/install-location/installLocation.ts
-  +-- registerRegistrySearchCommand({ program }) --> commands/registry-search/registrySearch.ts
-  +-- registerRegistryDownloadCommand({ program })--> commands/registry-download/registryDownload.ts
-  +-- registerRegistryUploadCommand({ program }) --> commands/registry-upload/registryUpload.ts
+  +-- registerInstallCommand({ program })              --> commands/install/install.ts
+  +-- registerInstallCursorCommand({ program })        --> commands/install-cursor/installCursor.ts
+  +-- registerUninstallCommand({ program })            --> commands/uninstall/uninstall.ts
+  +-- registerCheckCommand({ program })                --> commands/check/check.ts
+  +-- registerSwitchProfileCommand({ program })        --> commands/switch-profile/profiles.ts
+  +-- registerCursorSwitchProfileCommand({ program })  --> commands/cursor-switch-profile/cursorSwitchProfile.ts
+  +-- registerInstallLocationCommand({ program })      --> commands/install-location/installLocation.ts
+  +-- registerRegistrySearchCommand({ program })       --> commands/registry-search/registrySearch.ts
+  +-- registerRegistryDownloadCommand({ program })     --> commands/registry-download/registryDownload.ts
+  +-- registerRegistryUploadCommand({ program })       --> commands/registry-upload/registryUpload.ts
 ```
 
 Commands use shared utilities from the parent @/plugin/src/cli/ directory:
@@ -66,6 +67,8 @@ The `install/` directory contains command-specific utilities:
 The `install-location/` command was extracted from inline definition in cli.ts to follow the same pattern as other commands.
 
 The `install-cursor/` command installs Nori profiles to Cursor IDE (`~/.cursor/profiles/`). It uses CursorLoaderRegistry instead of LoaderRegistry and executes Cursor-specific loaders that write to Cursor paths. The command always installs to the user's home directory (os.homedir()) and does not support the `--install-dir` option.
+
+The `cursor-switch-profile/` command switches the active Cursor profile. It updates `config.cursorProfile.baseProfile` in the config file, then runs `install-cursor` to reinstall only the selected profile. Like `install-cursor`, it always uses `os.homedir()` and does not support `--install-dir`. The command verifies the profile exists in `~/.cursor/profiles/` before switching by checking for a CLAUDE.md file.
 
 Tests within each command directory use the same temp directory isolation pattern as other tests in the codebase, passing `installDir` explicitly to functions rather than mocking `process.env.HOME`.
 

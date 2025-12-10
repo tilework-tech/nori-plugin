@@ -14,7 +14,6 @@ The main CLI entry point (@/src/cli/cli.ts) imports `registerXCommand` functions
 cli.ts
   |
   +-- registerInstallCommand({ program })      --> commands/install/install.ts
-  +-- registerInstallCursorCommand({ program })--> commands/install-cursor/installCursor.ts
   +-- registerUninstallCommand({ program })    --> commands/uninstall/uninstall.ts
   +-- registerCheckCommand({ program })        --> commands/check/check.ts
   +-- registerSwitchProfileCommand({ program })--> commands/switch-profile/profiles.ts

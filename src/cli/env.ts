@@ -168,3 +168,25 @@ export const getCursorHomeDir = (): string => {
 export const getCursorHomeSettingsFile = (): string => {
   return path.join(getCursorHomeDir(), "settings.json");
 };
+
+/**
+ * Get the Cursor skills directory path
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to the skills directory
+ */
+export const getCursorSkillsDir = (args: { installDir: string }): string => {
+  return path.join(getCursorDir(args), "skills");
+};
+
+/**
+ * Get the Cursor AGENTS.md file path
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to AGENTS.md
+ */
+export const getCursorAgentsMdFile = (args: { installDir: string }): string => {
+  return path.join(getCursorDir(args), "AGENTS.md");
+};

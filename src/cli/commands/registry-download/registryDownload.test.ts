@@ -2,6 +2,7 @@
  * Tests for registry-download CLI command
  */
 
+import * as fsSync from "fs";
 import * as fs from "fs/promises";
 import { tmpdir } from "os";
 import * as path from "path";
@@ -689,15 +690,20 @@ const createMockTarball = async (args?: {
     );
     await fs.writeFile(path.join(tempDir, "AGENT.md"), "# Test Profile Agent");
 
-    // Create the tarball
-    await tar.create(
-      {
-        gzip,
-        file: tarballPath,
-        cwd: tempDir,
-      },
-      ["package.json", "AGENT.md"],
-    );
+    // Create the tarball - use explicit promise for gzip
+    await new Promise<void>((resolve, reject) => {
+      tar
+        .create(
+          {
+            gzip,
+            cwd: tempDir,
+          },
+          ["package.json", "AGENT.md"],
+        )
+        .pipe(fsSync.createWriteStream(tarballPath))
+        .on("finish", resolve)
+        .on("error", reject);
+    });
 
     // Read the tarball as ArrayBuffer
     const tarballBuffer = await fs.readFile(tarballPath);

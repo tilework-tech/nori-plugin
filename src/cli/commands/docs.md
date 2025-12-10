@@ -65,7 +65,7 @@ The `install/` directory contains command-specific utilities:
 
 The `install-location/` command was extracted from inline definition in cli.ts to follow the same pattern as other commands.
 
-The `install-cursor/` command installs Nori profiles to Cursor IDE (`~/.cursor/profiles/`). It uses CursorLoaderRegistry instead of LoaderRegistry and executes Cursor-specific loaders that write to Cursor paths. The command always installs to the user's home directory (os.homedir()) and does not support the `--install-dir` option.
+The `install-cursor/` command installs Nori profiles, skills, and AGENTS.md to Cursor IDE (`~/.cursor/`). It uses CursorLoaderRegistry instead of LoaderRegistry and executes Cursor-specific loaders that write to Cursor paths. The cursorProfilesLoader orchestrates installation through a nested CursorProfileLoaderRegistry that runs skills loader (creates `~/.cursor/skills/`) then agentsmd loader (creates `~/.cursor/AGENTS.md` with embedded skills list). The command always installs to the user's home directory (os.homedir()) and does not support the `--install-dir` option.
 
 Tests within each command directory use the same temp directory isolation pattern as other tests in the codebase, passing `installDir` explicitly to functions rather than mocking `process.env.HOME`.
 

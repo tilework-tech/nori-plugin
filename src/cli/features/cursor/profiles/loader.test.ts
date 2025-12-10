@@ -21,9 +21,19 @@ vi.mock("@/cli/env.js", () => ({
     path.join(args.installDir, ".claude", "settings.json"),
   getClaudeProfilesDir: (args: { installDir: string }) =>
     path.join(args.installDir, ".claude", "profiles"),
+  getClaudeSkillsDir: (args: { installDir: string }) =>
+    path.join(args.installDir, ".claude", "skills"),
+  getClaudeMdFile: (args: { installDir: string }) =>
+    path.join(args.installDir, ".claude", "CLAUDE.md"),
+  getClaudeAgentsDir: (args: { installDir: string }) =>
+    path.join(args.installDir, ".claude", "agents"),
+  getClaudeCommandsDir: (args: { installDir: string }) =>
+    path.join(args.installDir, ".claude", "commands"),
   getCursorDir: () => mockCursorDir,
   getCursorSettingsFile: () => path.join(mockCursorDir, "settings.json"),
   getCursorProfilesDir: () => path.join(mockCursorDir, "profiles"),
+  getCursorSkillsDir: () => path.join(mockCursorDir, "skills"),
+  getCursorAgentsMdFile: () => path.join(mockCursorDir, "AGENTS.md"),
   MCP_ROOT: "/mock/mcp/root",
 }));
 

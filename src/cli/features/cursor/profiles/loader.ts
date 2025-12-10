@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 
 import { isPaidInstall, type Config } from "@/cli/config.js";
 import { getCursorProfilesDir, getCursorSettingsFile } from "@/cli/env.js";
+import { CursorProfileLoaderRegistry } from "@/cli/features/cursor/profiles/cursorProfileLoaderRegistry.js";
 import {
   readProfileMetadata,
   type ProfileMetadata,
@@ -523,9 +524,24 @@ export const cursorProfilesLoader: Loader = {
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installProfiles({ config });
+
+    // Install all profile-dependent features (skills, agentsmd)
+    const registry = CursorProfileLoaderRegistry.getInstance();
+    const loaders = registry.getAll();
+    for (const loader of loaders) {
+      await loader.install({ config });
+    }
   },
   uninstall: async (args: { config: Config }) => {
     const { config } = args;
+
+    // Uninstall profile-dependent features first (in reverse order)
+    const registry = CursorProfileLoaderRegistry.getInstance();
+    const loaders = registry.getAllReversed();
+    for (const loader of loaders) {
+      await loader.uninstall({ config });
+    }
+
     await uninstallProfiles({ config });
   },
   validate,

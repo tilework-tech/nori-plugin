@@ -73,7 +73,7 @@ The profiles loader executes FIRST in both interactive and non-interactive insta
 
 To add features that require multiple criteria (e.g., paid AND docs):
 
-1. **Create mixin directory**: `plugin/src/cli/features/profiles/config/_mixins/_{category}-{tier}/`
+1. **Create mixin directory**: `plugin/src/cli/features/claude-code/profiles/config/_mixins/_{category}-{tier}/`
 2. **Follow naming convention**: Use `{category}-{tier}` format (e.g., `_docs-paid`, `_swe-paid`)
 3. **Structure matches other mixins**: Include `skills/`, `subagents/`, `slashcommands/` as needed
 4. **Automatic injection**: No code changes needed - loader detects and injects based on:
@@ -153,7 +153,7 @@ When you run `npx nori-ai@latest switch-profile <name>`:
 
 ### Key Files
 
-- `plugin/src/cli/features/profiles/loader.ts` - Copies profile templates
+- `plugin/src/cli/features/claude-code/profiles/loader.ts` - Copies profile templates
 - `plugin/src/cli/commands/switch-profile/profiles.ts` - Profile switching logic
 - `plugin/src/cli/commands/install/install.ts` - Install flow (runs profiles loader first)
 - Feature loaders - Read from `~/.claude/profiles/${profileName}/`

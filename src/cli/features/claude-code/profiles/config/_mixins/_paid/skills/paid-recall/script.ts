@@ -6,7 +6,7 @@
  * IMPORTANT: This file is BUNDLED during the build process.
  *
  * Build Process:
- * 1. TypeScript compiles this file to build/src/cli/features/profiles/config/_mixins/_paid/skills/paid-recall/script.js
+ * 1. TypeScript compiles this file to build/src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-recall/script.js
  * 2. tsc-alias converts @ imports to relative paths
  * 3. scripts/bundle-skills.ts uses esbuild to create a standalone bundle
  * 4. The bundle REPLACES the compiled output at the same location
@@ -19,7 +19,7 @@
  * standalone executable.
  *
  * @see scripts/bundle-skills.ts - The bundler that processes this file
- * @see src/cli/features/profiles/skills/loader.ts - Installation to ~/.claude/skills/
+ * @see src/cli/features/claude-code/profiles/skills/loader.ts - Installation to ~/.claude/skills/
  */
 
 import minimist from "minimist";

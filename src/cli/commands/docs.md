@@ -13,15 +13,15 @@ The main CLI entry point (@/plugin/src/cli/cli.ts) imports `registerXCommand` fu
 ```
 cli.ts
   |
-  +-- registerInstallCommand({ program })      --> commands/install/install.ts
-  +-- registerInstallCursorCommand({ program })--> commands/install-cursor/installCursor.ts
-  +-- registerUninstallCommand({ program })    --> commands/uninstall/uninstall.ts
-  +-- registerCheckCommand({ program })        --> commands/check/check.ts
-  +-- registerSwitchProfileCommand({ program })--> commands/switch-profile/profiles.ts
+  +-- registerInstallCommand({ program })        --> commands/install/install.ts
+  +-- registerInstallCursorCommand({ program })  --> commands/install-cursor/installCursor.ts
+  +-- registerUninstallCommand({ program })      --> commands/uninstall/uninstall.ts
+  +-- registerCheckCommand({ program })          --> commands/check/check.ts
+  +-- registerSwitchProfileCommand({ program })  --> commands/switch-profile/profiles.ts
   +-- registerInstallLocationCommand({ program })--> commands/install-location/installLocation.ts
-  +-- registerRegistrySearchCommand({ program })--> commands/registry-search/registrySearch.ts
+  +-- registerRegistrySearchCommand({ program }) --> commands/registry-search/registrySearch.ts
   +-- registerRegistryDownloadCommand({ program })--> commands/registry-download/registryDownload.ts
-  +-- registerRegistryUploadCommand({ program })--> commands/registry-upload/registryUpload.ts
+  +-- registerRegistryUploadCommand({ program }) --> commands/registry-upload/registryUpload.ts
 ```
 
 Commands use shared utilities from the parent @/plugin/src/cli/ directory:
@@ -31,7 +31,7 @@ Commands use shared utilities from the parent @/plugin/src/cli/ directory:
 - `version.ts` - Version tracking for upgrades
 - `analytics.ts` - GA4 event tracking
 
-Commands also use feature loaders from @/plugin/src/cli/features/ via the LoaderRegistry for installation/uninstallation operations.
+Commands also use feature loaders from @/plugin/src/cli/features/ via the LoaderRegistry for installation/uninstallation operations. The `install-cursor` command uses CursorLoaderRegistry from @/src/cli/features/cursor/cursorLoaderRegistry.ts for Cursor IDE installation.
 
 ### Core Implementation
 
@@ -64,6 +64,8 @@ The `install/` directory contains command-specific utilities:
 - `registryAuthPrompt.ts` - Prompts for private registry authentication during interactive install. Collects registry URL, username, and password (hidden input). Supports preserving existing registryAuths from config and adding multiple registries. Uses `RegistryAuth` type from `@/cli/config.js`.
 
 The `install-location/` command was extracted from inline definition in cli.ts to follow the same pattern as other commands.
+
+The `install-cursor/` command installs Nori profiles to Cursor IDE (`~/.cursor/profiles/`). It uses CursorLoaderRegistry instead of LoaderRegistry and executes Cursor-specific loaders that write to Cursor paths. The command always installs to the user's home directory (os.homedir()) and does not support the `--install-dir` option.
 
 Tests within each command directory use the same temp directory isolation pattern as other tests in the codebase, passing `installDir` explicitly to functions rather than mocking `process.env.HOME`.
 

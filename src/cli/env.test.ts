@@ -16,6 +16,11 @@ import {
   getClaudeProfilesDir,
   getClaudeHomeDir,
   getClaudeHomeSettingsFile,
+  getCursorDir,
+  getCursorSettingsFile,
+  getCursorProfilesDir,
+  getCursorHomeDir,
+  getCursorHomeSettingsFile,
 } from "./env.js";
 
 describe("getClaudeDir", () => {
@@ -136,6 +141,83 @@ describe("getClaudeHomeSettingsFile", () => {
   it("should not depend on any installDir parameter", () => {
     const result = getClaudeHomeSettingsFile();
     expect(result).toContain(".claude");
+    expect(result).toContain("settings.json");
+    expect(path.isAbsolute(result)).toBe(true);
+  });
+});
+
+// Cursor environment path tests
+
+describe("getCursorDir", () => {
+  it("should return process.cwd()/.cursor when installDir is cwd", () => {
+    const result = getCursorDir({ installDir: process.cwd() });
+    expect(result).toBe(path.join(process.cwd(), ".cursor"));
+  });
+
+  it("should return custom installDir/.cursor when installDir provided", () => {
+    const result = getCursorDir({ installDir: "/custom/path" });
+    expect(result).toBe("/custom/path/.cursor");
+  });
+
+  it("should preserve tilde in installDir (no expansion)", () => {
+    const result = getCursorDir({ installDir: "~/project" });
+    expect(result).toBe("~/project/.cursor");
+  });
+});
+
+describe("getCursorSettingsFile", () => {
+  it("should return settings.json in default cursor dir", () => {
+    const result = getCursorSettingsFile({ installDir: process.cwd() });
+    expect(result).toBe(path.join(process.cwd(), ".cursor", "settings.json"));
+  });
+
+  it("should return settings.json in custom cursor dir", () => {
+    const result = getCursorSettingsFile({ installDir: "/custom/path" });
+    expect(result).toBe("/custom/path/.cursor/settings.json");
+  });
+});
+
+describe("getCursorProfilesDir", () => {
+  it("should return profiles dir in default cursor dir", () => {
+    const result = getCursorProfilesDir({ installDir: process.cwd() });
+    expect(result).toBe(path.join(process.cwd(), ".cursor", "profiles"));
+  });
+
+  it("should return profiles dir in custom cursor dir", () => {
+    const result = getCursorProfilesDir({ installDir: "/custom/path" });
+    expect(result).toBe("/custom/path/.cursor/profiles");
+  });
+});
+
+describe("getCursorHomeDir", () => {
+  it("should return ~/.cursor expanded to absolute path", () => {
+    const result = getCursorHomeDir();
+    const expected = path.join(
+      process.env.HOME || process.env.USERPROFILE || "~",
+      ".cursor",
+    );
+    expect(result).toBe(expected);
+  });
+
+  it("should not depend on any installDir parameter", () => {
+    const result = getCursorHomeDir();
+    // Should always return home directory, not vary based on installDir
+    expect(result).toContain(".cursor");
+    expect(path.isAbsolute(result)).toBe(true);
+  });
+});
+
+describe("getCursorHomeSettingsFile", () => {
+  it("should return ~/.cursor/settings.json", () => {
+    const result = getCursorHomeSettingsFile();
+    const homeDir = process.env.HOME || process.env.USERPROFILE || "~";
+    const expected = path.join(homeDir, ".cursor", "settings.json");
+    expect(result).toBe(expected);
+  });
+
+  it("should not depend on any installDir parameter", () => {
+    const result = getCursorHomeSettingsFile();
+    expect(result).toContain(".cursor");
     expect(result).toContain("settings.json");
     expect(path.isAbsolute(result)).toBe(true);
   });

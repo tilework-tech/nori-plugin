@@ -113,3 +113,58 @@ export const getClaudeHomeDir = (): string => {
 export const getClaudeHomeSettingsFile = (): string => {
   return path.join(getClaudeHomeDir(), "settings.json");
 };
+
+// Cursor environment paths
+
+/**
+ * Get the Cursor directory path
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to the .cursor directory
+ */
+export const getCursorDir = (args: { installDir: string }): string => {
+  const { installDir } = args;
+  return path.join(installDir, ".cursor");
+};
+
+/**
+ * Get the Cursor settings file path
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to settings.json
+ */
+export const getCursorSettingsFile = (args: { installDir: string }): string => {
+  return path.join(getCursorDir(args), "settings.json");
+};
+
+/**
+ * Get the Cursor profiles directory path
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to the profiles directory
+ */
+export const getCursorProfilesDir = (args: { installDir: string }): string => {
+  return path.join(getCursorDir(args), "profiles");
+};
+
+/**
+ * Get the Cursor home directory path (always ~/.cursor)
+ * This is where Cursor stores user-level configuration.
+ *
+ * @returns Absolute path to ~/.cursor
+ */
+export const getCursorHomeDir = (): string => {
+  return path.join(os.homedir(), ".cursor");
+};
+
+/**
+ * Get the Cursor home settings file path (always ~/.cursor/settings.json)
+ *
+ * @returns Absolute path to ~/.cursor/settings.json
+ */
+export const getCursorHomeSettingsFile = (): string => {
+  return path.join(getCursorHomeDir(), "settings.json");
+};

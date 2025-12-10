@@ -4,7 +4,7 @@ Path: @/src/cli/features
 
 ### Overview
 
-Feature loader registry and individual feature implementations for installing Nori components into Claude Code. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements.
+Feature loader registry and individual feature implementations for installing Nori components into Claude Code and Cursor IDE. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements. Additionally contains a `cursor/` subdirectory with CursorLoaderRegistry and loaders for Cursor IDE installation.
 
 ### How it fits into the larger codebase
 
@@ -13,6 +13,8 @@ This folder contains the modular installer architecture where each feature is a 
 Each loader implements the Loader interface with run(), uninstall(), and validate() methods. The configLoader (@/src/cli/features/config/loader.ts) is the single point of config persistence during installation - it saves the Config to `.nori-config.json` including auth credentials, profile selection, and user preferences.
 
 **Global settings** (hooks, statusline, slashcommands) install to `~/.claude/` and are shared across all Nori installations. During uninstall, these can be preserved or removed as a group via the `removeGlobalSettings` flag. Profile-dependent features (claudemd, skills, profile-specific slashcommands, subagents) are handled by sub-loaders within the profiles feature at @/src/cli/features/profiles/.
+
+**Cursor IDE support** is provided by the `cursor/` subdirectory, which contains a separate CursorLoaderRegistry (@/src/cli/features/cursor/cursorLoaderRegistry.ts) that manages Cursor-specific loaders. This registry is used by the `install-cursor` command (@/src/cli/commands/install-cursor/installCursor.ts) and installs to `~/.cursor/` instead of `~/.claude/`. The cursor profiles loader reuses the same profile templates from @/src/cli/features/profiles/config/ but writes to Cursor paths. See @/src/cli/features/cursor/docs.md for details.
 
 The global slashcommands loader (@/src/cli/features/slashcommands/loader.ts) installs profile-agnostic commands (nori-debug, nori-switch-profile, nori-info, etc.) directly to `~/.claude/commands/`. Profile-specific slash commands (nori-init-docs, nori-sync-docs) remain in profile mixins and are handled by @/src/cli/features/profiles/slashcommands/loader.ts.
 

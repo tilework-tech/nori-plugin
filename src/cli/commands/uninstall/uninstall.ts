@@ -447,6 +447,10 @@ export const interactive = async (args?: {
     process.exit(0);
   }
 
+  // Show directory being uninstalled from
+  info({ message: `Uninstalling from: ${result.installDir}` });
+  console.log();
+
   // Run uninstall with user's choices
   await runUninstall({
     removeConfig: true,
@@ -470,6 +474,7 @@ export const interactive = async (args?: {
   });
   console.log();
 
+  info({ message: `Uninstalled from: ${result.installDir}` });
   info({ message: "All features have been removed." });
   console.log();
   warn({
@@ -496,6 +501,10 @@ export const noninteractive = async (args?: {
   const installDir = normalizeInstallDir({ installDir: args?.installDir });
   const agentName = args?.agent ?? "claude-code";
 
+  // Show directory being uninstalled from
+  info({ message: `Uninstalling from: ${installDir}` });
+  console.log();
+
   // Run uninstall, preserving config and global settings (hooks/statusline/slashcommands)
   await runUninstall({
     removeConfig: false,
@@ -519,6 +528,7 @@ export const noninteractive = async (args?: {
   });
   console.log();
 
+  info({ message: `Uninstalled from: ${installDir}` });
   info({ message: "All features have been removed." });
   console.log();
   warn({

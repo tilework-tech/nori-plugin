@@ -715,3 +715,4 @@ describe("uninstall with ancestor directory detection", () => {
     expect(promptUser).toHaveBeenCalledTimes(1);
   });
 });
+

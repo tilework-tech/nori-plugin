@@ -9,6 +9,10 @@
  * IMPORTANT: All tests in this file run sequentially because they depend on
  * build artifacts. The build test runs first, then subsequent tests use the
  * generated build/ directory.
+ *
+ * WARNING: This test file modifies the shared build/ directory by running
+ * `npm run build`. If other tests depend on build artifacts, they will fail
+ * if run in parallel with this file.
  */
 
 import { execSync } from "child_process";

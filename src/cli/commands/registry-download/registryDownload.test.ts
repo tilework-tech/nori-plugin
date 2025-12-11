@@ -128,6 +128,13 @@ describe("registry-download", () => {
         .join("\n");
       expect(allOutput.toLowerCase()).toContain("download");
       expect(allOutput).toContain("test-profile");
+
+      // Verify .nori-version file was created
+      const versionFilePath = path.join(profileDir, ".nori-version");
+      const versionFileContent = await fs.readFile(versionFilePath, "utf-8");
+      const versionInfo = JSON.parse(versionFileContent);
+      expect(versionInfo.version).toBe("1.0.0");
+      expect(versionInfo.registryUrl).toBe(REGISTRAR_URL);
     });
 
     it("should handle version specification", async () => {
@@ -660,6 +667,294 @@ describe("registry-download", () => {
 
       // Verify no download occurred
       expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("--list-versions flag", () => {
+    it("should list available versions instead of downloading", async () => {
+      // Package exists in public registry with multiple versions
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "2.0.0", beta: "2.1.0-beta.1" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+          "1.1.0": { name: "test-profile", version: "1.1.0" },
+          "2.0.0": { name: "test-profile", version: "2.0.0" },
+          "2.1.0-beta.1": { name: "test-profile", version: "2.1.0-beta.1" },
+        },
+        time: {
+          "1.0.0": "2024-01-01T00:00:00.000Z",
+          "1.1.0": "2024-02-01T00:00:00.000Z",
+          "2.0.0": "2024-03-01T00:00:00.000Z",
+          "2.1.0-beta.1": "2024-04-01T00:00:00.000Z",
+        },
+      });
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+      });
+
+      await registryDownloadMain({
+        packageSpec: "test-profile",
+        cwd: testDir,
+        listVersions: true,
+      });
+
+      // Verify no download occurred
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+
+      // Verify version list was displayed
+      const allOutput = mockConsoleLog.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allOutput).toContain("test-profile");
+      expect(allOutput).toContain("latest");
+      expect(allOutput).toContain("2.0.0");
+      expect(allOutput).toContain("1.0.0");
+    });
+
+    it("should list versions with --registry flag", async () => {
+      const privateRegistryUrl = "https://private.registry.com";
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [
+          {
+            registryUrl: privateRegistryUrl,
+            username: "user",
+            password: "pass",
+          },
+        ],
+      });
+
+      vi.mocked(getRegistryAuth).mockReturnValue({
+        registryUrl: privateRegistryUrl,
+        username: "user",
+        password: "pass",
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "private-profile",
+        "dist-tags": { latest: "1.0.0" },
+        versions: {
+          "1.0.0": { name: "private-profile", version: "1.0.0" },
+        },
+      });
+
+      await registryDownloadMain({
+        packageSpec: "private-profile",
+        cwd: testDir,
+        registryUrl: privateRegistryUrl,
+        listVersions: true,
+      });
+
+      // Verify no download occurred
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+
+      // Verify version list was displayed
+      const allOutput = mockConsoleLog.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allOutput).toContain("private-profile");
+      expect(allOutput).toContain(privateRegistryUrl);
+    });
+
+    it("should error when package not found with --list-versions", async () => {
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+      });
+
+      vi.mocked(registrarApi.getPackument).mockRejectedValue(
+        new Error("Not found"),
+      );
+
+      await registryDownloadMain({
+        packageSpec: "nonexistent-profile",
+        cwd: testDir,
+        listVersions: true,
+      });
+
+      // Verify error message about not found
+      const allErrorOutput = mockConsoleError.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allErrorOutput.toLowerCase()).toContain("not found");
+    });
+  });
+
+  describe("version comparison and update", () => {
+    it("should update existing profile when newer version is available", async () => {
+      // Create existing profile with old version
+      const existingProfileDir = path.join(profilesDir, "test-profile");
+      await fs.mkdir(existingProfileDir, { recursive: true });
+      await fs.writeFile(
+        path.join(existingProfileDir, "CLAUDE.md"),
+        "# Old version",
+      );
+      await fs.writeFile(
+        path.join(existingProfileDir, ".nori-version"),
+        JSON.stringify({ version: "1.0.0", registryUrl: REGISTRAR_URL }),
+      );
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+      });
+
+      // Registry has newer version
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "2.0.0" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+          "2.0.0": { name: "test-profile", version: "2.0.0" },
+        },
+      });
+
+      const mockTarball = await createMockTarball();
+      vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
+
+      await registryDownloadMain({
+        packageSpec: "test-profile",
+        cwd: testDir,
+      });
+
+      // Verify download occurred
+      expect(registrarApi.downloadTarball).toHaveBeenCalled();
+
+      // Verify success message about update
+      const allOutput = mockConsoleLog.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allOutput.toLowerCase()).toContain("updated");
+    });
+
+    it("should report when already at latest version", async () => {
+      // Create existing profile with same version as latest
+      const existingProfileDir = path.join(profilesDir, "test-profile");
+      await fs.mkdir(existingProfileDir, { recursive: true });
+      await fs.writeFile(
+        path.join(existingProfileDir, "CLAUDE.md"),
+        "# Current version",
+      );
+      await fs.writeFile(
+        path.join(existingProfileDir, ".nori-version"),
+        JSON.stringify({ version: "1.0.0", registryUrl: REGISTRAR_URL }),
+      );
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+      });
+
+      // Registry has same version
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "1.0.0" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+        },
+      });
+
+      await registryDownloadMain({
+        packageSpec: "test-profile",
+        cwd: testDir,
+      });
+
+      // Verify no download occurred
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+
+      // Verify message about already at version
+      const allOutput = mockConsoleLog.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allOutput.toLowerCase()).toContain("already");
+    });
+
+    it("should error when existing profile has no .nori-version", async () => {
+      // Create existing profile without .nori-version (manual install)
+      const existingProfileDir = path.join(profilesDir, "test-profile");
+      await fs.mkdir(existingProfileDir, { recursive: true });
+      await fs.writeFile(
+        path.join(existingProfileDir, "CLAUDE.md"),
+        "# Manual install",
+      );
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+      });
+
+      // Registry has version
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "1.0.0" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+        },
+      });
+
+      await registryDownloadMain({
+        packageSpec: "test-profile",
+        cwd: testDir,
+      });
+
+      // Verify no download occurred
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+
+      // Verify error message about no version info
+      const allErrorOutput = mockConsoleError.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allErrorOutput).toContain(".nori-version");
+    });
+
+    it("should report when installed version is newer than requested", async () => {
+      // Create existing profile with newer version
+      const existingProfileDir = path.join(profilesDir, "test-profile");
+      await fs.mkdir(existingProfileDir, { recursive: true });
+      await fs.writeFile(
+        path.join(existingProfileDir, "CLAUDE.md"),
+        "# Newer version",
+      );
+      await fs.writeFile(
+        path.join(existingProfileDir, ".nori-version"),
+        JSON.stringify({ version: "2.0.0", registryUrl: REGISTRAR_URL }),
+      );
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+      });
+
+      // Request older version
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "2.0.0" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+          "2.0.0": { name: "test-profile", version: "2.0.0" },
+        },
+      });
+
+      await registryDownloadMain({
+        packageSpec: "test-profile@1.0.0",
+        cwd: testDir,
+      });
+
+      // Verify no download occurred
+      expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
+
+      // Verify message about already at newer version
+      const allOutput = mockConsoleLog.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allOutput.toLowerCase()).toContain("already");
+      expect(allOutput).toContain("2.0.0");
     });
   });
 });

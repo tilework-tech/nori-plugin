@@ -27,23 +27,45 @@ import type { Config } from "@/cli/config.js";
 import { formatError, formatSuccess } from "./format.js";
 
 /**
+ * Parsed package spec from command
+ */
+type ParsedPackageSpec = {
+  packageName: string;
+  version?: string | null;
+  registryUrl?: string | null;
+  listVersions?: boolean | null;
+};
+
+/**
  * Parse package name, optional version, and optional registry URL from prompt
  * Supports formats:
  *   - "package-name"
  *   - "package-name@1.0.0"
  *   - "package-name https://registry.url"
  *   - "package-name@1.0.0 https://registry.url"
+ *   - "--list-versions package-name"
+ *   - "--list-versions package-name https://registry.url"
  * @param prompt - The user prompt to parse
  *
  * @returns Parsed package spec or null if invalid
  */
-const parsePackageSpec = (
-  prompt: string,
-): {
-  packageName: string;
-  version?: string | null;
-  registryUrl?: string | null;
-} | null => {
+const parsePackageSpec = (prompt: string): ParsedPackageSpec | null => {
+  // Check for --list-versions flag first
+  const listVersionsMatch = prompt
+    .trim()
+    .match(
+      /^\/nori-registry-download\s+--list-versions\s+([a-z0-9-]+)(?:\s+(https?:\/\/\S+))?$/i,
+    );
+
+  if (listVersionsMatch) {
+    return {
+      packageName: listVersionsMatch[1],
+      listVersions: true,
+      registryUrl: listVersionsMatch[2] ?? null,
+    };
+  }
+
+  // Standard download format
   const match = prompt
     .trim()
     .match(
@@ -58,6 +80,7 @@ const parsePackageSpec = (
     packageName: match[1],
     version: match[2] ?? null,
     registryUrl: match[3] ?? null,
+    listVersions: false,
   };
 };
 
@@ -251,6 +274,65 @@ const extractTarball = async (args: {
 };
 
 /**
+ * Format the list of available versions for a package
+ * @param args - The format parameters
+ * @param args.packageName - The package name
+ * @param args.packument - The packument containing version information
+ * @param args.registryUrl - The registry URL
+ *
+ * @returns Formatted version list message
+ */
+const formatVersionList = (args: {
+  packageName: string;
+  packument: Packument;
+  registryUrl: string;
+}): string => {
+  const { packageName, packument, registryUrl } = args;
+  const distTags = packument["dist-tags"];
+  const versions = Object.keys(packument.versions);
+  const timeInfo = packument.time ?? {};
+
+  // Sort versions in descending order (newest first)
+  const sortedVersions = versions.sort((a, b) => {
+    // Try to sort by semver, fall back to string comparison
+    const timeA = timeInfo[a] ? new Date(timeInfo[a]).getTime() : 0;
+    const timeB = timeInfo[b] ? new Date(timeInfo[b]).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  const lines = [
+    `Available versions of "${packageName}" from ${registryUrl}:\n`,
+    "Dist-tags:",
+  ];
+
+  // Show dist-tags first
+  for (const [tag, version] of Object.entries(distTags)) {
+    lines.push(`  ${tag}: ${version}`);
+  }
+
+  lines.push("\nVersions:");
+
+  // Show all versions with timestamps
+  for (const version of sortedVersions) {
+    const timestamp = timeInfo[version]
+      ? new Date(timeInfo[version]).toLocaleDateString()
+      : "";
+    const tags = Object.entries(distTags)
+      .filter(([, v]) => v === version)
+      .map(([t]) => t);
+    const tagStr = tags.length > 0 ? ` (${tags.join(", ")})` : "";
+    const timeStr = timestamp ? ` - ${timestamp}` : "";
+    lines.push(`  ${version}${tagStr}${timeStr}`);
+  }
+
+  lines.push(
+    `\nTo download a specific version:\n  /nori-registry-download ${packageName}@<version>`,
+  );
+
+  return lines.join("\n");
+};
+
+/**
  * Format the multiple packages found error message
  * @param args - The format parameters
  * @param args.packageName - The package name that was searched
@@ -303,7 +385,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     };
   }
 
-  const { packageName, version, registryUrl } = packageSpec;
+  const { packageName, version, registryUrl, listVersions } = packageSpec;
 
   // Find installation directory
   const allInstallations = getInstallDirs({ currentDir: cwd });
@@ -334,18 +416,20 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   const profilesDir = path.join(installDir, ".claude", "profiles");
   const targetDir = path.join(profilesDir, packageName);
 
-  // Check if profile already exists
-  try {
-    await fs.access(targetDir);
-    // Directory exists - warn user
-    return {
-      decision: "block",
-      reason: formatError({
-        message: `Profile "${packageName}" already exists at:\n${targetDir}\n\nTo reinstall, first remove the existing profile directory.`,
-      }),
-    };
-  } catch {
-    // Directory doesn't exist - continue
+  // Check if profile already exists (skip for --list-versions)
+  if (!listVersions) {
+    try {
+      await fs.access(targetDir);
+      // Directory exists - warn user
+      return {
+        decision: "block",
+        reason: formatError({
+          message: `Profile "${packageName}" already exists at:\n${targetDir}\n\nTo reinstall, first remove the existing profile directory.`,
+        }),
+      };
+    } catch {
+      // Directory doesn't exist - continue
+    }
   }
 
   // Load config to get registry authentication
@@ -392,6 +476,20 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   // Single result - download from that registry
   const selectedRegistry = searchResults[0];
 
+  // If --list-versions flag is set, show versions and exit
+  if (listVersions) {
+    return {
+      decision: "block",
+      reason: formatSuccess({
+        message: formatVersionList({
+          packageName,
+          packument: selectedRegistry.packument,
+          registryUrl: selectedRegistry.registryUrl,
+        }),
+      }),
+    };
+  }
+
   // Download and extract the tarball
   try {
     const tarballData = await registrarApi.downloadTarball({
@@ -411,6 +509,21 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
       await fs.rm(targetDir, { recursive: true, force: true });
       throw extractErr;
     }
+
+    // Write .nori-version file for update tracking
+    const installedVersion =
+      version ?? selectedRegistry.packument["dist-tags"].latest;
+    await fs.writeFile(
+      path.join(targetDir, ".nori-version"),
+      JSON.stringify(
+        {
+          version: installedVersion,
+          registryUrl: selectedRegistry.registryUrl,
+        },
+        null,
+        2,
+      ),
+    );
 
     const versionStr = version ? `@${version}` : " (latest)";
     return {
@@ -436,6 +549,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
 export const noriRegistryDownload: InterceptedSlashCommand = {
   matchers: [
     "^\\/nori-registry-download\\s*$", // Bare command (no package) - shows help
+    "^\\/nori-registry-download\\s+--list-versions\\s+[a-z0-9-]+(?:\\s+https?://\\S+)?\\s*$", // --list-versions flag
     "^\\/nori-registry-download\\s+[a-z0-9-]+(?:@\\d+\\.\\d+\\.\\d+.*)?(?:\\s+https?://\\S+)?\\s*$", // Command with package and optional registry URL
   ],
   run,

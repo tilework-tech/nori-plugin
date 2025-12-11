@@ -14,6 +14,11 @@ export default defineConfig({
         execArgv: ["--max-old-space-size=6144"],
       },
     },
+    // Disable file parallelism to prevent race conditions between:
+    // - build.test.ts which rebuilds the build/ directory
+    // - commit-author.test.ts which depends on build artifacts
+    // Tests within each file can still run in parallel
+    fileParallelism: false,
     testTimeout: 10000, // 10s timeout for slow integration tests
     globals: true,
     environment: "node",

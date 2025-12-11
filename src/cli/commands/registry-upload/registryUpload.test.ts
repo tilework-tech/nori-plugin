@@ -13,6 +13,7 @@ vi.mock("@/api/registrar.js", () => ({
   REGISTRAR_URL: "https://registrar.tilework.tech",
   registrarApi: {
     uploadProfile: vi.fn(),
+    getPackument: vi.fn(),
   },
 }));
 
@@ -455,6 +456,159 @@ describe("registry-upload", () => {
           packageName: "test-profile",
           version: "2.0.0",
           registryUrl: privateRegistryUrl,
+        }),
+      );
+    });
+  });
+
+  describe("auto-bump version", () => {
+    it("should auto-bump patch version when no version specified and package exists", async () => {
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [
+          {
+            username: "test@example.com",
+            password: "test-password",
+            registryUrl: "https://registrar.tilework.tech",
+          },
+        ],
+      });
+
+      vi.mocked(getRegistryAuth).mockReturnValue({
+        username: "test@example.com",
+        password: "test-password",
+        registryUrl: "https://registrar.tilework.tech",
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Mock existing package with version 1.2.3
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "1.2.3" },
+        versions: { "1.2.3": { name: "test-profile", version: "1.2.3" } },
+      });
+
+      vi.mocked(registrarApi.uploadProfile).mockResolvedValue({
+        name: "test-profile",
+        version: "1.2.4",
+        tarballSha: "sha512-abc123",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      });
+
+      await registryUploadMain({
+        profileSpec: "test-profile",
+        cwd: testDir,
+      });
+
+      // Verify API was called with auto-bumped version (1.2.3 -> 1.2.4)
+      expect(registrarApi.uploadProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: "test-profile",
+          version: "1.2.4",
+        }),
+      );
+    });
+
+    it("should default to 1.0.0 when no version specified and package does not exist", async () => {
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [
+          {
+            username: "test@example.com",
+            password: "test-password",
+            registryUrl: "https://registrar.tilework.tech",
+          },
+        ],
+      });
+
+      vi.mocked(getRegistryAuth).mockReturnValue({
+        username: "test@example.com",
+        password: "test-password",
+        registryUrl: "https://registrar.tilework.tech",
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Mock package not found
+      vi.mocked(registrarApi.getPackument).mockRejectedValue(
+        new Error("Package not found"),
+      );
+
+      vi.mocked(registrarApi.uploadProfile).mockResolvedValue({
+        name: "test-profile",
+        version: "1.0.0",
+        tarballSha: "sha512-abc123",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      });
+
+      await registryUploadMain({
+        profileSpec: "test-profile",
+        cwd: testDir,
+      });
+
+      // Verify API was called with default version 1.0.0
+      expect(registrarApi.uploadProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: "test-profile",
+          version: "1.0.0",
+        }),
+      );
+    });
+
+    it("should use explicit version when specified, not auto-bump", async () => {
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [
+          {
+            username: "test@example.com",
+            password: "test-password",
+            registryUrl: "https://registrar.tilework.tech",
+          },
+        ],
+      });
+
+      vi.mocked(getRegistryAuth).mockReturnValue({
+        username: "test@example.com",
+        password: "test-password",
+        registryUrl: "https://registrar.tilework.tech",
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Mock existing package with version 1.2.3
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "1.2.3" },
+        versions: { "1.2.3": { name: "test-profile", version: "1.2.3" } },
+      });
+
+      vi.mocked(registrarApi.uploadProfile).mockResolvedValue({
+        name: "test-profile",
+        version: "5.0.0",
+        tarballSha: "sha512-abc123",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      });
+
+      await registryUploadMain({
+        profileSpec: "test-profile@5.0.0",
+        cwd: testDir,
+      });
+
+      // getPackument should NOT be called when explicit version provided
+      expect(registrarApi.getPackument).not.toHaveBeenCalled();
+
+      // Verify API was called with explicit version
+      expect(registrarApi.uploadProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: "test-profile",
+          version: "5.0.0",
         }),
       );
     });

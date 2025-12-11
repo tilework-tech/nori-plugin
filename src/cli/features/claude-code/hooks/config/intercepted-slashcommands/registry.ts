@@ -10,6 +10,7 @@ import type { InterceptedSlashCommand } from "./types.js";
 import { noriInstallLocation } from "./nori-install-location.js";
 import { noriRegistryDownload } from "./nori-registry-download.js";
 import { noriRegistrySearch } from "./nori-registry-search.js";
+import { noriRegistryUpdate } from "./nori-registry-update.js";
 import { noriRegistryUpload } from "./nori-registry-upload.js";
 import { noriSwitchProfile } from "./nori-switch-profile.js";
 import { noriToggleAutoupdate } from "./nori-toggle-autoupdate.js";
@@ -22,6 +23,7 @@ export const interceptedSlashCommands: Array<InterceptedSlashCommand> = [
   noriInstallLocation,
   noriRegistryUpload,
   noriRegistryDownload,
+  noriRegistryUpdate,
   noriRegistrySearch,
   noriSwitchProfile,
   noriToggleAutoupdate,

@@ -6,6 +6,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
+import * as semver from "semver";
 import * as tar from "tar";
 
 import { registrarApi } from "@/api/registrar.js";
@@ -108,6 +109,54 @@ const formatMultipleRegistriesError = (args: {
 };
 
 /**
+ * Determine the version to upload
+ * If no version is specified, auto-bump from the latest version in the registry
+ * If the package doesn't exist, default to 1.0.0
+ * @param args - The function arguments
+ * @param args.profileName - The profile name to upload
+ * @param args.explicitVersion - The explicit version if provided by user
+ * @param args.registryUrl - The registry URL to check
+ * @param args.authToken - The auth token for the registry
+ *
+ * @returns The version to upload
+ */
+const determineUploadVersion = async (args: {
+  profileName: string;
+  explicitVersion?: string | null;
+  registryUrl: string;
+  authToken?: string | null;
+}): Promise<string> => {
+  const { profileName, explicitVersion, registryUrl, authToken } = args;
+
+  // If user provided explicit version, use it
+  if (explicitVersion != null) {
+    return explicitVersion;
+  }
+
+  // Try to get the current latest version from the registry
+  try {
+    const packument = await registrarApi.getPackument({
+      packageName: profileName,
+      registryUrl,
+      authToken,
+    });
+
+    const latestVersion = packument["dist-tags"].latest;
+    if (latestVersion != null && semver.valid(latestVersion) != null) {
+      // Auto-bump patch version
+      const nextVersion = semver.inc(latestVersion, "patch");
+      if (nextVersion != null) {
+        return nextVersion;
+      }
+    }
+  } catch {
+    // Package doesn't exist or error fetching - default to 1.0.0
+  }
+
+  return "1.0.0";
+};
+
+/**
  * Create a gzipped tarball from a profile directory
  * @param args - The tarball parameters
  * @param args.profileDir - The directory to create tarball from
@@ -181,7 +230,6 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   }
 
   const { profileName, version, registryUrl } = uploadArgs;
-  const uploadVersion = version ?? "1.0.0"; // Default to 1.0.0
 
   // Find installation directory
   const allInstallations = getInstallDirs({ currentDir: cwd });
@@ -291,6 +339,14 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
       }),
     };
   }
+
+  // Determine version to upload (auto-bump if not specified)
+  const uploadVersion = await determineUploadVersion({
+    profileName,
+    explicitVersion: version,
+    registryUrl: targetRegistryUrl,
+    authToken,
+  });
 
   // Create tarball and upload
   try {

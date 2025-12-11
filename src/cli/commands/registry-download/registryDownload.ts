@@ -9,6 +9,7 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import zlib from "zlib";
 
+import * as semver from "semver";
 import * as tar from "tar";
 
 import { registrarApi, REGISTRAR_URL } from "@/api/registrar.js";
@@ -20,6 +21,35 @@ import { getInstallDirs } from "@/utils/path.js";
 import type { Packument } from "@/api/registrar.js";
 import type { Config } from "@/cli/config.js";
 import type { Command } from "commander";
+
+/**
+ * Version info stored in .nori-version file
+ */
+type VersionInfo = {
+  version: string;
+  registryUrl: string;
+};
+
+/**
+ * Read the .nori-version file from a profile directory
+ * @param args - The function arguments
+ * @param args.profileDir - The profile directory path
+ *
+ * @returns The version info or null if not found
+ */
+const readVersionInfo = async (args: {
+  profileDir: string;
+}): Promise<VersionInfo | null> => {
+  const { profileDir } = args;
+  const versionFilePath = path.join(profileDir, ".nori-version");
+
+  try {
+    const content = await fs.readFile(versionFilePath, "utf-8");
+    return JSON.parse(content) as VersionInfo;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Parse package name and optional version from package spec
@@ -209,6 +239,64 @@ const searchSpecificRegistry = async (args: {
 };
 
 /**
+ * Format the list of available versions for a package
+ * @param args - The format parameters
+ * @param args.packageName - The package name
+ * @param args.packument - The packument containing version information
+ * @param args.registryUrl - The registry URL
+ *
+ * @returns Formatted version list message
+ */
+const formatVersionList = (args: {
+  packageName: string;
+  packument: Packument;
+  registryUrl: string;
+}): string => {
+  const { packageName, packument, registryUrl } = args;
+  const distTags = packument["dist-tags"];
+  const versions = Object.keys(packument.versions);
+  const timeInfo = packument.time ?? {};
+
+  // Sort versions in descending order (newest first)
+  const sortedVersions = versions.sort((a, b) => {
+    const timeA = timeInfo[a] ? new Date(timeInfo[a]).getTime() : 0;
+    const timeB = timeInfo[b] ? new Date(timeInfo[b]).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  const lines = [
+    `Available versions of "${packageName}" from ${registryUrl}:\n`,
+    "Dist-tags:",
+  ];
+
+  // Show dist-tags first
+  for (const [tag, version] of Object.entries(distTags)) {
+    lines.push(`  ${tag}: ${version}`);
+  }
+
+  lines.push("\nVersions:");
+
+  // Show all versions with timestamps
+  for (const version of sortedVersions) {
+    const timestamp = timeInfo[version]
+      ? new Date(timeInfo[version]).toLocaleDateString()
+      : "";
+    const tags = Object.entries(distTags)
+      .filter(([, v]) => v === version)
+      .map(([t]) => t);
+    const tagStr = tags.length > 0 ? ` (${tags.join(", ")})` : "";
+    const timeStr = timestamp ? ` - ${timestamp}` : "";
+    lines.push(`  ${version}${tagStr}${timeStr}`);
+  }
+
+  lines.push(
+    `\nTo download a specific version:\n  nori-ai registry-download ${packageName}@<version>`,
+  );
+
+  return lines.join("\n");
+};
+
+/**
  * Format the multiple packages found error message
  * @param args - The format parameters
  * @param args.packageName - The package name that was searched
@@ -248,14 +336,16 @@ const formatMultiplePackagesError = (args: {
  * @param args.cwd - Current working directory (defaults to process.cwd())
  * @param args.installDir - Optional explicit install directory
  * @param args.registryUrl - Optional registry URL to download from
+ * @param args.listVersions - If true, list available versions instead of downloading
  */
 export const registryDownloadMain = async (args: {
   packageSpec: string;
   cwd?: string | null;
   installDir?: string | null;
   registryUrl?: string | null;
+  listVersions?: boolean | null;
 }): Promise<void> => {
-  const { packageSpec, installDir, registryUrl } = args;
+  const { packageSpec, installDir, registryUrl, listVersions } = args;
   const cwd = args.cwd ?? process.cwd();
 
   const { packageName, version } = parsePackageSpec({ packageSpec });
@@ -295,13 +385,13 @@ export const registryDownloadMain = async (args: {
   const profilesDir = path.join(targetInstallDir, ".claude", "profiles");
   const targetDir = path.join(profilesDir, packageName);
 
-  // Check if profile already exists
+  // Check if profile already exists and get its version info
+  let existingVersionInfo: VersionInfo | null = null;
+  let profileExists = false;
   try {
     await fs.access(targetDir);
-    error({
-      message: `Profile "${packageName}" already exists at:\n${targetDir}\n\nTo reinstall, first remove the existing profile directory.`,
-    });
-    return;
+    profileExists = true;
+    existingVersionInfo = await readVersionInfo({ profileDir: targetDir });
   } catch {
     // Directory doesn't exist - continue
   }
@@ -358,9 +448,70 @@ export const registryDownloadMain = async (args: {
   // Single result - download from that registry
   const selectedRegistry = searchResults[0];
 
+  // If --list-versions flag is set, show versions and exit
+  if (listVersions) {
+    console.log(
+      formatVersionList({
+        packageName,
+        packument: selectedRegistry.packument,
+        registryUrl: selectedRegistry.registryUrl,
+      }),
+    );
+    return;
+  }
+
+  // Determine the target version
+  const targetVersion =
+    version ?? selectedRegistry.packument["dist-tags"].latest;
+
+  // If profile already exists, check version
+  if (profileExists) {
+    if (existingVersionInfo == null) {
+      // Profile exists but has no .nori-version - manual install
+      error({
+        message: `Profile "${packageName}" already exists at:\n${targetDir}\n\nThis profile has no version information (.nori-version file).\nIt may have been installed manually or with an older version of Nori.\n\nTo reinstall:\n  rm -rf "${targetDir}"\n  nori-ai registry-download ${packageName}`,
+      });
+      return;
+    }
+
+    const installedVersion = existingVersionInfo.version;
+
+    // Compare versions
+    const installedValid = semver.valid(installedVersion) != null;
+    const targetValid = semver.valid(targetVersion) != null;
+
+    if (installedValid && targetValid) {
+      if (semver.gte(installedVersion, targetVersion)) {
+        // Already at same or newer version
+        if (installedVersion === targetVersion) {
+          success({
+            message: `Profile "${packageName}" is already at version ${installedVersion}.`,
+          });
+        } else {
+          success({
+            message: `Profile "${packageName}" is already at version ${installedVersion} (requested ${targetVersion}).`,
+          });
+        }
+        return;
+      }
+      // Newer version available - will proceed to update
+      info({
+        message: `Updating profile "${packageName}" from ${installedVersion} to ${targetVersion}...`,
+      });
+    } else if (installedVersion === targetVersion) {
+      // Fallback for non-semver versions
+      success({
+        message: `Profile "${packageName}" is already at version ${installedVersion}.`,
+      });
+      return;
+    }
+  }
+
   // Download and extract the tarball
   try {
-    info({ message: `Downloading profile "${packageName}"...` });
+    if (!profileExists) {
+      info({ message: `Downloading profile "${packageName}"...` });
+    }
 
     const tarballData = await registrarApi.downloadTarball({
       packageName,
@@ -369,22 +520,75 @@ export const registryDownloadMain = async (args: {
       authToken: selectedRegistry.authToken ?? undefined,
     });
 
-    // Create target directory
-    await fs.mkdir(targetDir, { recursive: true });
+    if (profileExists) {
+      // Update existing profile - extract to temp dir first
+      const tempDir = path.join(profilesDir, `.${packageName}-download-temp`);
+      await fs.mkdir(tempDir, { recursive: true });
 
-    try {
-      await extractTarball({ tarballData, targetDir });
-    } catch (extractErr) {
-      // Clean up on extraction failure
-      await fs.rm(targetDir, { recursive: true, force: true });
-      throw extractErr;
+      try {
+        await extractTarball({ tarballData, targetDir: tempDir });
+      } catch (extractErr) {
+        // Clean up temp directory on extraction failure
+        await fs.rm(tempDir, { recursive: true, force: true });
+        throw extractErr;
+      }
+
+      // Extraction succeeded - now safely remove existing profile contents
+      const existingFiles = await fs.readdir(targetDir);
+      for (const file of existingFiles) {
+        if (file !== ".nori-version") {
+          await fs.rm(path.join(targetDir, file), {
+            recursive: true,
+            force: true,
+          });
+        }
+      }
+
+      // Move extracted files from temp to profile directory
+      const extractedFiles = await fs.readdir(tempDir);
+      for (const file of extractedFiles) {
+        await fs.rename(path.join(tempDir, file), path.join(targetDir, file));
+      }
+
+      // Remove temp directory
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } else {
+      // New install - create target directory and extract
+      await fs.mkdir(targetDir, { recursive: true });
+
+      try {
+        await extractTarball({ tarballData, targetDir });
+      } catch (extractErr) {
+        // Clean up on extraction failure
+        await fs.rm(targetDir, { recursive: true, force: true });
+        throw extractErr;
+      }
     }
+
+    // Write .nori-version file for update tracking
+    await fs.writeFile(
+      path.join(targetDir, ".nori-version"),
+      JSON.stringify(
+        {
+          version: targetVersion,
+          registryUrl: selectedRegistry.registryUrl,
+        },
+        null,
+        2,
+      ),
+    );
 
     const versionStr = version ? `@${version}` : " (latest)";
     console.log("");
-    success({
-      message: `Downloaded and installed profile "${packageName}"${versionStr}`,
-    });
+    if (profileExists) {
+      success({
+        message: `Updated profile "${packageName}" to ${targetVersion}`,
+      });
+    } else {
+      success({
+        message: `Downloaded and installed profile "${packageName}"${versionStr}`,
+      });
+    }
     info({ message: `Installed to: ${targetDir}` });
     console.log("");
     info({
@@ -417,13 +621,23 @@ export const registerRegistryDownloadCommand = (args: {
       "--registry <url>",
       "Download from a specific registry URL instead of searching all registries",
     )
-    .action(async (packageSpec: string, options: { registry?: string }) => {
-      const globalOpts = program.opts();
+    .option(
+      "--list-versions",
+      "List available versions for the package instead of downloading",
+    )
+    .action(
+      async (
+        packageSpec: string,
+        options: { registry?: string; listVersions?: boolean },
+      ) => {
+        const globalOpts = program.opts();
 
-      await registryDownloadMain({
-        packageSpec,
-        installDir: globalOpts.installDir || null,
-        registryUrl: options.registry || null,
-      });
-    });
+        await registryDownloadMain({
+          packageSpec,
+          installDir: globalOpts.installDir || null,
+          registryUrl: options.registry || null,
+          listVersions: options.listVersions || null,
+        });
+      },
+    );
 };

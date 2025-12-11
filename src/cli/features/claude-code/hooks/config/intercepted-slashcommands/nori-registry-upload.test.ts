@@ -12,6 +12,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 vi.mock("@/api/registrar.js", () => ({
   registrarApi: {
     uploadProfile: vi.fn(),
+    getPackument: vi.fn(),
   },
   REGISTRAR_URL: "https://registrar.tilework.tech",
 }));
@@ -595,6 +596,137 @@ describe("nori-registry-upload", () => {
       expect(result).not.toBeNull();
       expect(result!.reason).toContain(GREEN);
       expect(result!.reason).toContain(NC);
+    });
+  });
+
+  describe("version auto-bump", () => {
+    it("should auto-bump patch version when package exists and no version specified", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      // Mock packument showing existing version 1.2.3
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "1.2.3" },
+        versions: {
+          "1.2.3": {
+            name: "test-profile",
+            version: "1.2.3",
+            dist: { tarball: "/tarball/1.2.3", shasum: "abc" },
+          },
+        },
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+      vi.mocked(registrarApi.uploadProfile).mockResolvedValue({
+        name: "test-profile",
+        version: "1.2.4",
+        tarballSha: "sha512-abc123",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      });
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Successfully uploaded");
+      expect(plainReason).toContain("test-profile@1.2.4");
+
+      // Verify API was called with auto-bumped version
+      expect(registrarApi.uploadProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: "test-profile",
+          version: "1.2.4",
+        }),
+      );
+    });
+
+    it("should default to 1.0.0 when package does not exist", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "new-profile" });
+
+      // Mock packument returning 404 (package doesn't exist)
+      vi.mocked(registrarApi.getPackument).mockRejectedValue(
+        new Error("Package not found"),
+      );
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+      vi.mocked(registrarApi.uploadProfile).mockResolvedValue({
+        name: "new-profile",
+        version: "1.0.0",
+        tarballSha: "sha512-abc123",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      });
+
+      const input = createInput({
+        prompt: "/nori-registry-upload new-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Successfully uploaded");
+      expect(plainReason).toContain("new-profile@1.0.0");
+
+      // Verify API was called with default version
+      expect(registrarApi.uploadProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: "new-profile",
+          version: "1.0.0",
+        }),
+      );
+    });
+
+    it("should use explicit version when provided (override auto-bump)", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      // Mock packument showing existing version 1.2.3
+      vi.mocked(registrarApi.getPackument).mockResolvedValue({
+        name: "test-profile",
+        "dist-tags": { latest: "1.2.3" },
+        versions: {
+          "1.2.3": {
+            name: "test-profile",
+            version: "1.2.3",
+            dist: { tarball: "/tarball/1.2.3", shasum: "abc" },
+          },
+        },
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+      vi.mocked(registrarApi.uploadProfile).mockResolvedValue({
+        name: "test-profile",
+        version: "2.0.0",
+        tarballSha: "sha512-abc123",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      });
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile 2.0.0",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("test-profile@2.0.0");
+
+      // Verify getPackument was NOT called (explicit version provided)
+      expect(registrarApi.getPackument).not.toHaveBeenCalled();
+
+      // Verify API was called with explicit version
+      expect(registrarApi.uploadProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageName: "test-profile",
+          version: "2.0.0",
+        }),
+      );
     });
   });
 });

@@ -4,7 +4,7 @@ Path: @/src/cli/features/claude-code
 
 ### Overview
 
-Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements.
+Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements. Claude-specific path helpers are encapsulated in paths.ts within this directory.
 
 ### How it fits into the larger codebase
 
@@ -34,5 +34,21 @@ Each loader implements run(config) to install, uninstall(config) to remove, and 
 The LoaderRegistry provides two methods for retrieving loaders: getAll() returns loaders in registration order, and getAllReversed() returns loaders in reverse order. The install process uses getAll() because profiles must run first to create profile directories that other loaders read from. The uninstall process uses getAllReversed() so profile-dependent loaders can still read from profile directories before the profiles loader deletes them.
 
 ### Things to Know
+
+**Path Helpers (paths.ts):** All Claude-specific path functions live in @/src/cli/features/claude-code/paths.ts to keep the agent self-contained. These functions take an `installDir` parameter and return paths for Claude Code's directory structure:
+
+| Function | Returns |
+|----------|---------|
+| `getClaudeDir({ installDir })` | `{installDir}/.claude` |
+| `getClaudeSettingsFile({ installDir })` | `{installDir}/.claude/settings.json` |
+| `getClaudeAgentsDir({ installDir })` | `{installDir}/.claude/agents` |
+| `getClaudeCommandsDir({ installDir })` | `{installDir}/.claude/commands` |
+| `getClaudeMdFile({ installDir })` | `{installDir}/.claude/CLAUDE.md` |
+| `getClaudeSkillsDir({ installDir })` | `{installDir}/.claude/skills` |
+| `getClaudeProfilesDir({ installDir })` | `{installDir}/.claude/profiles` |
+| `getClaudeHomeDir()` | `~/.claude` (no installDir, always user home) |
+| `getClaudeHomeSettingsFile()` | `~/.claude/settings.json` |
+
+The `getClaudeHomeDir()` and `getClaudeHomeSettingsFile()` functions return fixed paths (always `~/.claude`) because Claude Code always reads hooks and statusline configuration from the user's home directory regardless of where Nori is installed. All loaders within the claude-code directory import directly from `@/cli/features/claude-code/paths.js`. For backward compatibility, @/src/cli/env.ts re-exports these functions.
 
 Profile structure is now directory-based rather than JSON-based. Each profile directory (senior-swe, amol, nontechnical) contains CLAUDE.md, skills/, subagents/, slashcommands/, and optionally PROFILE.md. The major change in #197 removed preference-based CLAUDE.md customization (base-instructions.md with CUSTOMIZABLE markers) in favor of complete per-profile CLAUDE.md files. Skills list generation happens at install time, not at profile creation time. Paid skills use a 'paid-' prefix in the profile's skills/ directory but are installed without the prefix (e.g., paid-recall/ becomes the skills directory's recall/). The switch-nori-profile command updates nori-config.json and re-runs installation to apply the new profile. The managed block pattern allows users to add custom instructions outside the block without losing them during reinstalls. Default profile is 'senior-swe'. Running install multiple times is idempotent and regenerates all installed files from the selected profile. Most changes require Claude Code restart except CLAUDE.md which applies to new conversations immediately. Source markdown files use template placeholders (`{{skills_dir}}`, `{{profiles_dir}}`, etc.) that are substituted during installation to support configurable installation directories - home installs get tilde notation paths while custom installs get absolute paths.

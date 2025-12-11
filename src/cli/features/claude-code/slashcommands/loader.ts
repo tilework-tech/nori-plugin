@@ -8,7 +8,10 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-import { getClaudeDir, getClaudeCommandsDir } from "@/cli/env.js";
+import {
+  getClaudeDir,
+  getClaudeCommandsDir,
+} from "@/cli/features/claude-code/paths.js";
 import { success, info } from "@/cli/logger.js";
 import { substituteTemplatePaths } from "@/utils/template.js";
 

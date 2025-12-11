@@ -8,7 +8,10 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 
 import { isPaidInstall, type Config } from "@/cli/config.js";
-import { getClaudeProfilesDir, getClaudeSettingsFile } from "@/cli/env.js";
+import {
+  getClaudeProfilesDir,
+  getClaudeSettingsFile,
+} from "@/cli/features/claude-code/paths.js";
 import {
   readProfileMetadata,
   type ProfileMetadata,

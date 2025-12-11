@@ -49,6 +49,6 @@ Commands that use loaders should obtain them via the agent rather than importing
 
 Profile management is owned by the Agent interface. The `listProfiles` method scans the agent's profiles directory for valid profiles (directories containing the agent's instruction file). The `switchProfile` method validates the profile exists, updates the config, and logs success/restart messages. CLI commands add additional behavior on top (e.g., applying changes immediately via reinstall).
 
-Agent implementations manage their own internal paths (config directories, instruction file names, etc.) without exposing them through the public interface. This keeps the abstraction clean and allows each agent to have different directory structures.
+Agent implementations manage their own internal paths (config directories, instruction file names, etc.) without exposing them through the public interface. This keeps the abstraction clean and allows each agent to have different directory structures. For example, Claude Code's path helpers (getClaudeDir, getClaudeSkillsDir, etc.) live in @/src/cli/features/claude-code/paths.ts rather than in the CLI-level @/src/cli/env.ts. The env.ts file re-exports these functions for backward compatibility, but new code within agent directories should import from the agent's own paths module.
 
 Created and maintained by Nori.

@@ -7,7 +7,10 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-import { getClaudeHomeDir, getClaudeHomeSettingsFile } from "@/cli/env.js";
+import {
+  getClaudeHomeDir,
+  getClaudeHomeSettingsFile,
+} from "@/cli/features/claude-code/paths.js";
 import { success, info, warn } from "@/cli/logger.js";
 
 import type { Config } from "@/cli/config.js";

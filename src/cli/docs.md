@@ -26,7 +26,7 @@ The `--agent` option enables support for multiple AI agents. Commands use the Ag
 src/cli/
   cli.ts                 # Main entry point, command registration
   config.ts              # Config type and persistence (supports per-agent profiles)
-  env.ts                 # Environment detection utilities
+  env.ts                 # MCP_ROOT constant + re-exports for backward compatibility
   logger.ts              # Console output formatting
   prompt.ts              # User input prompting
   version.ts             # Version tracking for upgrades
@@ -35,6 +35,7 @@ src/cli/
     types.ts             # Agent interface and AgentEnvPaths type
     agentRegistry.ts     # AgentRegistry singleton for agent lookup
     claude-code/         # Claude Code agent implementation (see @/src/cli/features/claude-code/docs.md)
+      paths.ts           # Claude-specific path helpers (getClaudeDir, etc.)
   commands/              # Command implementations
     install/             # Install command + asciiArt, installState utilities
     uninstall/           # Uninstall command

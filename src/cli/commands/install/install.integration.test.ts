@@ -55,12 +55,10 @@ vi.mock("child_process", async (importOriginal) => {
   };
 });
 
-// Mock env module to use test directory
-vi.mock("@/cli/env.js", () => {
-  const testRoot = "/tmp/install-integration-test-mcp-root";
+// Mock paths module to use test directory
+vi.mock("@/cli/features/claude-code/paths.js", () => {
   const testClaudeDir = "/tmp/install-integration-test-claude";
   return {
-    MCP_ROOT: testRoot,
     getClaudeDir: (_args: { installDir: string }) => testClaudeDir,
     getClaudeSettingsFile: (_args: { installDir: string }) =>
       `${testClaudeDir}/settings.json`,
@@ -76,6 +74,14 @@ vi.mock("@/cli/env.js", () => {
       `${testClaudeDir}/skills`,
     getClaudeProfilesDir: (_args: { installDir: string }) =>
       `${testClaudeDir}/profiles`,
+  };
+});
+
+// Mock env module for MCP_ROOT
+vi.mock("@/cli/env.js", () => {
+  const testRoot = "/tmp/install-integration-test-mcp-root";
+  return {
+    MCP_ROOT: testRoot,
   };
 });
 

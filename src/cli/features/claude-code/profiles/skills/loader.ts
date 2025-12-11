@@ -12,7 +12,7 @@ import {
   getClaudeDir,
   getClaudeSkillsDir,
   getClaudeSettingsFile,
-} from "@/cli/env.js";
+} from "@/cli/features/claude-code/paths.js";
 import { success, info, warn } from "@/cli/logger.js";
 import { substituteTemplatePaths } from "@/utils/template.js";
 

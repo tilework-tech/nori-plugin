@@ -9,7 +9,10 @@ import { fileURLToPath } from "url";
 
 import { glob } from "glob";
 
-import { getClaudeDir, getClaudeMdFile } from "@/cli/env.js";
+import {
+  getClaudeDir,
+  getClaudeMdFile,
+} from "@/cli/features/claude-code/paths.js";
 import { success, info } from "@/cli/logger.js";
 import {
   formatInstallPath,

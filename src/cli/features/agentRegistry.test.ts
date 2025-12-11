@@ -3,6 +3,10 @@
  * Tests real behavior: selecting agents by name, listing available agents
  */
 
+import * as fs from "fs/promises";
+import { tmpdir } from "os";
+import * as path from "path";
+
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
@@ -73,14 +77,182 @@ describe("AgentRegistry", () => {
       const loaders = loaderRegistry.getAll();
       expect(loaders.length).toBeGreaterThan(0);
     });
+  });
 
-    test("claude-code agent provides correct env paths", () => {
+  describe("claude-code agent listProfiles", () => {
+    let testInstallDir: string;
+
+    beforeEach(async () => {
+      testInstallDir = await fs.mkdtemp(
+        path.join(tmpdir(), "agent-profiles-test-"),
+      );
+    });
+
+    afterEach(async () => {
+      if (testInstallDir) {
+        await fs.rm(testInstallDir, { recursive: true, force: true });
+      }
+    });
+
+    test("returns empty array when no profiles directory exists", async () => {
       const registry = AgentRegistry.getInstance();
       const agent = registry.get({ name: "claude-code" });
-      const paths = agent.getEnvPaths({ installDir: "/test/install" });
 
-      expect(paths.profilesDir).toBe("/test/install/.claude/profiles");
-      expect(paths.instructionsFile).toBe("/test/install/.claude/CLAUDE.md");
+      const profiles = await agent.listProfiles({ installDir: testInstallDir });
+
+      expect(profiles).toEqual([]);
+    });
+
+    test("returns empty array when profiles directory is empty", async () => {
+      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      await fs.mkdir(profilesDir, { recursive: true });
+
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "claude-code" });
+
+      const profiles = await agent.listProfiles({ installDir: testInstallDir });
+
+      expect(profiles).toEqual([]);
+    });
+
+    test("returns profile names for directories containing CLAUDE.md", async () => {
+      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+
+      // Create valid profiles (with CLAUDE.md)
+      for (const name of ["amol", "senior-swe"]) {
+        const dir = path.join(profilesDir, name);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(path.join(dir, "CLAUDE.md"), `# ${name}`);
+      }
+
+      // Create invalid profile (no CLAUDE.md)
+      const invalidDir = path.join(profilesDir, "invalid-profile");
+      await fs.mkdir(invalidDir, { recursive: true });
+      await fs.writeFile(path.join(invalidDir, "readme.txt"), "not a profile");
+
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "claude-code" });
+
+      const profiles = await agent.listProfiles({ installDir: testInstallDir });
+
+      expect(profiles).toContain("amol");
+      expect(profiles).toContain("senior-swe");
+      expect(profiles).not.toContain("invalid-profile");
+      expect(profiles.length).toBe(2);
+    });
+  });
+
+  describe("claude-code agent switchProfile", () => {
+    let testInstallDir: string;
+
+    beforeEach(async () => {
+      testInstallDir = await fs.mkdtemp(
+        path.join(tmpdir(), "agent-switch-test-"),
+      );
+    });
+
+    afterEach(async () => {
+      if (testInstallDir) {
+        await fs.rm(testInstallDir, { recursive: true, force: true });
+      }
+    });
+
+    test("updates config with new profile", async () => {
+      // Create profiles directory with test profile
+      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profileDir = path.join(profilesDir, "test-profile");
+      await fs.mkdir(profileDir, { recursive: true });
+      await fs.writeFile(path.join(profileDir, "CLAUDE.md"), "# Test Profile");
+
+      // Create initial config
+      const configPath = path.join(testInstallDir, ".nori-config.json");
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({ profile: { baseProfile: "old-profile" } }),
+      );
+
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "claude-code" });
+
+      await agent.switchProfile({
+        installDir: testInstallDir,
+        profileName: "test-profile",
+      });
+
+      // Verify config was updated
+      const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+      expect(updatedConfig.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "test-profile",
+      );
+    });
+
+    test("preserves existing config fields when switching", async () => {
+      // Create profiles directory with test profile
+      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profileDir = path.join(profilesDir, "new-profile");
+      await fs.mkdir(profileDir, { recursive: true });
+      await fs.writeFile(path.join(profileDir, "CLAUDE.md"), "# New Profile");
+
+      // Create initial config with auth and other fields
+      const configPath = path.join(testInstallDir, ".nori-config.json");
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          username: "test@example.com",
+          password: "secret",
+          organizationUrl: "https://org.example.com",
+          profile: { baseProfile: "old-profile" },
+          sendSessionTranscript: "enabled",
+          registryAuths: [
+            {
+              username: "reg-user",
+              password: "reg-pass",
+              registryUrl: "https://registry.example.com",
+            },
+          ],
+        }),
+      );
+
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "claude-code" });
+
+      await agent.switchProfile({
+        installDir: testInstallDir,
+        profileName: "new-profile",
+      });
+
+      // Verify all fields preserved
+      const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+      expect(updatedConfig.username).toBe("test@example.com");
+      expect(updatedConfig.password).toBe("secret");
+      expect(updatedConfig.organizationUrl).toBe("https://org.example.com");
+      expect(updatedConfig.sendSessionTranscript).toBe("enabled");
+      expect(updatedConfig.registryAuths).toEqual([
+        {
+          username: "reg-user",
+          password: "reg-pass",
+          registryUrl: "https://registry.example.com",
+        },
+      ]);
+      expect(updatedConfig.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "new-profile",
+      );
+    });
+
+    test("throws error for non-existent profile", async () => {
+      // Create profiles directory but no profiles
+      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      await fs.mkdir(profilesDir, { recursive: true });
+
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "claude-code" });
+
+      await expect(
+        agent.switchProfile({
+          installDir: testInstallDir,
+          profileName: "non-existent",
+        }),
+      ).rejects.toThrow(/Profile "non-existent" not found/);
     });
   });
 });

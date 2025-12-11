@@ -8,17 +8,6 @@ import { claudeCodeAgent } from "@/cli/features/claude-code/agent.js";
 import type { LoaderRegistry } from "@/cli/features/claude-code/loaderRegistry.js";
 
 /**
- * Environment paths exposed by agents for CLI use
- * Only includes paths actually needed by CLI commands
- */
-export type AgentEnvPaths = {
-  /** Profiles directory */
-  profilesDir: string;
-  /** Instructions file name, e.g., "CLAUDE.md" or "AGENTS.md" */
-  instructionsFile: string;
-};
-
-/**
  * Agent interface that each agent implementation must satisfy
  */
 export type Agent = {
@@ -28,8 +17,13 @@ export type Agent = {
   displayName: string;
   /** Get the LoaderRegistry for this agent */
   getLoaderRegistry: () => LoaderRegistry;
-  /** Get environment paths for this agent */
-  getEnvPaths: (args: { installDir: string }) => AgentEnvPaths;
+  /** List available profiles for this agent */
+  listProfiles: (args: { installDir: string }) => Promise<Array<string>>;
+  /** Switch to a profile (validates and updates config) */
+  switchProfile: (args: {
+    installDir: string;
+    profileName: string;
+  }) => Promise<void>;
 };
 
 /**

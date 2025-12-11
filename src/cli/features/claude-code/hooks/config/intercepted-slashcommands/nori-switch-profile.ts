@@ -6,6 +6,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import { getInstallDirs } from "@/utils/path.js";
 
 import type {
@@ -15,88 +16,6 @@ import type {
 } from "./types.js";
 
 import { formatError, formatSuccess } from "./format.js";
-
-/**
- * List available profiles in a directory
- * @param args - The function arguments
- * @param args.profilesDir - Path to the profiles directory
- *
- * @returns Array of profile names
- */
-const listProfiles = async (args: {
-  profilesDir: string;
-}): Promise<Array<string>> => {
-  const { profilesDir } = args;
-  const profiles: Array<string> = [];
-
-  try {
-    await fs.access(profilesDir);
-    const entries = await fs.readdir(profilesDir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const claudeMdPath = path.join(profilesDir, entry.name, "CLAUDE.md");
-        try {
-          await fs.access(claudeMdPath);
-          profiles.push(entry.name);
-        } catch {
-          // Skip directories without CLAUDE.md
-        }
-      }
-    }
-  } catch {
-    // Profiles directory doesn't exist
-  }
-
-  return profiles.sort();
-};
-
-/**
- * Switch to a profile
- * @param args - The function arguments
- * @param args.profileName - Name of the profile to switch to
- * @param args.profilesDir - Path to the profiles directory
- * @param args.installDir - Path to the installation directory
- */
-const switchProfile = async (args: {
-  profileName: string;
-  profilesDir: string;
-  installDir: string;
-}): Promise<void> => {
-  const { profileName, profilesDir, installDir } = args;
-
-  // Verify profile exists
-  const profileDir = path.join(profilesDir, profileName);
-  const claudeMdPath = path.join(profileDir, "CLAUDE.md");
-
-  try {
-    await fs.access(claudeMdPath);
-  } catch {
-    throw new Error(`Profile "${profileName}" not found`);
-  }
-
-  // Config is always in the install directory
-  const configPath = path.join(installDir, ".nori-config.json");
-
-  // Load current config to preserve auth
-  let currentConfig: Record<string, unknown> = {};
-  try {
-    const content = await fs.readFile(configPath, "utf-8");
-    currentConfig = JSON.parse(content);
-  } catch {
-    // No existing config
-  }
-
-  // Update config with new profile
-  const newConfig = {
-    ...currentConfig,
-    profile: {
-      baseProfile: profileName,
-    },
-  };
-
-  await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2));
-};
 
 /**
  * Run the nori-switch-profile command
@@ -127,12 +46,13 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   }
 
   const installDir = allInstallations[0]; // Use closest installation
-  const profilesDir = path.join(installDir, ".claude", "profiles");
+  const agent = AgentRegistry.getInstance().get({ name: "claude-code" });
 
-  // List available profiles
-  const profiles = await listProfiles({ profilesDir });
+  // List available profiles using agent method
+  const profiles = await agent.listProfiles({ installDir });
 
   if (profiles.length === 0) {
+    const profilesDir = path.join(installDir, ".claude", "profiles");
     return {
       decision: "block",
       reason: formatError({
@@ -161,13 +81,14 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     };
   }
 
-  // Switch to the profile
+  // Switch to the profile using agent method
   try {
-    await switchProfile({ profileName, profilesDir, installDir });
+    await agent.switchProfile({ installDir, profileName });
 
     // Read profile description if available
     let profileDescription = "";
     try {
+      const profilesDir = path.join(installDir, ".claude", "profiles");
       const profileJsonPath = path.join(
         profilesDir,
         profileName,

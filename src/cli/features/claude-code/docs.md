@@ -4,15 +4,16 @@ Path: @/src/cli/features/claude-code
 
 ### Overview
 
-Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/types.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements.
+Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements.
 
 ### How it fits into the larger codebase
 
-This `claude-code/` subdirectory implements the Agent interface defined in @/src/cli/features/types.ts. The `claudeCodeAgent` object in agent.ts provides:
+This `claude-code/` subdirectory implements the Agent interface defined in @/src/cli/features/agentRegistry.ts. The `claudeCodeAgent` object in agent.ts provides:
 - `name`: "claude-code"
 - `displayName`: "Claude Code"
 - `getLoaderRegistry()`: Returns the LoaderRegistry singleton with all Claude Code loaders
-- `getEnvPaths({ installDir })`: Returns Claude Code-specific paths (configDir=".claude", instructionsFile="CLAUDE.md", etc.)
+- `listProfiles({ installDir })`: Scans `.claude/profiles/` for directories containing `CLAUDE.md`
+- `switchProfile({ installDir, profileName })`: Validates profile exists, updates config, logs success message
 
 The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent and provides lookup by name. CLI commands use `AgentRegistry.getInstance().get({ name: "claude-code" })` to obtain the agent implementation and access its loaders.
 

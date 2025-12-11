@@ -26,6 +26,7 @@ import {
   isPaidInstall,
   type Config,
 } from "@/cli/config.js";
+import { getClaudeProfilesDir } from "@/cli/env.js";
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import {
   error,
@@ -78,7 +79,7 @@ const getAvailableProfiles = async (args: {
   agent?: string | null;
 }): Promise<Array<{ name: string; description: string }>> => {
   const { installDir } = args;
-  const agentName = args.agent ?? "claude-code";
+  // Note: agent parameter is currently unused but kept for future multi-agent support
   const profilesMap = new Map<string, { name: string; description: string }>();
 
   // Read from source profiles directory (available profiles in package)
@@ -108,10 +109,9 @@ const getAvailableProfiles = async (args: {
   }
 
   // Read from installed profiles directory (already installed profiles)
+  // Note: This is Claude Code specific - for other agents, this would need to be generalized
   try {
-    const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
-    const envPaths = agentImpl.getEnvPaths({ installDir });
-    const installedProfilesDir = envPaths.profilesDir;
+    const installedProfilesDir = getClaudeProfilesDir({ installDir });
     const installedEntries = await fs.readdir(installedProfilesDir, {
       withFileTypes: true,
     });

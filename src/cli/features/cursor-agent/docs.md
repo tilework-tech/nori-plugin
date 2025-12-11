@@ -73,6 +73,7 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 **Key differences from claude-code:**
 - Uses AGENTS.md instead of CLAUDE.md for instructions
 - Uses rules/ directory with RULE.md files instead of skills/ with SKILL.md
+- Rules use Cursor's YAML frontmatter format with `description` and `alwaysApply: false` (no globs - uses "Apply Intelligently" mode)
 - Target directory is ~/.cursor instead of ~/.claude
 - No hooks or statusline loaders (yet)
 
@@ -84,6 +85,10 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 - `AGENTS.md`: Instructions file (required for profile to be listed)
 - `profile.json`: Profile metadata with `mixins` field specifying which mixins to compose
 - `rules/`: Directory containing rule subdirectories, each with a RULE.md (typically inherited from mixins)
+
+**Mixin content:**
+- `_base` mixin: Contains `using-rules` rule for rule usage guidance
+- `_swe` mixin: Contains software engineering rules mirroring claude-code skills (test-driven-development, systematic-debugging, brainstorming, etc.)
 
 **Managed block pattern:** AGENTS.md uses the same managed block pattern as claude-code's CLAUDE.md, allowing users to add custom content outside the `# BEGIN NORI-AI MANAGED BLOCK` / `# END NORI-AI MANAGED BLOCK` markers without losing it during reinstalls.
 

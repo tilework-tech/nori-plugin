@@ -77,6 +77,29 @@ describe("AgentRegistry", () => {
     });
   });
 
+  describe("agent name as UID", () => {
+    test("agent.name matches the registry key used to look it up", () => {
+      const registry = AgentRegistry.getInstance();
+      const agentNames = registry.list();
+
+      for (const name of agentNames) {
+        const agent = registry.get({ name });
+        expect(agent.name).toBe(name);
+      }
+    });
+
+    test("round-trip: get(agent.name) returns the same agent", () => {
+      const registry = AgentRegistry.getInstance();
+      const agentNames = registry.list();
+
+      for (const name of agentNames) {
+        const agent = registry.get({ name });
+        const roundTrip = registry.get({ name: agent.name });
+        expect(roundTrip).toBe(agent);
+      }
+    });
+  });
+
   describe("agent interface", () => {
     test("claude-code agent returns global loaders with human-readable names", () => {
       const registry = AgentRegistry.getInstance();

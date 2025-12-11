@@ -9,6 +9,12 @@ import { cursorAgent } from "@/cli/features/cursor-agent/agent.js";
 import type { Config } from "@/cli/config.js";
 
 /**
+ * Canonical agent names used as UIDs in the registry.
+ * Each Agent.name must match one of these values.
+ */
+export type AgentName = "claude-code" | "cursor-agent";
+
+/**
  * Result of validation check
  */
 export type ValidationResult = {
@@ -66,8 +72,8 @@ export type GlobalLoader = {
  * Agent interface that each agent implementation must satisfy
  */
 export type Agent = {
-  /** Unique identifier, e.g., "claude-code" */
-  name: string;
+  /** Unique identifier used as registry key, e.g., "claude-code" */
+  name: AgentName;
   /** Human-readable name, e.g., "Claude Code" */
   displayName: string;
   /** Get the LoaderRegistry for this agent */
@@ -119,7 +125,7 @@ export class AgentRegistry {
   /**
    * Get an agent by name
    * @param args - Configuration arguments
-   * @param args.name - The agent name to look up
+   * @param args.name - The agent name to look up (validated at runtime)
    *
    * @throws Error if agent not found
    *
@@ -141,9 +147,9 @@ export class AgentRegistry {
 
   /**
    * List all registered agent names
-   * @returns Array of agent names
+   * @returns Array of valid agent names
    */
-  public list(): Array<string> {
-    return Array.from(this.agents.keys());
+  public list(): Array<AgentName> {
+    return Array.from(this.agents.keys()) as Array<AgentName>;
   }
 }

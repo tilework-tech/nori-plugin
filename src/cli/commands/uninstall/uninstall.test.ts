@@ -9,6 +9,10 @@ import * as path from "path";
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
+import { promptUser } from "@/cli/prompt.js";
+
+import type { AgentName } from "@/cli/features/agentRegistry.js";
+
 // Mock modules - initialize with temp values
 let mockClaudeDir = "/tmp/test-claude";
 let mockConfigPath = "/tmp/test-config.json";
@@ -94,7 +98,6 @@ vi.mock("@/cli/features/claude-code/loaderRegistry.js", () => ({
 }));
 
 // Import after mocking
-import { promptUser } from "@/cli/prompt.js";
 
 import { runUninstall, main, type PromptConfig } from "./uninstall.js";
 
@@ -450,7 +453,7 @@ describe("uninstall prompt with agent-specific global features", () => {
     // We need to mock the AgentRegistry to return an agent with empty getGlobalFeatureNames
     const { AgentRegistry } = await import("@/cli/features/agentRegistry.js");
     const mockAgent = {
-      name: "mock-agent",
+      name: "mock-agent" as AgentName, // Cast for test mock
       displayName: "Mock Agent",
       getLoaderRegistry: () => ({
         getAll: () => [],

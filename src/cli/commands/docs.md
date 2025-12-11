@@ -42,7 +42,10 @@ Commands use shared utilities from the parent @/src/cli/ directory:
 
 Commands obtain feature loaders via the AgentRegistry (@/src/cli/features/agentRegistry.ts). The pattern is:
 ```typescript
-const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+// Parse --agent option and look up Agent object once at entry point
+const agentImpl = AgentRegistry.getInstance().get({ name: agent ?? "claude-code" });
+
+// Pass Agent object through call chain; access agentImpl.name when UID is needed
 const registry = agentImpl.getLoaderRegistry();
 const loaders = registry.getAll();
 ```

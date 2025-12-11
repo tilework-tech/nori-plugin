@@ -90,8 +90,7 @@ const getAvailableProfiles = async (args: {
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
  * @param args.existingConfig - Existing configuration (if any)
- * @param args.agent - AI agent implementation
- * @param args.agentName - Name of the agent being installed
+ * @param args.agent - AI agent implementation (agent.name is used as the UID)
  *
  * @returns Runtime configuration, or null if user cancels
  */
@@ -99,9 +98,8 @@ export const generatePromptConfig = async (args: {
   installDir: string;
   existingConfig: Config | null;
   agent: ReturnType<typeof AgentRegistry.prototype.get>;
-  agentName: string;
 }): Promise<Config | null> => {
-  const { installDir, existingConfig, agent, agentName } = args;
+  const { installDir, existingConfig, agent } = args;
 
   // Check if user wants to reuse existing config
   if (existingConfig?.auth) {
@@ -131,7 +129,7 @@ export const generatePromptConfig = async (args: {
         ...existingConfig,
         profile: existingConfig.profile ?? getDefaultProfile(),
         installDir,
-        installedAgents: [agentName],
+        installedAgents: [agent.name],
       };
     }
 
@@ -250,7 +248,7 @@ export const generatePromptConfig = async (args: {
     },
     installDir,
     registryAuths: registryAuths ?? null,
-    installedAgents: [agentName],
+    installedAgents: [agent.name],
   };
 };
 
@@ -270,7 +268,9 @@ export const interactive = async (args?: {
 }): Promise<void> => {
   const { skipUninstall, installDir, agent } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
-  const agentName = agent ?? "claude-code";
+  const agentImpl = AgentRegistry.getInstance().get({
+    name: agent ?? "claude-code",
+  });
 
   // Check for ancestor installations that might cause conflicts
   const allInstallations = getInstallDirs({
@@ -331,7 +331,7 @@ export const interactive = async (args?: {
 
     try {
       execSync(
-        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentName}"`,
+        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentImpl.name}"`,
         {
           stdio: "inherit",
         },
@@ -349,9 +349,6 @@ export const interactive = async (args?: {
     info({ message: "First-time installation detected. No cleanup needed." });
   }
 
-  // Get the agent implementation
-  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
-
   // Display banner
   displayNoriBanner();
   console.log();
@@ -368,7 +365,6 @@ export const interactive = async (args?: {
     installDir: normalizedInstallDir,
     existingConfig,
     agent: agentImpl,
-    agentName,
   });
 
   if (config == null) {
@@ -469,7 +465,9 @@ export const noninteractive = async (args?: {
 }): Promise<void> => {
   const { skipUninstall, installDir, agent } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
-  const agentName = agent ?? "claude-code";
+  const agentImpl = AgentRegistry.getInstance().get({
+    name: agent ?? "claude-code",
+  });
 
   // Check for ancestor installations (warn but continue)
   const allInstallations = getInstallDirs({
@@ -524,7 +522,7 @@ export const noninteractive = async (args?: {
 
     try {
       execSync(
-        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentName}"`,
+        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentImpl.name}"`,
         {
           stdio: "inherit",
         },
@@ -550,12 +548,12 @@ export const noninteractive = async (args?: {
   const config: Config = existingConfig
     ? {
         ...existingConfig,
-        installedAgents: [agentName],
+        installedAgents: [agentImpl.name],
       }
     : {
         profile: getDefaultProfile(),
         installDir: normalizedInstallDir,
-        installedAgents: [agentName],
+        installedAgents: [agentImpl.name],
       };
 
   // Track installation start
@@ -578,7 +576,6 @@ export const noninteractive = async (args?: {
   }
 
   // Run all loaders
-  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
   const registry = agentImpl.getLoaderRegistry();
   const loaders = registry.getAll();
 

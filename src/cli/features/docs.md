@@ -23,7 +23,7 @@ CLI Commands (install, uninstall, check, switch-profile)
 
 Shared Resources (@/src/cli/features/)
     |
-    +-- agentRegistry.ts: Agent, Loader, ValidationResult, LoaderRegistry types
+    +-- agentRegistry.ts: AgentName, Agent, Loader, ValidationResult, LoaderRegistry types
     +-- config/loader.ts: configLoader (shared across all agents)
 ```
 
@@ -35,12 +35,13 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 
 | Type | Purpose |
 |------|---------|
+| `AgentName` | Type alias for canonical agent identifiers (`"claude-code" \| "cursor-agent"`). Used as the registry key and source of truth for agent identity. |
 | `Loader` | Interface for feature installation with `run()`, `uninstall()`, and optional `validate()` methods |
 | `ValidationResult` | Result type for loader validation checks (`valid`, `message`, `errors`) |
 | `LoaderRegistry` | Interface that agent-specific registry classes must implement (`getAll()`, `getAllReversed()`) |
 
 **Agent Interface** (agentRegistry.ts):
-- `name`: Unique identifier (e.g., "claude-code")
+- `name`: `AgentName` - canonical identifier used as the registry key (e.g., "claude-code")
 - `displayName`: Human-readable name (e.g., "Claude Code")
 - `getLoaderRegistry()`: Returns an object implementing the `LoaderRegistry` interface
 - `listProfiles({ installDir })`: Returns array of installed profile names from `~/.{agent}/profiles/`
@@ -67,6 +68,8 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 - During uninstall: Removes the uninstalled agent from `installedAgents`. Deletes config file if no agents remain; updates config with remaining agents otherwise
 
 ### Things to Know
+
+**`AgentName` is the canonical UID for agents.** The `AgentName` type (`"claude-code" | "cursor-agent"`) is the source of truth for valid agent identifiers. `Agent.name` is typed as `AgentName`, which ensures type safety. CLI entry points parse the `--agent` option string, look up the `Agent` object once via `AgentRegistry.get({ name })`, then pass the `Agent` object around. Functions that need the agent identifier access `agent.name` rather than receiving a separate string parameter. This pattern makes it impossible for the agent name and agent object to get out of sync.
 
 **Critical: All agents must include the config loader.** The `configLoader` from @/src/cli/features/config/loader.ts manages the shared `.nori-config.json` file. Each agent's LoaderRegistry class must register this loader to ensure proper config file creation during install and removal during uninstall.
 

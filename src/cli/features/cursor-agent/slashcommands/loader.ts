@@ -16,10 +16,7 @@ import { substituteTemplatePaths } from "@/cli/features/cursor-agent/template.js
 import { success, info } from "@/cli/logger.js";
 
 import type { Config } from "@/cli/config.js";
-import type {
-  CursorLoader,
-  ValidationResult,
-} from "@/cli/features/cursor-agent/loaderRegistry.js";
+import type { Loader, ValidationResult } from "@/cli/features/agentRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
@@ -211,7 +208,7 @@ const validate = async (args: {
 /**
  * Cursor slash commands feature loader
  */
-export const cursorSlashCommandsLoader: CursorLoader = {
+export const cursorSlashCommandsLoader: Loader = {
   name: "slashcommands",
   description: "Register Nori slash commands with Cursor",
   run: async (args: { config: Config }) => {

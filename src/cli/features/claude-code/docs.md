@@ -20,9 +20,9 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent and
 
 This architecture enables future support for additional AI agents (e.g., Cursor IDE) by creating new agent implementations in sibling directories that satisfy the same Agent interface.
 
-The LoaderRegistry (@/src/cli/features/claude-code/loaderRegistry.ts) manages all feature loaders and executes them sequentially during installation by @/src/cli/commands/install/install.ts. Loaders execute in order: version, config, profiles, hooks, statusline, slashcommands, announcements. During uninstall, the order is reversed.
+The `LoaderRegistry` class (@/src/cli/features/claude-code/loaderRegistry.ts) implements the shared `LoaderRegistry` interface from @/src/cli/features/agentRegistry.ts. It manages all Claude Code feature loaders and executes them sequentially during installation. Loaders execute in order: version, config, profiles, hooks, statusline, slashcommands, announcements. During uninstall, the order is reversed.
 
-Each loader implements the Loader interface with run(), uninstall(), and validate() methods. The configLoader (@/src/cli/features/claude-code/config/loader.ts) is the single point of config persistence during installation - it saves the Config to `.nori-config.json` including auth credentials, profile selection, and user preferences.
+Each loader implements the `Loader` interface (from @/src/cli/features/agentRegistry.ts) with `run()`, `uninstall()`, and optional `validate()` methods. The shared `configLoader` (@/src/cli/features/config/loader.ts) is included in the registry and serves as the single point of config persistence during installation - it saves the Config to `.nori-config.json` including auth credentials, profile selection, and user preferences.
 
 **Global settings** (hooks, statusline, slashcommands) install to `~/.claude/` and are shared across all Nori installations. During uninstall, these can be preserved or removed as a group via the `removeGlobalSettings` flag. Profile-dependent features (claudemd, skills, profile-specific slashcommands, subagents) are handled by sub-loaders within the profiles feature at @/src/cli/features/claude-code/profiles/.
 

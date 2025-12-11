@@ -40,7 +40,7 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 
 ### Core Implementation
 
-**CursorLoaderRegistry** (loaderRegistry.ts): Singleton registry managing top-level loaders. Registers `profilesLoader` and `slashCommandsLoader`. Provides `getAll()` and `getAllReversed()` for install/uninstall ordering.
+**CursorLoaderRegistry** (loaderRegistry.ts): Singleton registry implementing the shared `LoaderRegistry` interface from @/src/cli/features/agentRegistry.ts. Registers the shared `configLoader` (from @/src/cli/features/config/loader.ts), `profilesLoader`, and `slashCommandsLoader`. Provides `getAll()` and `getAllReversed()` for install/uninstall ordering. The config loader must be included to manage the shared `.nori-config.json` file.
 
 **profilesLoader** (profiles/loader.ts): Orchestrates profile installation with mixin composition:
 1. Reading profile.json metadata to get mixins configuration

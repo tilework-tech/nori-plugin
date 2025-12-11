@@ -31,7 +31,7 @@ import {
   info,
   warn,
   wrapText,
-  brightCyan,
+  boldCyan,
   boldWhite,
   gray,
 } from "@/cli/logger.js";
@@ -198,9 +198,9 @@ export const generatePromptConfig = async (args: {
 
   // Display senior-swe recommendation
   console.log();
-  const seniorSweName = boldWhite({ text: "senior-swe:" });
+  const seniorSweName = boldCyan({ text: "senior-swe:" });
   console.log(seniorSweName);
-  console.log(gray({ text: seniorSweProfile.description }));
+  console.log(seniorSweProfile.description);
   console.log();
 
   // Display other built-in profiles
@@ -208,23 +208,22 @@ export const generatePromptConfig = async (args: {
     .filter((p) => p.name !== "senior-swe")
     .map((p) => p.name);
   if (otherBuiltIns.length > 0) {
-    info({
-      message: `Other built-in profiles include: ${otherBuiltIns.join(", ")} (type "learn more" to see descriptions)`,
-    });
+    console.log(
+      `Other built-in profiles include: ${otherBuiltIns.join(", ")} ${gray({ text: '(type "learn more" to see descriptions)' })}`,
+    );
     console.log();
   }
 
   // Display user-defined profiles if any
   if (userDefinedProfiles.length > 0) {
-    info({ message: "Here are user-defined profiles you already have:" });
+    console.log(boldCyan({ text: "User-defined profiles:" }));
     console.log();
     userDefinedProfiles.forEach((p, i) => {
-      const number = brightCyan({ text: `${i + 1}.` });
+      const number = gray({ text: `${i + 1}.` });
       const name = boldWhite({ text: p.name });
-      const description = gray({ text: p.description });
 
       console.log(`${number} ${name}`);
-      console.log(`   ${description}`);
+      console.log(`   ${p.description}`);
       console.log();
     });
   }
@@ -246,21 +245,16 @@ export const generatePromptConfig = async (args: {
     } else if (choice === "learn more" || choice === "another") {
       // Show all profiles with descriptions
       console.log();
-      info({
-        message: wrapText({
-          text: "Available profiles:",
-        }),
-      });
+      console.log(boldCyan({ text: "Available profiles:" }));
       console.log();
 
       const allProfiles = [...builtInProfiles, ...userDefinedProfiles];
       allProfiles.forEach((p, i) => {
-        const number = brightCyan({ text: `${i + 1}.` });
+        const number = gray({ text: `${i + 1}.` });
         const name = boldWhite({ text: p.name });
-        const description = gray({ text: p.description });
 
         console.log(`${number} ${name}`);
-        console.log(`   ${description}`);
+        console.log(`   ${p.description}`);
         console.log();
       });
 
@@ -295,14 +289,13 @@ export const generatePromptConfig = async (args: {
 
   // Nori servers section
   console.log();
-  info({ message: boldWhite({ text: "Nori servers:" }) });
+  console.log(boldCyan({ text: "Nori servers:" }));
   console.log();
 
   // Nori Registry
-  info({
-    message:
-      "Nori Registry: You can share profiles across a team using a private registry.",
-  });
+  console.log(
+    "Nori Registry: You can share profiles across a team using a private registry.",
+  );
   console.log();
 
   const registryAuths = await promptRegistryAuths({
@@ -312,15 +305,12 @@ export const generatePromptConfig = async (args: {
   console.log();
 
   // Nori Watchtower
-  info({
-    message:
-      "Nori Watchtower: A context server for providing your agent institutional memory.",
-  });
+  console.log(
+    "Nori Watchtower: A context server for providing your agent institutional memory.",
+  );
   console.log();
 
-  info({
-    message: "Do you have a login for a Nori server?",
-  });
+  console.log("Do you have a login for a Nori server?");
   const hasLogin = await promptUser({
     prompt: "(Y/n): ",
   });
@@ -373,7 +363,7 @@ export const generatePromptConfig = async (args: {
 
   // Auto-update prompt (defaults to OFF)
   console.log();
-  info({ message: "Would you like Nori to auto-update?" });
+  console.log("Would you like Nori to auto-update?");
   const enableAutoupdate = await promptUser({
     prompt: "(y/n) [default: n]: ",
   });
@@ -494,23 +484,23 @@ export const interactive = async (args?: {
   // Display banner
   displayNoriBanner();
   console.log();
-  info({
-    message: wrapText({
-      text: "Nori is a toolset for building customizations for your coding agent.",
+  console.log(
+    wrapText({
+      text: "Nori is a toolset for customizing your coding agent.",
     }),
-  });
+  );
   console.log();
-  info({
-    message: wrapText({
+  console.log(
+    wrapText({
       text: 'Nori customizes your agent by creating configurable "Profiles" that are encoded with specialized behaviors. Profiles are built by modifying available context configurations like Claude.md, Skills, and Subagents. You can build Profiles to match your personal development flow, target complicated areas of code, or tackle specific projects.',
     }),
-  });
+  );
   console.log();
-  info({
-    message: wrapText({
+  console.log(
+    wrapText({
       text: "We recommend starting with our default senior-swe profile to get a feel for how Nori works.",
     }),
-  });
+  );
   console.log();
 
   // Load existing config

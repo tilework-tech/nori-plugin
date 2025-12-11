@@ -15,6 +15,7 @@ const colors = {
 // Additional formatting colors for enhanced output
 const formatColors = {
   BRIGHT_CYAN: "\x1b[96m",
+  BOLD_CYAN: "\x1b[1;36m",
   BOLD_WHITE: "\x1b[1;37m",
   GRAY: "\x1b[90m",
   BOLD: "\x1b[1m",
@@ -102,6 +103,18 @@ export const warn = (args: { message: string }): void => {
 export const brightCyan = (args: { text: string }): string => {
   const { text } = args;
   return `${formatColors.BRIGHT_CYAN}${text}${colors.NC}`;
+};
+
+/**
+ * Print text in bold cyan (for section headings)
+ * @param args - Configuration arguments
+ * @param args.text - Text to display
+ *
+ * @returns Text wrapped in bold cyan ANSI color codes
+ */
+export const boldCyan = (args: { text: string }): string => {
+  const { text } = args;
+  return `${formatColors.BOLD_CYAN}${text}${colors.NC}`;
 };
 
 /**

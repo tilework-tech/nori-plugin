@@ -55,12 +55,10 @@ vi.mock("child_process", async (importOriginal) => {
   };
 });
 
-// Mock env module to use test directory
-vi.mock("@/cli/env.js", () => {
-  const testRoot = "/tmp/install-integration-test-mcp-root";
+// Mock paths module to use test directory
+vi.mock("@/cli/features/claude-code/paths.js", () => {
   const testClaudeDir = "/tmp/install-integration-test-claude";
   return {
-    MCP_ROOT: testRoot,
     getClaudeDir: (_args: { installDir: string }) => testClaudeDir,
     getClaudeSettingsFile: (_args: { installDir: string }) =>
       `${testClaudeDir}/settings.json`,
@@ -79,6 +77,14 @@ vi.mock("@/cli/env.js", () => {
   };
 });
 
+// Mock env module for CLI_ROOT
+vi.mock("@/cli/env.js", () => {
+  const testRoot = "/tmp/install-integration-test-cli-root";
+  return {
+    CLI_ROOT: testRoot,
+  };
+});
+
 // Mock analytics to prevent tracking during tests
 vi.mock("@/cli/analytics.js", () => ({
   initializeAnalytics: vi.fn(),
@@ -91,7 +97,7 @@ describe("install integration test", () => {
   let VERSION_FILE_PATH: string;
   let MARKER_FILE_PATH: string;
 
-  const TEST_MCP_ROOT = "/tmp/install-integration-test-mcp-root";
+  const TEST_CLI_ROOT = "/tmp/install-integration-test-cli-root";
   const TEST_CLAUDE_DIR = "/tmp/install-integration-test-claude";
 
   beforeEach(async () => {
@@ -121,8 +127,8 @@ describe("install integration test", () => {
     } catch {}
 
     // Create test directories
-    if (!fs.existsSync(TEST_MCP_ROOT)) {
-      fs.mkdirSync(TEST_MCP_ROOT, { recursive: true });
+    if (!fs.existsSync(TEST_CLI_ROOT)) {
+      fs.mkdirSync(TEST_CLI_ROOT, { recursive: true });
     }
     if (!fs.existsSync(TEST_CLAUDE_DIR)) {
       fs.mkdirSync(TEST_CLAUDE_DIR, { recursive: true });
@@ -130,7 +136,7 @@ describe("install integration test", () => {
 
     // Create mock package.json for getCurrentPackageVersion
     fs.writeFileSync(
-      path.join(TEST_MCP_ROOT, "package.json"),
+      path.join(TEST_CLI_ROOT, "package.json"),
       JSON.stringify({
         name: "nori-ai",
         version: "13.0.0",
@@ -149,7 +155,7 @@ describe("install integration test", () => {
 
     // Clean up test directories
     try {
-      fs.rmSync(TEST_MCP_ROOT, { recursive: true, force: true });
+      fs.rmSync(TEST_CLI_ROOT, { recursive: true, force: true });
     } catch {}
     try {
       fs.rmSync(TEST_CLAUDE_DIR, { recursive: true, force: true });
@@ -452,6 +458,41 @@ describe("install integration test", () => {
     // Cwd directory should be back to pre-install state
     // (no config file, no version file, no notifications log)
     expect(postUninstallCwdSnapshot).toEqual(preInstallCwdSnapshot);
+  });
+
+  it("should include installedAgents in config after installation", async () => {
+    const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+    // STEP 1: Run installation in non-interactive mode
+    await installMain({ nonInteractive: true, installDir: tempDir });
+
+    // STEP 2: Verify installedAgents is set in the config
+    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+    expect(config.installedAgents).toEqual(["claude-code"]);
+  });
+
+  it("should accumulate installedAgents when installing multiple agents", async () => {
+    const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+    // STEP 1: Create existing config with one agent
+    fs.writeFileSync(
+      CONFIG_PATH,
+      JSON.stringify({
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: ["cursor-agent"],
+        installDir: tempDir,
+      }),
+    );
+
+    // STEP 2: Install claude-code (default agent)
+    await installMain({ nonInteractive: true, installDir: tempDir });
+
+    // STEP 3: Verify both agents are in installedAgents
+    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+    expect(config.installedAgents).toEqual(
+      expect.arrayContaining(["cursor-agent", "claude-code"]),
+    );
+    expect(config.installedAgents).toHaveLength(2);
   });
 
   it("should warn when ancestor directory has nori installation", async () => {

@@ -10,10 +10,10 @@ import { Command } from "commander";
 
 import { registerCheckCommand } from "@/cli/commands/check/check.js";
 import { registerInstallCommand } from "@/cli/commands/install/install.js";
-import { registerInstallCursorCommand } from "@/cli/commands/install-cursor/installCursor.js";
 import { registerInstallLocationCommand } from "@/cli/commands/install-location/installLocation.js";
 import { registerRegistryDownloadCommand } from "@/cli/commands/registry-download/registryDownload.js";
 import { registerRegistrySearchCommand } from "@/cli/commands/registry-search/registrySearch.js";
+import { registerRegistryUpdateCommand } from "@/cli/commands/registry-update/registryUpdate.js";
 import { registerRegistryUploadCommand } from "@/cli/commands/registry-upload/registryUpload.js";
 import { registerSwitchProfileCommand } from "@/cli/commands/switch-profile/profiles.js";
 import { registerUninstallCommand } from "@/cli/commands/uninstall/uninstall.js";
@@ -33,11 +33,13 @@ program
     (value) => normalizeInstallDir({ installDir: value }),
   )
   .option("-n, --non-interactive", "Run without interactive prompts")
+  .option("-a, --agent <name>", "AI agent to use (claude-code)", "claude-code")
   .addHelpText(
     "after",
     `
 Examples:
   $ nori-ai install --install-dir ~/my-dir
+  $ nori-ai install --agent claude-code
   $ nori-ai uninstall
   $ nori-ai check
   $ nori-ai install-location
@@ -45,6 +47,8 @@ Examples:
   $ nori-ai registry-search typescript
   $ nori-ai registry-download my-profile
   $ nori-ai registry-download my-profile@1.0.0
+  $ nori-ai registry-download my-profile --list-versions
+  $ nori-ai registry-update my-profile
   $ nori-ai registry-upload my-profile
   $ nori-ai registry-upload my-profile@1.0.0 --registry https://registry.example.com
   $ nori-ai --non-interactive install
@@ -53,13 +57,13 @@ Examples:
 
 // Register all commands
 registerInstallCommand({ program });
-registerInstallCursorCommand({ program });
 registerUninstallCommand({ program });
 registerCheckCommand({ program });
 registerSwitchProfileCommand({ program });
 registerInstallLocationCommand({ program });
 registerRegistrySearchCommand({ program });
 registerRegistryDownloadCommand({ program });
+registerRegistryUpdateCommand({ program });
 registerRegistryUploadCommand({ program });
 
 program.parse(process.argv);

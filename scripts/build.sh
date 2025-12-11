@@ -93,12 +93,12 @@ chmod +x build/src/cli/commands/install/install.js
 chmod +x build/src/cli/commands/uninstall/uninstall.js
 
 # Hook scripts
-chmod +x build/src/cli/features/hooks/config/autoupdate.js
-chmod +x build/src/cli/features/hooks/config/summarize.js
-chmod +x build/src/cli/features/hooks/config/summarize-notification.js
+chmod +x build/src/cli/features/claude-code/hooks/config/autoupdate.js
+chmod +x build/src/cli/features/claude-code/hooks/config/summarize.js
+chmod +x build/src/cli/features/claude-code/hooks/config/summarize-notification.js
 
 # Paid skill scripts (all script.js files in paid-* directories within profiles)
-find build/src/cli/features/profiles/config -path '*/skills/paid-*/script.js' -exec chmod +x {} \; 2>/dev/null || true
+find build/src/cli/features/claude-code/profiles/config -path '*/skills/paid-*/script.js' -exec chmod +x {} \; 2>/dev/null || true
 
 echo -e "${GREEN}✓ File permissions set${NC}"
 echo ""
@@ -111,24 +111,30 @@ echo ""
 echo -e "${BLUE}[6/7] Copying configuration files...${NC}"
 
 # Create required directories
-mkdir -p build/src/cli/features/claudemd/config
-mkdir -p build/src/cli/features/hooks/config
-mkdir -p build/src/cli/features/statusline/config
-mkdir -p build/src/cli/features/profiles/config
-mkdir -p build/src/cli/features/slashcommands/config
+mkdir -p build/src/cli/features/claude-code/hooks/config
+mkdir -p build/src/cli/features/claude-code/statusline/config
+mkdir -p build/src/cli/features/claude-code/profiles/config
+mkdir -p build/src/cli/features/claude-code/slashcommands/config
 
 # Copy configuration files for specific features that still have config dirs
-cp src/cli/features/claudemd/config/*.md build/src/cli/features/claudemd/config/ 2>/dev/null || true
-cp src/cli/features/hooks/config/*.sh build/src/cli/features/hooks/config/ 2>/dev/null || true
-cp src/cli/features/statusline/config/*.sh build/src/cli/features/statusline/config/ 2>/dev/null || true
-cp src/cli/features/slashcommands/config/*.md build/src/cli/features/slashcommands/config/ 2>/dev/null || true
+cp src/cli/features/claude-code/hooks/config/*.sh build/src/cli/features/claude-code/hooks/config/ 2>/dev/null || true
+cp src/cli/features/claude-code/statusline/config/*.sh build/src/cli/features/claude-code/statusline/config/ 2>/dev/null || true
+cp src/cli/features/claude-code/slashcommands/config/*.md build/src/cli/features/claude-code/slashcommands/config/ 2>/dev/null || true
 
 # Copy entire profile directories (which contain skills, subagents, slashcommands, CLAUDE.md)
-cp -r src/cli/features/profiles/config/* build/src/cli/features/profiles/config/ 2>/dev/null || true
+cp -r src/cli/features/claude-code/profiles/config/* build/src/cli/features/claude-code/profiles/config/ 2>/dev/null || true
+
+# Create cursor-agent directories and copy profile configs
+mkdir -p build/src/cli/features/cursor-agent/profiles/config
+cp -r src/cli/features/cursor-agent/profiles/config/* build/src/cli/features/cursor-agent/profiles/config/ 2>/dev/null || true
+
+# Copy cursor-agent slashcommands config
+mkdir -p build/src/cli/features/cursor-agent/slashcommands/config
+cp src/cli/features/cursor-agent/slashcommands/config/*.md build/src/cli/features/cursor-agent/slashcommands/config/ 2>/dev/null || true
 
 # Make shell scripts executable
-chmod +x build/src/cli/features/hooks/config/*.sh 2>/dev/null || true
-chmod +x build/src/cli/features/statusline/config/*.sh 2>/dev/null || true
+chmod +x build/src/cli/features/claude-code/hooks/config/*.sh 2>/dev/null || true
+chmod +x build/src/cli/features/claude-code/statusline/config/*.sh 2>/dev/null || true
 
 echo -e "${GREEN}✓ Configuration files copied${NC}"
 echo ""
@@ -141,7 +147,7 @@ echo ""
 echo -e "${BLUE}[7/7] Substituting version strings...${NC}"
 
 VERSION=$(jq -r .version package.json)
-perl -pi -e "s/__VERSION__/v${VERSION}/g" build/src/cli/features/statusline/config/nori-statusline.sh
+perl -pi -e "s/__VERSION__/v${VERSION}/g" build/src/cli/features/claude-code/statusline/config/nori-statusline.sh
 
 echo -e "${GREEN}✓ Version substituted (v${VERSION})${NC}"
 echo ""

@@ -11,7 +11,7 @@ import {
   getDefaultProfile,
   isPaidInstall,
 } from "@/cli/config.js";
-import { LoaderRegistry } from "@/cli/features/loaderRegistry.js";
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import { error, success, info } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -34,6 +34,7 @@ export const registerCheckCommand = (args: { program: Command }): void => {
 
       await checkMain({
         installDir: globalOpts.installDir || null,
+        agent: globalOpts.agent || null,
       });
     });
 };
@@ -42,10 +43,13 @@ export const registerCheckCommand = (args: { program: Command }): void => {
  * Run validation checks on Nori installation
  * @param args - Configuration arguments
  * @param args.installDir - Custom installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
  */
 export const checkMain = async (args?: {
   installDir?: string | null;
+  agent?: string | null;
 }): Promise<void> => {
+  const agentName = args?.agent ?? "claude-code";
   // Determine installation directory
   let installDir: string;
 
@@ -115,7 +119,8 @@ export const checkMain = async (args?: {
   }
 
   // Run validation for all loaders
-  const registry = LoaderRegistry.getInstance();
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  const registry = agentImpl.getLoaderRegistry();
   const loaders = registry.getAll();
 
   info({ message: "Checking feature installations..." });

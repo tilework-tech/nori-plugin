@@ -20,6 +20,13 @@ export type RegistryAuth = {
 };
 
 /**
+ * Agent-specific configuration
+ */
+export type AgentConfig = {
+  profile?: { baseProfile: string } | null;
+};
+
+/**
  * Unified configuration type for Nori Profiles
  * Contains all persisted fields from disk plus required installDir
  */
@@ -29,6 +36,7 @@ export type Config = {
     password: string;
     organizationUrl: string;
   } | null;
+  /** @deprecated Use agents.claude-code.profile instead */
   profile?: {
     baseProfile: string;
   } | null;
@@ -36,6 +44,10 @@ export type Config = {
   autoupdate?: "enabled" | "disabled" | null;
   installDir: string;
   registryAuths?: Array<RegistryAuth> | null;
+  /** Per-agent configuration settings */
+  agents?: Record<string, AgentConfig> | null;
+  /** List of AI agents installed at this installDir */
+  installedAgents?: Array<string> | null;
 };
 
 /**
@@ -94,6 +106,37 @@ export const getRegistryAuth = (args: {
         normalizeUrl({ baseUrl: auth.registryUrl }) === normalizedSearchUrl,
     ) ?? null
   );
+};
+
+/**
+ * Get the profile for a specific agent
+ * @param args - Configuration arguments
+ * @param args.config - The config to search
+ * @param args.agentName - The agent name to get profile for
+ *
+ * @returns The agent's profile or null if not found
+ */
+export const getAgentProfile = (args: {
+  config: Config;
+  agentName: string;
+}): { baseProfile: string } | null => {
+  const { config, agentName } = args;
+
+  // First check the agents field (new format)
+  if (config.agents != null) {
+    const agentConfig = config.agents[agentName];
+    if (agentConfig?.profile != null) {
+      return agentConfig.profile;
+    }
+    return null;
+  }
+
+  // Fallback to legacy profile field for claude-code only
+  if (agentName === "claude-code" && config.profile != null) {
+    return config.profile;
+  }
+
+  return null;
 };
 
 /**
@@ -164,11 +207,11 @@ export const loadConfig = async (args: {
         result.sendSessionTranscript = "enabled"; // Default value
       }
 
-      // Check if autoupdate exists, default to 'enabled'
+      // Check if autoupdate exists, default to 'disabled'
       if (config.autoupdate === "enabled" || config.autoupdate === "disabled") {
         result.autoupdate = config.autoupdate;
       } else {
-        result.autoupdate = "enabled"; // Default value
+        result.autoupdate = "disabled"; // Default value
       }
 
       // Check if registryAuths exists and is valid array
@@ -186,11 +229,35 @@ export const loadConfig = async (args: {
         }
       }
 
-      // Return result if we have at least auth, profile, or sendSessionTranscript
+      // Check if agents field exists (new multi-agent config format)
+      if (config.agents && typeof config.agents === "object") {
+        result.agents = config.agents;
+      } else if (result.profile != null) {
+        // Backwards compatibility: if only legacy profile exists, mirror it to agents.claude-code
+        result.agents = {
+          "claude-code": {
+            profile: result.profile,
+          },
+        };
+      }
+
+      // Check if installedAgents exists and is valid array of strings
+      if (Array.isArray(config.installedAgents)) {
+        const validAgents = config.installedAgents.filter(
+          (agent: unknown) => typeof agent === "string",
+        );
+        if (validAgents.length > 0) {
+          result.installedAgents = validAgents;
+        }
+      }
+
+      // Return result if we have at least auth, profile, agents, sendSessionTranscript, or installedAgents
       if (
         result.auth != null ||
         result.profile != null ||
-        result.sendSessionTranscript != null
+        result.agents != null ||
+        result.sendSessionTranscript != null ||
+        result.installedAgents != null
       ) {
         return result;
       }
@@ -208,11 +275,13 @@ export const loadConfig = async (args: {
  * @param args.username - User's username (null to skip auth)
  * @param args.password - User's password (null to skip auth)
  * @param args.organizationUrl - Organization URL (null to skip auth)
- * @param args.profile - Profile selection (null to skip profile)
+ * @param args.profile - Profile selection (null to skip profile) - deprecated, use agents instead
  * @param args.sendSessionTranscript - Session transcript setting (null to skip)
  * @param args.autoupdate - Autoupdate setting (null to skip)
  * @param args.installDir - Installation directory
  * @param args.registryAuths - Array of registry authentication credentials (null to skip)
+ * @param args.agents - Per-agent configuration settings (null to skip)
+ * @param args.installedAgents - List of installed AI agents (null to skip)
  */
 export const saveConfig = async (args: {
   username: string | null;
@@ -222,6 +291,8 @@ export const saveConfig = async (args: {
   sendSessionTranscript?: "enabled" | "disabled" | null;
   autoupdate?: "enabled" | "disabled" | null;
   registryAuths?: Array<RegistryAuth> | null;
+  agents?: Record<string, AgentConfig> | null;
+  installedAgents?: Array<string> | null;
   installDir: string;
 }): Promise<void> => {
   const {
@@ -232,6 +303,8 @@ export const saveConfig = async (args: {
     sendSessionTranscript,
     autoupdate,
     registryAuths,
+    agents,
+    installedAgents,
     installDir,
   } = args;
   const configPath = getConfigPath({ installDir });
@@ -248,8 +321,17 @@ export const saveConfig = async (args: {
     config.organizationUrl = normalizedUrl;
   }
 
-  // Add profile if provided
-  if (profile != null) {
+  // Add agents if provided (new multi-agent format)
+  if (agents != null) {
+    config.agents = agents;
+
+    // For backwards compatibility, also write legacy profile field if claude-code has a profile
+    const claudeCodeProfile = agents["claude-code"]?.profile;
+    if (claudeCodeProfile != null) {
+      config.profile = claudeCodeProfile;
+    }
+  } else if (profile != null) {
+    // Legacy: Add profile if provided (when agents is not used)
     config.profile = profile;
   }
 
@@ -266,6 +348,11 @@ export const saveConfig = async (args: {
   // Add registryAuths if provided and not empty
   if (registryAuths != null && registryAuths.length > 0) {
     config.registryAuths = registryAuths;
+  }
+
+  // Add installedAgents if provided and not empty
+  if (installedAgents != null && installedAgents.length > 0) {
+    config.installedAgents = installedAgents;
   }
 
   // Always save installDir
@@ -316,6 +403,24 @@ const configSchema = {
         },
         required: ["username", "password", "registryUrl"],
       },
+    },
+    agents: {
+      type: "object",
+      additionalProperties: {
+        type: "object",
+        properties: {
+          profile: {
+            type: "object",
+            properties: {
+              baseProfile: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    installedAgents: {
+      type: "array",
+      items: { type: "string" },
     },
   },
   additionalProperties: false,

@@ -213,12 +213,12 @@ describe("config with profile-based system", () => {
       expect(loaded?.autoupdate).toBe("disabled");
     });
 
-    it("should default autoupdate to enabled when field is missing", async () => {
+    it("should default autoupdate to disabled when field is missing", async () => {
       await fs.writeFile(mockConfigPath, JSON.stringify({}));
 
       const loaded = await loadConfig({ installDir: tempDir });
 
-      expect(loaded?.autoupdate).toBe("enabled");
+      expect(loaded?.autoupdate).toBe("disabled");
     });
 
     it("should save and load autoupdate", async () => {
@@ -366,6 +366,461 @@ describe("isPaidInstall", () => {
     };
 
     expect(isPaidInstall({ config })).toBe(false);
+  });
+});
+
+describe("agent-specific profiles", () => {
+  let tempDir: string;
+  let mockConfigPath: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "config-agents-test-"));
+    mockConfigPath = path.join(tempDir, ".nori-config.json");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe("loadConfig with agents field", () => {
+    it("should load config with agents structure", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          agents: {
+            "claude-code": {
+              profile: { baseProfile: "senior-swe" },
+            },
+          },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.agents).toEqual({
+        "claude-code": {
+          profile: { baseProfile: "senior-swe" },
+        },
+      });
+    });
+
+    it("should support multiple agents with different profiles", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          agents: {
+            "claude-code": {
+              profile: { baseProfile: "senior-swe" },
+            },
+            cursor: {
+              profile: { baseProfile: "documenter" },
+            },
+          },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "senior-swe",
+      );
+      expect(loaded?.agents?.["cursor"]?.profile?.baseProfile).toBe(
+        "documenter",
+      );
+    });
+
+    it("should populate agents from legacy profile field for backwards compat", async () => {
+      // Legacy config with only 'profile' field (no 'agents')
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "amol" },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      // Legacy profile should be mirrored to agents.claude-code.profile
+      expect(loaded?.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "amol",
+      );
+      // Legacy profile should still be accessible
+      expect(loaded?.profile?.baseProfile).toBe("amol");
+    });
+
+    it("should prefer agents field over legacy profile when both present", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "legacy-profile" },
+          agents: {
+            "claude-code": {
+              profile: { baseProfile: "new-profile" },
+            },
+          },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      // agents field should take precedence
+      expect(loaded?.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "new-profile",
+      );
+    });
+
+    it("should handle agent with null profile", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          agents: {
+            "claude-code": {
+              profile: null,
+            },
+          },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.agents?.["claude-code"]?.profile).toBeNull();
+    });
+
+    it("should handle agent with empty config", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          agents: {
+            "claude-code": {},
+          },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.agents?.["claude-code"]).toEqual({});
+    });
+  });
+
+  describe("saveConfig with agents field", () => {
+    it("should save agents structure", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        agents: {
+          "claude-code": {
+            profile: { baseProfile: "senior-swe" },
+          },
+        },
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      expect(config.agents).toEqual({
+        "claude-code": {
+          profile: { baseProfile: "senior-swe" },
+        },
+      });
+    });
+
+    it("should write both agents and legacy profile for backwards compat", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        agents: {
+          "claude-code": {
+            profile: { baseProfile: "senior-swe" },
+          },
+        },
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      // Should write both for backwards compat
+      expect(config.agents["claude-code"].profile.baseProfile).toBe(
+        "senior-swe",
+      );
+      expect(config.profile.baseProfile).toBe("senior-swe");
+    });
+
+    it("should not write legacy profile if no claude-code agent profile", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        agents: {
+          cursor: {
+            profile: { baseProfile: "documenter" },
+          },
+        },
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      expect(config.agents.cursor.profile.baseProfile).toBe("documenter");
+      expect(config.profile).toBeUndefined();
+    });
+  });
+
+  describe("getAgentProfile", () => {
+    it("should return profile for specified agent from agents field", async () => {
+      const { getAgentProfile } = await import("./config.js");
+
+      const config: Config = {
+        installDir: "/test",
+        agents: {
+          "claude-code": {
+            profile: { baseProfile: "senior-swe" },
+          },
+          cursor: {
+            profile: { baseProfile: "documenter" },
+          },
+        },
+      };
+
+      const claudeProfile = getAgentProfile({
+        config,
+        agentName: "claude-code",
+      });
+      const cursorProfile = getAgentProfile({ config, agentName: "cursor" });
+
+      expect(claudeProfile?.baseProfile).toBe("senior-swe");
+      expect(cursorProfile?.baseProfile).toBe("documenter");
+    });
+
+    it("should fall back to legacy profile for claude-code when agents field missing", async () => {
+      const { getAgentProfile } = await import("./config.js");
+
+      const config: Config = {
+        installDir: "/test",
+        profile: { baseProfile: "legacy-profile" },
+        // No agents field
+      };
+
+      const profile = getAgentProfile({ config, agentName: "claude-code" });
+
+      expect(profile?.baseProfile).toBe("legacy-profile");
+    });
+
+    it("should return null for unknown agent when agents field missing", async () => {
+      const { getAgentProfile } = await import("./config.js");
+
+      const config: Config = {
+        installDir: "/test",
+        profile: { baseProfile: "legacy-profile" },
+      };
+
+      const profile = getAgentProfile({ config, agentName: "cursor" });
+
+      expect(profile).toBeNull();
+    });
+
+    it("should return null when agent has no profile configured", async () => {
+      const { getAgentProfile } = await import("./config.js");
+
+      const config: Config = {
+        installDir: "/test",
+        agents: {
+          "claude-code": {},
+        },
+      };
+
+      const profile = getAgentProfile({ config, agentName: "claude-code" });
+
+      expect(profile).toBeNull();
+    });
+
+    it("should return null when agent not in agents field", async () => {
+      const { getAgentProfile } = await import("./config.js");
+
+      const config: Config = {
+        installDir: "/test",
+        agents: {
+          "claude-code": {
+            profile: { baseProfile: "senior-swe" },
+          },
+        },
+      };
+
+      const profile = getAgentProfile({ config, agentName: "cursor" });
+
+      expect(profile).toBeNull();
+    });
+  });
+});
+
+describe("installedAgents", () => {
+  let tempDir: string;
+  let mockConfigPath: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "config-installed-agents-test-"),
+    );
+    mockConfigPath = path.join(tempDir, ".nori-config.json");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe("loadConfig with installedAgents", () => {
+    it("should load installedAgents when present and valid", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "senior-swe" },
+          installedAgents: ["claude-code"],
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.installedAgents).toEqual(["claude-code"]);
+    });
+
+    it("should load multiple installedAgents", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "senior-swe" },
+          installedAgents: ["claude-code", "cursor-agent"],
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.installedAgents).toEqual(["claude-code", "cursor-agent"]);
+    });
+
+    it("should return undefined installedAgents when field is missing", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "senior-swe" },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.installedAgents).toBeUndefined();
+    });
+
+    it("should filter out non-string entries from installedAgents", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "senior-swe" },
+          installedAgents: ["claude-code", 123, null, "cursor-agent", {}],
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.installedAgents).toEqual(["claude-code", "cursor-agent"]);
+    });
+
+    it("should return undefined when installedAgents is not an array", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "senior-swe" },
+          installedAgents: "not-an-array",
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.installedAgents).toBeUndefined();
+    });
+
+    it("should return undefined when installedAgents array becomes empty after filtering", async () => {
+      await fs.writeFile(
+        mockConfigPath,
+        JSON.stringify({
+          profile: { baseProfile: "senior-swe" },
+          installedAgents: [123, null, {}],
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded?.installedAgents).toBeUndefined();
+    });
+  });
+
+  describe("saveConfig with installedAgents", () => {
+    it("should save installedAgents to config file", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: ["claude-code"],
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      expect(config.installedAgents).toEqual(["claude-code"]);
+    });
+
+    it("should save multiple installedAgents", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: ["claude-code", "cursor-agent"],
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      expect(config.installedAgents).toEqual(["claude-code", "cursor-agent"]);
+    });
+
+    it("should not save installedAgents when null", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: null,
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      expect(config.installedAgents).toBeUndefined();
+    });
+
+    it("should not save installedAgents when empty array", async () => {
+      await saveConfig({
+        username: null,
+        password: null,
+        organizationUrl: null,
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: [],
+        installDir: tempDir,
+      });
+
+      const content = await fs.readFile(mockConfigPath, "utf-8");
+      const config = JSON.parse(content);
+
+      expect(config.installedAgents).toBeUndefined();
+    });
   });
 });
 

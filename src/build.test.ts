@@ -9,6 +9,10 @@
  * IMPORTANT: All tests in this file run sequentially because they depend on
  * build artifacts. The build test runs first, then subsequent tests use the
  * generated build/ directory.
+ *
+ * WARNING: This test file modifies the shared build/ directory by running
+ * `npm run build`. If other tests depend on build artifacts, they will fail
+ * if run in parallel with this file.
  */
 
 import { execSync } from "child_process";
@@ -189,11 +193,11 @@ ${stderr || "(empty)"}`,
       const mixinDirs = [
         path.join(
           buildDir,
-          "src/cli/features/profiles/config/_mixins/_paid/skills",
+          "src/cli/features/claude-code/profiles/config/_mixins/_paid/skills",
         ),
         path.join(
           buildDir,
-          "src/cli/features/profiles/config/_mixins/_docs-paid/skills",
+          "src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills",
         ),
       ];
 
@@ -239,7 +243,7 @@ ${stderr || "(empty)"}`,
       // Find all paid skill script.js files in the _mixins/_paid directory
       const paidSkillsDir = path.join(
         buildDir,
-        "src/cli/features/profiles/config/_mixins/_paid/skills",
+        "src/cli/features/claude-code/profiles/config/_mixins/_paid/skills",
       );
 
       const scriptPaths: Array<string> = [];
@@ -299,7 +303,7 @@ ${stderr || "(empty)"}`,
       // Find all paid skill script.js files in the _mixins/_paid directory
       const paidSkillsDir = path.join(
         buildDir,
-        "src/cli/features/profiles/config/_mixins/_paid/skills",
+        "src/cli/features/claude-code/profiles/config/_mixins/_paid/skills",
       );
 
       const scriptPaths: Array<string> = [];
@@ -368,6 +372,30 @@ ${stderr || "(empty)"}`,
       expect(stdout).toContain("Bundling Paid Skill Scripts and Hook Scripts");
       expect(stdout).toMatch(/Successfully bundled \d+ script\(s\)/);
     });
+  });
+
+  it("should copy cursor-agent slashcommands config files to build", () => {
+    // This test verifies that the build script copies cursor-agent slash command
+    // markdown files to the build directory. Without this, running
+    // `nori-ai install --agent cursor-agent` fails with ENOENT error when
+    // the loader tries to read from the config directory.
+
+    const pluginDir = process.cwd();
+    const configDir = path.join(
+      pluginDir,
+      "build/src/cli/features/cursor-agent/slashcommands/config",
+    );
+
+    // Check that the config directory exists
+    expect(fs.existsSync(configDir)).toBe(true);
+
+    // Check that at least one .md file exists
+    const files = fs.readdirSync(configDir);
+    const mdFiles = files.filter((f) => f.endsWith(".md"));
+    expect(mdFiles.length).toBeGreaterThan(0);
+
+    // Specifically check for nori-info.md which should always be present
+    expect(mdFiles).toContain("nori-info.md");
   });
 
   // CLI behavior tests - these run after build tests to ensure build artifacts exist

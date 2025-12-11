@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 let mockClaudeDir = "/tmp/test-claude";
 let mockConfigPath = "/tmp/test-config.json";
 
-vi.mock("@/cli/env.js", () => ({
+vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getClaudeDir: () => mockClaudeDir,
   getClaudeSettingsFile: () => path.join(mockClaudeDir, "settings.json"),
   getClaudeHomeDir: () => mockClaudeDir,
@@ -23,7 +23,10 @@ vi.mock("@/cli/env.js", () => ({
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
   getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
-  MCP_ROOT: "/mock/mcp/root",
+}));
+
+vi.mock("@/cli/env.js", () => ({
+  CLI_ROOT: "/mock/cli/root",
 }));
 
 let mockLoadedConfig: any = null;
@@ -81,7 +84,7 @@ vi.mock("@/cli/logger.js", () => ({
   error: vi.fn(),
 }));
 
-vi.mock("@/cli/features/loaderRegistry.js", () => ({
+vi.mock("@/cli/features/claude-code/loaderRegistry.js", () => ({
   LoaderRegistry: {
     getInstance: () => ({
       getAll: () => [],
@@ -398,11 +401,123 @@ describe("uninstall idempotency", () => {
     const config: PromptConfig = {
       installDir: tempDir,
       removeGlobalSettings: true,
+      selectedAgent: "claude-code",
     };
 
     // Verify the field exists on the type
     expect(config.removeGlobalSettings).toBe(true);
     expect(config.installDir).toBe(tempDir);
+    expect(config.selectedAgent).toBe("claude-code");
+  });
+});
+
+describe("uninstall prompt with agent-specific global features", () => {
+  let tempDir: string;
+  let originalHome: string | undefined;
+  let processExitSpy: any;
+
+  beforeEach(async () => {
+    originalHome = process.env.HOME;
+    tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "uninstall-global-features-"),
+    );
+    process.env.HOME = tempDir;
+
+    processExitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+      // Intentionally empty
+    }) as any);
+
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    processExitSpy.mockRestore();
+    if (originalHome !== undefined) {
+      process.env.HOME = originalHome;
+    } else {
+      delete process.env.HOME;
+    }
+    await fs.rm(tempDir, { recursive: true, force: true });
+    vi.clearAllMocks();
+  });
+
+  it("should skip global settings prompt when agent has no global features", async () => {
+    // Create a Nori installation
+    const configPath = path.join(tempDir, ".nori-config.json");
+    await fs.writeFile(configPath, JSON.stringify({}));
+
+    // Mock a hypothetical agent with no global features
+    // We need to mock the AgentRegistry to return an agent with empty getGlobalFeatureNames
+    const { AgentRegistry } = await import("@/cli/features/agentRegistry.js");
+    const mockAgent = {
+      name: "mock-agent",
+      displayName: "Mock Agent",
+      getLoaderRegistry: () => ({
+        getAll: () => [],
+        getAllReversed: () => [],
+      }),
+      listProfiles: async () => [],
+      listSourceProfiles: async () => [],
+      switchProfile: async () => {
+        // Mock implementation - intentionally empty
+      },
+      getGlobalLoaders: () => [], // Empty - no global features
+    };
+
+    const originalGet = AgentRegistry.getInstance().get.bind(
+      AgentRegistry.getInstance(),
+    );
+    vi.spyOn(AgentRegistry.getInstance(), "get").mockImplementation((args) => {
+      if (args.name === "mock-agent") {
+        return mockAgent;
+      }
+      return originalGet(args);
+    });
+
+    // Mock user confirming uninstall (but should NOT be asked about global settings)
+    (promptUser as any).mockResolvedValueOnce("y"); // Confirm uninstall only
+
+    // Run uninstall with mock agent
+    await main({
+      nonInteractive: false,
+      installDir: tempDir,
+      agent: "mock-agent",
+    });
+
+    // Should only be called once (uninstall confirmation), NOT for global settings
+    expect(promptUser).toHaveBeenCalledTimes(1);
+
+    // The prompt should NOT contain "hooks" or "statusline" or "slash commands"
+    const callArgs = (promptUser as any).mock.calls[0][0];
+    expect(callArgs.prompt).not.toMatch(/hooks/i);
+    expect(callArgs.prompt).not.toMatch(/statusline/i);
+    expect(callArgs.prompt).not.toMatch(/slash commands/i);
+  });
+
+  it("should show agent-specific feature names in global settings prompt", async () => {
+    // Create a Nori installation
+    const configPath = path.join(tempDir, ".nori-config.json");
+    await fs.writeFile(configPath, JSON.stringify({}));
+
+    // Mock prompts: confirm uninstall, then confirm global settings removal
+    (promptUser as any).mockResolvedValueOnce("y"); // Confirm uninstall
+    (promptUser as any).mockResolvedValueOnce("y"); // Remove global settings
+
+    // Run uninstall with cursor-agent (which has hooks and slash commands, but no statusline)
+    await main({
+      nonInteractive: false,
+      installDir: tempDir,
+      agent: "cursor-agent",
+    });
+
+    // Should be called twice (uninstall confirmation, global settings)
+    expect(promptUser).toHaveBeenCalledTimes(2);
+
+    // The global settings prompt should mention hooks and slash commands but NOT statusline
+    const globalPromptArgs = (promptUser as any).mock.calls[1][0];
+    expect(globalPromptArgs.prompt).toMatch(/hooks/i);
+    expect(globalPromptArgs.prompt).toMatch(/slash commands/i);
+    expect(globalPromptArgs.prompt).not.toMatch(/statusline/i);
   });
 });
 

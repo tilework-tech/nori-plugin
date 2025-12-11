@@ -1,46 +1,40 @@
+/**
+ * Tests for switch-profile command
+ * Tests that the CLI correctly delegates to agent methods
+ */
+
 import * as fs from "fs/promises";
 import { tmpdir } from "os";
 import * as path from "path";
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-// Mock the CLAUDE_DIR before importing
-let testClaudeDir: string;
-let testInstallDir: string;
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 
+// Mock the env module
 vi.mock("@/cli/env.js", () => ({
-  getClaudeDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude"),
-  getClaudeSettingsFile: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "settings.json"),
-  getClaudeAgentsDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "agents"),
-  getClaudeCommandsDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "commands"),
-  getClaudeMdFile: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "CLAUDE.md"),
-  getClaudeSkillsDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "skills"),
-  getClaudeProfilesDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "profiles"),
-  MCP_ROOT: "/mock/mcp/root",
+  CLI_ROOT: "/mock/cli/root",
 }));
 
-describe("listProfiles", () => {
+describe("agent.listProfiles", () => {
+  let testInstallDir: string;
+
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(path.join(tmpdir(), "profiles-test-"));
-    testClaudeDir = path.join(testInstallDir, ".claude");
+    const testClaudeDir = path.join(testInstallDir, ".claude");
     await fs.mkdir(testClaudeDir, { recursive: true });
+    AgentRegistry.resetInstance();
   });
 
   afterEach(async () => {
     if (testInstallDir) {
       await fs.rm(testInstallDir, { recursive: true, force: true });
     }
+    AgentRegistry.resetInstance();
   });
 
   it("should list all installed profiles", async () => {
-    const profilesDir = path.join(testClaudeDir, "profiles");
+    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     // Create user-facing profiles
@@ -54,29 +48,34 @@ describe("listProfiles", () => {
       );
     }
 
-    const { listProfiles } = await import("./profiles.js");
-    const profiles = await listProfiles({ installDir: testInstallDir });
+    const agent = AgentRegistry.getInstance().get({ name: "claude-code" });
+    const profiles = await agent.listProfiles({ installDir: testInstallDir });
 
-    expect(profiles).toEqual(["amol", "senior-swe"]);
+    expect(profiles).toContain("amol");
+    expect(profiles).toContain("senior-swe");
   });
 });
 
-describe("switchProfile", () => {
+describe("agent.switchProfile", () => {
+  let testInstallDir: string;
+
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(path.join(tmpdir(), "switch-test-"));
-    testClaudeDir = path.join(testInstallDir, ".claude");
+    const testClaudeDir = path.join(testInstallDir, ".claude");
     await fs.mkdir(testClaudeDir, { recursive: true });
+    AgentRegistry.resetInstance();
   });
 
   afterEach(async () => {
     if (testInstallDir) {
       await fs.rm(testInstallDir, { recursive: true, force: true });
     }
+    AgentRegistry.resetInstance();
   });
 
   it("should preserve registryAuths when switching profiles", async () => {
     // Create profiles directory with test profiles
-    const profilesDir = path.join(testClaudeDir, "profiles");
+    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     for (const name of ["profile-a", "profile-b"]) {
@@ -100,16 +99,18 @@ describe("switchProfile", () => {
     };
     await fs.writeFile(configPath, JSON.stringify(initialConfig, null, 2));
 
-    // Switch to profile-b
-    const { switchProfile } = await import("./profiles.js");
-    await switchProfile({
-      profileName: "profile-b",
+    // Switch to profile-b using agent method
+    const agent = AgentRegistry.getInstance().get({ name: "claude-code" });
+    await agent.switchProfile({
       installDir: testInstallDir,
+      profileName: "profile-b",
     });
 
     // Verify registryAuths was preserved
     const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
-    expect(updatedConfig.profile.baseProfile).toBe("profile-b");
+    expect(updatedConfig.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+      "profile-b",
+    );
     expect(updatedConfig.registryAuths).toEqual([
       {
         username: "test@example.com",

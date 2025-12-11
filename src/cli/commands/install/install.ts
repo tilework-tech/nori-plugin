@@ -37,6 +37,7 @@ import {
 } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
 import {
+  buildUninstallCommand,
   getCurrentPackageVersion,
   getInstalledVersion,
   saveInstalledVersion,
@@ -330,12 +331,12 @@ export const interactive = async (args?: {
     });
 
     try {
-      execSync(
-        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentImpl.name}"`,
-        {
-          stdio: "inherit",
-        },
-      );
+      const uninstallCmd = buildUninstallCommand({
+        installDir: normalizedInstallDir,
+        agentName: agentImpl.name,
+        installedVersion: previousVersion,
+      });
+      execSync(uninstallCmd, { stdio: "inherit" });
     } catch (err: any) {
       info({
         message: `Note: Uninstall at v${previousVersion} failed (may not exist). Continuing with installation...`,
@@ -521,12 +522,12 @@ export const noninteractive = async (args?: {
     });
 
     try {
-      execSync(
-        `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}" --agent="${agentImpl.name}"`,
-        {
-          stdio: "inherit",
-        },
-      );
+      const uninstallCmd = buildUninstallCommand({
+        installDir: normalizedInstallDir,
+        agentName: agentImpl.name,
+        installedVersion: previousVersion,
+      });
+      execSync(uninstallCmd, { stdio: "inherit" });
     } catch (err: any) {
       info({
         message: `Note: Uninstall at v${previousVersion} failed (may not exist). Continuing with installation...`,

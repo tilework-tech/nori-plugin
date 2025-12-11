@@ -44,7 +44,7 @@ Commands use shared utilities from the parent @/src/cli/ directory:
 - `config.ts` - Config type and persistence (with per-agent profile support)
 - `logger.ts` - Console output formatting (error, success, info, warn)
 - `prompt.ts` - User input prompting
-- `version.ts` - Version tracking for upgrades
+- `version.ts` - Version tracking for upgrades and CLI flag compatibility checking
 - `analytics.ts` - GA4 event tracking
 
 Commands obtain feature loaders via the AgentRegistry (@/src/cli/features/agentRegistry.ts). The pattern is:

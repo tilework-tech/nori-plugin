@@ -19,9 +19,11 @@ import { hasExistingInstallation } from "@/cli/commands/install/installState.js"
 import { getConfigPath } from "./config.js";
 import { CLI_ROOT } from "./env.js";
 import {
+  buildUninstallCommand,
   getCurrentPackageVersion,
   getInstalledVersion,
   saveInstalledVersion,
+  supportsAgentFlag,
 } from "./version.js";
 
 describe("version", () => {
@@ -296,6 +298,88 @@ describe("version", () => {
         }
         expect(existsAfter).toBe(true);
       }
+    });
+  });
+
+  describe("supportsAgentFlag", () => {
+    it("should return false for versions before 19.0.0", () => {
+      expect(supportsAgentFlag({ version: "18.3.1" })).toBe(false);
+      expect(supportsAgentFlag({ version: "18.2.0" })).toBe(false);
+      expect(supportsAgentFlag({ version: "12.1.0" })).toBe(false);
+      expect(supportsAgentFlag({ version: "1.0.0" })).toBe(false);
+    });
+
+    it("should return true for versions >= 19.0.0", () => {
+      expect(supportsAgentFlag({ version: "19.0.0" })).toBe(true);
+      expect(supportsAgentFlag({ version: "19.0.1" })).toBe(true);
+      expect(supportsAgentFlag({ version: "19.1.0" })).toBe(true);
+      expect(supportsAgentFlag({ version: "20.0.0" })).toBe(true);
+      expect(supportsAgentFlag({ version: "100.0.0" })).toBe(true);
+    });
+
+    it("should return false for prerelease versions of 19.0.0 (semver behavior)", () => {
+      // In semver, 19.0.0-beta.1 < 19.0.0, so prereleases don't support the flag
+      // This is the safe/conservative behavior
+      expect(supportsAgentFlag({ version: "19.0.0-beta.1" })).toBe(false);
+      expect(supportsAgentFlag({ version: "19.0.0-alpha.1" })).toBe(false);
+    });
+
+    it("should return true for prerelease versions of 19.0.1+", () => {
+      // Prereleases of versions > 19.0.0 should work
+      expect(supportsAgentFlag({ version: "19.0.1-beta.1" })).toBe(true);
+      expect(supportsAgentFlag({ version: "19.1.0-alpha.1" })).toBe(true);
+    });
+
+    it("should return false for invalid version strings (fail-safe)", () => {
+      expect(supportsAgentFlag({ version: "invalid" })).toBe(false);
+      expect(supportsAgentFlag({ version: "" })).toBe(false);
+      expect(supportsAgentFlag({ version: "abc.def.ghi" })).toBe(false);
+    });
+  });
+
+  describe("buildUninstallCommand", () => {
+    it("should include --agent flag for versions >= 19.0.0", () => {
+      const cmd = buildUninstallCommand({
+        installDir: "/home/user",
+        agentName: "claude-code",
+        installedVersion: "19.0.0",
+      });
+      expect(cmd).toBe(
+        'nori-ai uninstall --non-interactive --install-dir="/home/user" --agent="claude-code"',
+      );
+    });
+
+    it("should NOT include --agent flag for versions < 19.0.0", () => {
+      const cmd = buildUninstallCommand({
+        installDir: "/home/user",
+        agentName: "claude-code",
+        installedVersion: "18.3.1",
+      });
+      expect(cmd).toBe(
+        'nori-ai uninstall --non-interactive --install-dir="/home/user"',
+      );
+    });
+
+    it("should handle paths with spaces", () => {
+      const cmd = buildUninstallCommand({
+        installDir: "/home/user/my dir",
+        agentName: "claude-code",
+        installedVersion: "19.0.0",
+      });
+      expect(cmd).toBe(
+        'nori-ai uninstall --non-interactive --install-dir="/home/user/my dir" --agent="claude-code"',
+      );
+    });
+
+    it("should NOT include --agent flag for invalid versions (fail-safe)", () => {
+      const cmd = buildUninstallCommand({
+        installDir: "/home/user",
+        agentName: "claude-code",
+        installedVersion: "invalid",
+      });
+      expect(cmd).toBe(
+        'nori-ai uninstall --non-interactive --install-dir="/home/user"',
+      );
     });
   });
 

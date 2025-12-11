@@ -17,8 +17,7 @@
 - *CRITICAL* Add each element of this checklist to your Todo list using `todo_write`. DO NOT BE LAZY.
 - Research how to best solve my question WITHOUT making code changes.
   - Search for relevant rules using `file_search`/`grep_search` in `{{rules_dir}}/`
-  - If you have access to the nori-knowledge-researcher subagent, use it at least once.
-  - You can run many research subagents in parallel.
+  - Use subagents for web research. Read `{{rules_dir}}/using-subagents/RULE.md` for invocation instructions.
 - Read and follow `{{rules_dir}}/writing-plans/RULE.md`
 - Present plan to me and ask for feedback.
   - If I have feedback, modify the plan. Repeat until I approve.
@@ -37,8 +36,7 @@
 - *CRITICAL* Add each element of this checklist to your Todo list using `todo_write`. DO NOT BE LAZY.
 - Research how to best solve my question WITHOUT making code changes.
   - Search for relevant rules using `file_search`/`grep_search` in `{{rules_dir}}/`
-  - If you have access to the nori-knowledge-researcher subagent, use it at least once.
-  - You can run many research subagents in parallel.
+  - Use subagents for web research. Read `{{rules_dir}}/using-subagents/RULE.md` for invocation instructions.
 - Read and follow `{{rules_dir}}/writing-plans/RULE.md`
 - Present plan to me and ask for feedback.
   - If I have feedback, modify the plan. Repeat until I approve.

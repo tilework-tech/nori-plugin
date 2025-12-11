@@ -60,7 +60,7 @@ golangci-lint run --fix
 
 5. Run type checking and fix issues.
 
-6. Do a self-review of your code. You do *NOT* have to follow every suggestion. This is merely a way to get a fresh perspective on the code.
+6. (Optional) Do a self-review of your code changes. Read `{{rules_dir}}/using-subagents/RULE.md` if you want to use a subagent for code review.
 
 7. Confirm that you are not on the main branch. If you are, ask me before proceeding. NEVER push to main without permission.
 

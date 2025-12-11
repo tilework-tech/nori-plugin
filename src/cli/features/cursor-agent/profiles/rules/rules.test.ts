@@ -51,6 +51,71 @@ const parseFrontmatter = (content: string): Record<string, unknown> | null => {
 };
 
 describe("cursor-agent rules content", () => {
+  describe("_base mixin rules", () => {
+    const baseMixinDir = path.join(MIXINS_DIR, "_base", "rules");
+
+    // _base should have using-rules rule (creating-rules is excluded)
+    const expectedBaseRules = ["using-rules"];
+
+    test("_base mixin rules directory exists", async () => {
+      const exists = await fs
+        .access(baseMixinDir)
+        .then(() => true)
+        .catch(() => false);
+      expect(exists).toBe(true);
+    });
+
+    test.each(expectedBaseRules)(
+      "_base mixin has %s rule directory",
+      async (ruleName) => {
+        const ruleDir = path.join(baseMixinDir, ruleName);
+        const exists = await fs
+          .access(ruleDir)
+          .then(() => true)
+          .catch(() => false);
+        expect(exists).toBe(true);
+      },
+    );
+
+    test.each(expectedBaseRules)(
+      "_base/%s has RULE.md file",
+      async (ruleName) => {
+        const rulePath = path.join(baseMixinDir, ruleName, "RULE.md");
+        const exists = await fs
+          .access(rulePath)
+          .then(() => true)
+          .catch(() => false);
+        expect(exists).toBe(true);
+      },
+    );
+
+    test.each(expectedBaseRules)(
+      "_base/%s has valid YAML frontmatter with description",
+      async (ruleName) => {
+        const rulePath = path.join(baseMixinDir, ruleName, "RULE.md");
+        const content = await fs.readFile(rulePath, "utf-8");
+        const frontmatter = parseFrontmatter(content);
+
+        expect(frontmatter).not.toBeNull();
+        expect(frontmatter?.description).toBeDefined();
+        expect(typeof frontmatter?.description).toBe("string");
+        expect((frontmatter?.description as string).length).toBeGreaterThan(0);
+      },
+    );
+
+    test.each(expectedBaseRules)(
+      "_base/%s has alwaysApply: false",
+      async (ruleName) => {
+        const rulePath = path.join(baseMixinDir, ruleName, "RULE.md");
+        const content = await fs.readFile(rulePath, "utf-8");
+        const frontmatter = parseFrontmatter(content);
+
+        expect(frontmatter).not.toBeNull();
+        expect(frontmatter?.alwaysApply).toBe(false);
+      },
+    );
+  });
+
   describe("_swe mixin rules", () => {
     const sweMixinDir = path.join(MIXINS_DIR, "_swe", "rules");
 
@@ -59,7 +124,16 @@ describe("cursor-agent rules content", () => {
       "test-driven-development",
       "finishing-a-development-branch",
       "testing-anti-patterns",
+      "brainstorming",
+      "systematic-debugging",
       "using-git-worktrees",
+      "root-cause-tracing",
+      "handle-large-tasks",
+      "receiving-code-review",
+      "building-ui-ux",
+      "writing-plans",
+      "using-screenshots",
+      "webapp-testing",
     ];
 
     test("_swe mixin rules directory exists", async () => {

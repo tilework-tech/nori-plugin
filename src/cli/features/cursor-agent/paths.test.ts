@@ -9,6 +9,7 @@ import {
   getCursorProfilesDir,
   getCursorRulesDir,
   getCursorAgentsMdFile,
+  getCursorHooksFile,
 } from "@/cli/features/cursor-agent/paths.js";
 
 describe("cursor-agent paths", () => {
@@ -42,6 +43,13 @@ describe("cursor-agent paths", () => {
     test("returns AGENTS.md file path at installDir root", () => {
       const result = getCursorAgentsMdFile({ installDir: "/home/user" });
       expect(result).toBe("/home/user/AGENTS.md");
+    });
+  });
+
+  describe("getCursorHooksFile", () => {
+    test("returns hooks.json file path under .cursor", () => {
+      const result = getCursorHooksFile({ installDir: "/home/user" });
+      expect(result).toBe("/home/user/.cursor/hooks.json");
     });
   });
 });

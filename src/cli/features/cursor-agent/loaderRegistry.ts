@@ -3,6 +3,7 @@
  * Singleton registry that manages all cursor-agent feature loaders
  */
 
+import { hooksLoader } from "@/cli/features/cursor-agent/hooks/loader.js";
 import { profilesLoader } from "@/cli/features/cursor-agent/profiles/loader.js";
 
 import type { Config } from "@/cli/config.js";
@@ -39,6 +40,7 @@ export class CursorLoaderRegistry {
 
     // Register all loaders
     this.loaders.set(profilesLoader.name, profilesLoader);
+    this.loaders.set(hooksLoader.name, hooksLoader);
   }
 
   /**

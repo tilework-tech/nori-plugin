@@ -18,9 +18,11 @@ CLI Commands (install, uninstall, check, switch-profile)
         +-- getLoaderRegistry() --> CursorLoaderRegistry
         |       |
         |       +-- profilesLoader --> CursorProfileLoaderRegistry
-        |               |
-        |               +-- rulesLoader
-        |               +-- agentsMdLoader
+        |       |       |
+        |       |       +-- rulesLoader
+        |       |       +-- agentsMdLoader
+        |       |
+        |       +-- hooksLoader --> configures ~/.cursor/hooks.json
         |
         +-- listProfiles({ installDir }) --> scans ~/.cursor/profiles/
         +-- switchProfile({ installDir, profileName })
@@ -38,7 +40,7 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 
 ### Core Implementation
 
-**CursorLoaderRegistry** (loaderRegistry.ts): Singleton registry managing top-level loaders. Currently registers only `profilesLoader`. Provides `getAll()` and `getAllReversed()` for install/uninstall ordering.
+**CursorLoaderRegistry** (loaderRegistry.ts): Singleton registry managing top-level loaders. Registers `profilesLoader` and `hooksLoader`. Provides `getAll()` and `getAllReversed()` for install/uninstall ordering.
 
 **profilesLoader** (profiles/loader.ts): Orchestrates profile installation with mixin composition:
 1. Reading profile.json metadata to get mixins configuration
@@ -54,6 +56,8 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 
 **agentsMdLoader** (profiles/agentsmd/loader.ts): Manages the `AGENTS.md` file at project root using a managed block pattern (BEGIN/END NORI-AI MANAGED BLOCK). Reads AGENTS.md content from the selected profile and inserts/updates it within the managed block, preserving any user content outside the block.
 
+**hooksLoader** (hooks/loader.ts): Configures Cursor IDE hooks for desktop notifications. Manages `~/.cursor/hooks.json` using Cursor's hooks schema (`{ version: 1, hooks: { stop: [...] } }`). Adds a notify-hook.sh script to the `stop` event, which fires when the Cursor agent loop completes. The loader handles idempotent installation (avoids duplicate hooks), clean uninstallation (removes only Nori hooks), and validation.
+
 ### Things to Know
 
 **Path Helpers (paths.ts):** All Cursor-specific path functions live in @/src/cli/features/cursor-agent/paths.ts:
@@ -64,12 +68,16 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 | `getCursorProfilesDir({ installDir })` | `{installDir}/.cursor/profiles` |
 | `getCursorRulesDir({ installDir })` | `{installDir}/.cursor/rules` |
 | `getCursorAgentsMdFile({ installDir })` | `{installDir}/AGENTS.md` |
+| `getCursorHooksFile({ installDir })` | `{installDir}/.cursor/hooks.json` |
 
 **Key differences from claude-code:**
 - Uses AGENTS.md instead of CLAUDE.md for instructions
 - Uses rules/ directory with RULE.md files instead of skills/ with SKILL.md
 - Target directory is ~/.cursor instead of ~/.claude
-- No hooks, statusline, or slash commands loaders (yet)
+- Cursor hooks use a simpler event model (e.g., `stop`) compared to Claude Code's hooks (e.g., `SessionEnd`)
+- No statusline or slash commands loaders (yet)
+
+**Hooks architecture:** The hooks/ directory contains the hooksLoader and a config/ subdirectory with hook scripts. The notify-hook.sh script is a cross-platform bash script supporting Linux (notify-send), macOS (osascript/terminal-notifier), and Windows (PowerShell). Cursor's hooks.json format is `{ version: 1, hooks: { [event]: [{ command: "..." }] } }`. The loader identifies Nori hooks by checking if the command path contains "notify-hook.sh".
 
 **Mixin composition system**: Profiles specify mixins in profile.json as `{"mixins": {"base": {}, "swe": {}}}`. The loader processes mixins in alphabetical order for deterministic precedence. When multiple mixins provide the same file, last writer wins. When multiple mixins provide the same directory, contents are merged. Conditional mixins are automatically injected based on user tier (see @/src/cli/features/cursor-agent/profiles/loader.ts).
 

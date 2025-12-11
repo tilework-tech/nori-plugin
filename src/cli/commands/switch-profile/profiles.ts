@@ -12,27 +12,20 @@ import { normalizeInstallDir } from "@/utils/path.js";
 import type { Command } from "commander";
 
 /**
- * Determine which agent to use for switch-profile command
+ * Determine which agent to use for switch-profile command when no --agent flag provided
  * @param args - Configuration arguments
- * @param args.explicitAgent - Agent explicitly specified via --agent flag (null if not provided)
  * @param args.installDir - Installation directory
  * @param args.nonInteractive - Whether running in non-interactive mode
  *
- * @throws Error if in non-interactive mode with multiple agents and no explicit agent
+ * @throws Error if in non-interactive mode with multiple agents installed
  *
  * @returns The agent name to use
  */
 const resolveAgent = async (args: {
-  explicitAgent: string | null;
   installDir: string;
   nonInteractive: boolean;
 }): Promise<string> => {
-  const { explicitAgent, installDir, nonInteractive } = args;
-
-  // If agent explicitly specified, use it
-  if (explicitAgent != null) {
-    return explicitAgent;
-  }
+  const { installDir, nonInteractive } = args;
 
   // Load config to check installed agents
   const config = await loadConfig({ installDir });
@@ -101,17 +94,11 @@ export const registerSwitchProfileCommand = (args: {
       });
       const nonInteractive = globalOpts.nonInteractive ?? false;
 
-      // Only use local --agent option for explicit agent selection
+      // Use local --agent option if provided, otherwise auto-detect
       // We don't use globalOpts.agent because it has a default value ("claude-code")
       // which would prevent auto-detection from working
-      const explicitAgent = options.agent ?? null;
-
-      // Resolve which agent to use
-      const agentName = await resolveAgent({
-        explicitAgent,
-        installDir,
-        nonInteractive,
-      });
+      const agentName =
+        options.agent ?? (await resolveAgent({ installDir, nonInteractive }));
 
       const agent = AgentRegistry.getInstance().get({ name: agentName });
 

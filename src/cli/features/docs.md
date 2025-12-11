@@ -4,7 +4,7 @@ Path: @/src/cli/features
 
 ### Overview
 
-Multi-agent abstraction layer that defines the Agent interface and registry for supporting multiple AI agents (Claude Code, Cursor, etc.) through a unified CLI interface. Each agent implementation provides its own LoaderRegistry and profile management methods.
+Multi-agent abstraction layer that defines the Agent interface and registry for supporting multiple AI agents through a unified CLI interface. Currently supports Claude Code and Cursor. Each agent implementation provides its own LoaderRegistry and profile management methods.
 
 ### How it fits into the larger codebase
 
@@ -41,9 +41,9 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 
 ### Things to Know
 
-The AgentRegistry auto-registers all agents in its constructor. Currently only claude-code is registered, but the architecture supports adding new agents by:
-1. Creating a new directory (e.g., `cursor/`) with an agent implementation
-2. Importing and registering it in AgentRegistry's constructor
+The AgentRegistry auto-registers all agents in its constructor. Currently claude-code and cursor-agent are registered. Adding new agents follows this pattern:
+1. Create a new directory (e.g., `new-agent/`) with an agent implementation satisfying the Agent interface
+2. Import and register it in AgentRegistry's constructor
 
 Commands that use loaders should obtain them via the agent rather than importing LoaderRegistry directly. This ensures the correct agent's loaders are used when `--agent` is specified.
 

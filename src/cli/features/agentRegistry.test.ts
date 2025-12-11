@@ -38,11 +38,19 @@ describe("AgentRegistry", () => {
       expect(agent.displayName).toBe("Claude Code");
     });
 
+    test("returns cursor-agent when requested", () => {
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "cursor-agent" });
+
+      expect(agent.name).toBe("cursor-agent");
+      expect(agent.displayName).toBe("Cursor Agent");
+    });
+
     test("throws error with helpful message for unknown agent", () => {
       const registry = AgentRegistry.getInstance();
 
       expect(() => registry.get({ name: "unknown-agent" })).toThrow(
-        /Unknown agent 'unknown-agent'\. Available agents: claude-code/,
+        /Unknown agent 'unknown-agent'\. Available agents:/,
       );
     });
 
@@ -59,7 +67,8 @@ describe("AgentRegistry", () => {
       const agents = registry.list();
 
       expect(agents).toContain("claude-code");
-      expect(agents.length).toBeGreaterThanOrEqual(1);
+      expect(agents).toContain("cursor-agent");
+      expect(agents.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -67,6 +76,20 @@ describe("AgentRegistry", () => {
     test("claude-code agent provides LoaderRegistry", () => {
       const registry = AgentRegistry.getInstance();
       const agent = registry.get({ name: "claude-code" });
+      const loaderRegistry = agent.getLoaderRegistry();
+
+      // Verify it has the expected methods
+      expect(loaderRegistry.getAll).toBeDefined();
+      expect(loaderRegistry.getAllReversed).toBeDefined();
+
+      // Verify it returns loaders
+      const loaders = loaderRegistry.getAll();
+      expect(loaders.length).toBeGreaterThan(0);
+    });
+
+    test("cursor-agent provides LoaderRegistry", () => {
+      const registry = AgentRegistry.getInstance();
+      const agent = registry.get({ name: "cursor-agent" });
       const loaderRegistry = agent.getLoaderRegistry();
 
       // Verify it has the expected methods

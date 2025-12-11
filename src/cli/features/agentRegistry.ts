@@ -4,8 +4,10 @@
  */
 
 import { claudeCodeAgent } from "@/cli/features/claude-code/agent.js";
+import { cursorAgent } from "@/cli/features/cursor-agent/agent.js";
 
 import type { LoaderRegistry } from "@/cli/features/claude-code/loaderRegistry.js";
+import type { CursorLoaderRegistry } from "@/cli/features/cursor-agent/loaderRegistry.js";
 
 /**
  * Agent interface that each agent implementation must satisfy
@@ -16,7 +18,7 @@ export type Agent = {
   /** Human-readable name, e.g., "Claude Code" */
   displayName: string;
   /** Get the LoaderRegistry for this agent */
-  getLoaderRegistry: () => LoaderRegistry;
+  getLoaderRegistry: () => LoaderRegistry | CursorLoaderRegistry;
   /** List available profiles for this agent */
   listProfiles: (args: { installDir: string }) => Promise<Array<string>>;
   /** Switch to a profile (validates and updates config) */
@@ -36,6 +38,7 @@ export class AgentRegistry {
   private constructor() {
     this.agents = new Map();
     this.agents.set(claudeCodeAgent.name, claudeCodeAgent);
+    this.agents.set(cursorAgent.name, cursorAgent);
   }
 
   /**

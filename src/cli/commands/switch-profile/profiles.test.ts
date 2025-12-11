@@ -13,21 +13,7 @@ import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 
 // Mock the env module
 vi.mock("@/cli/env.js", () => ({
-  getClaudeDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude"),
-  getClaudeSettingsFile: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "settings.json"),
-  getClaudeAgentsDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "agents"),
-  getClaudeCommandsDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "commands"),
-  getClaudeMdFile: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "CLAUDE.md"),
-  getClaudeSkillsDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "skills"),
-  getClaudeProfilesDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".claude", "profiles"),
-  MCP_ROOT: "/mock/mcp/root",
+  CLI_ROOT: "/mock/cli/root",
 }));
 
 describe("agent.listProfiles", () => {

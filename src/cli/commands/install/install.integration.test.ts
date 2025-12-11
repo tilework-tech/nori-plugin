@@ -77,11 +77,11 @@ vi.mock("@/cli/features/claude-code/paths.js", () => {
   };
 });
 
-// Mock env module for MCP_ROOT
+// Mock env module for CLI_ROOT
 vi.mock("@/cli/env.js", () => {
-  const testRoot = "/tmp/install-integration-test-mcp-root";
+  const testRoot = "/tmp/install-integration-test-cli-root";
   return {
-    MCP_ROOT: testRoot,
+    CLI_ROOT: testRoot,
   };
 });
 
@@ -97,7 +97,7 @@ describe("install integration test", () => {
   let VERSION_FILE_PATH: string;
   let MARKER_FILE_PATH: string;
 
-  const TEST_MCP_ROOT = "/tmp/install-integration-test-mcp-root";
+  const TEST_CLI_ROOT = "/tmp/install-integration-test-cli-root";
   const TEST_CLAUDE_DIR = "/tmp/install-integration-test-claude";
 
   beforeEach(async () => {
@@ -127,8 +127,8 @@ describe("install integration test", () => {
     } catch {}
 
     // Create test directories
-    if (!fs.existsSync(TEST_MCP_ROOT)) {
-      fs.mkdirSync(TEST_MCP_ROOT, { recursive: true });
+    if (!fs.existsSync(TEST_CLI_ROOT)) {
+      fs.mkdirSync(TEST_CLI_ROOT, { recursive: true });
     }
     if (!fs.existsSync(TEST_CLAUDE_DIR)) {
       fs.mkdirSync(TEST_CLAUDE_DIR, { recursive: true });
@@ -136,7 +136,7 @@ describe("install integration test", () => {
 
     // Create mock package.json for getCurrentPackageVersion
     fs.writeFileSync(
-      path.join(TEST_MCP_ROOT, "package.json"),
+      path.join(TEST_CLI_ROOT, "package.json"),
       JSON.stringify({
         name: "nori-ai",
         version: "13.0.0",
@@ -155,7 +155,7 @@ describe("install integration test", () => {
 
     // Clean up test directories
     try {
-      fs.rmSync(TEST_MCP_ROOT, { recursive: true, force: true });
+      fs.rmSync(TEST_CLI_ROOT, { recursive: true, force: true });
     } catch {}
     try {
       fs.rmSync(TEST_CLAUDE_DIR, { recursive: true, force: true });

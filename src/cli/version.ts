@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 
-import { MCP_ROOT } from "@/cli/env.js";
+import { CLI_ROOT } from "@/cli/env.js";
 
 const DEFAULT_VERSION = "12.1.0";
 
@@ -32,7 +32,7 @@ export const getVersionFilePath = (args: { installDir: string }): string => {
  */
 export const getCurrentPackageVersion = (): string | null => {
   try {
-    const packageJsonPath = join(MCP_ROOT, "package.json");
+    const packageJsonPath = join(CLI_ROOT, "package.json");
     const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     // Verify it's the nori-ai package
     if (pkg.name === "nori-ai") {

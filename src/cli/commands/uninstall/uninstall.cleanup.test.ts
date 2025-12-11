@@ -26,7 +26,7 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
 }));
 
 vi.mock("@/cli/env.js", () => ({
-  MCP_ROOT: "/mock/mcp/root",
+  CLI_ROOT: "/mock/cli/root",
 }));
 
 let mockLoadedConfig: any = null;

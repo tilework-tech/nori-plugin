@@ -7,7 +7,7 @@ import { writeFileSync, unlinkSync, existsSync, mkdirSync } from "fs";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 
-import { MCP_ROOT } from "@/cli/env.js";
+import { CLI_ROOT } from "@/cli/env.js";
 import { info, success } from "@/cli/logger.js";
 
 import type { Config } from "@/cli/config.js";
@@ -19,7 +19,7 @@ import type { Loader } from "@/cli/features/claude-code/loaderRegistry.js";
  */
 const getCurrentPackageVersion = (): string | null => {
   try {
-    const packageJsonPath = join(MCP_ROOT, "package.json");
+    const packageJsonPath = join(CLI_ROOT, "package.json");
     const pkg = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
     // Verify it's the nori-ai package
     if (pkg.name === "nori-ai") {

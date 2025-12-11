@@ -26,7 +26,7 @@ The `--agent` option enables support for multiple AI agents. Commands use the Ag
 src/cli/
   cli.ts                 # Main entry point, command registration
   config.ts              # Config type and persistence (supports per-agent profiles)
-  env.ts                 # MCP_ROOT constant + re-exports for backward compatibility
+  env.ts                 # CLI_ROOT constant (package root directory)
   logger.ts              # Console output formatting
   prompt.ts              # User input prompting
   version.ts             # Version tracking for upgrades

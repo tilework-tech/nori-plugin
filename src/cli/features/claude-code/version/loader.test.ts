@@ -10,13 +10,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock env module before importing
 vi.mock("@/cli/env.js", () => {
-  const testRoot = "/tmp/version-loader-test-mcp-root";
+  const testRoot = "/tmp/version-loader-test-cli-root";
   return {
-    MCP_ROOT: testRoot,
+    CLI_ROOT: testRoot,
   };
 });
 
-import { MCP_ROOT } from "@/cli/env.js";
+import { CLI_ROOT } from "@/cli/env.js";
 import { getVersionFilePath } from "@/cli/version.js";
 
 import type { Config } from "@/cli/config.js";
@@ -25,14 +25,14 @@ import { versionLoader } from "./loader.js";
 
 describe("versionLoader", () => {
   let tempDir: string;
-  const testPackageJsonPath = path.join(MCP_ROOT, "package.json");
+  const testPackageJsonPath = path.join(CLI_ROOT, "package.json");
 
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "version-loader-test-"));
 
-    // Ensure MCP_ROOT exists and create test package.json
-    if (!fs.existsSync(MCP_ROOT)) {
-      fs.mkdirSync(MCP_ROOT, { recursive: true });
+    // Ensure CLI_ROOT exists and create test package.json
+    if (!fs.existsSync(CLI_ROOT)) {
+      fs.mkdirSync(CLI_ROOT, { recursive: true });
     }
 
     const testPackage = {

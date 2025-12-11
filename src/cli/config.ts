@@ -20,6 +20,13 @@ export type RegistryAuth = {
 };
 
 /**
+ * Agent-specific configuration
+ */
+export type AgentConfig = {
+  profile?: { baseProfile: string } | null;
+};
+
+/**
  * Unified configuration type for Nori Profiles
  * Contains all persisted fields from disk plus required installDir
  */
@@ -29,6 +36,7 @@ export type Config = {
     password: string;
     organizationUrl: string;
   } | null;
+  /** @deprecated Use agents.claude-code.profile instead */
   profile?: {
     baseProfile: string;
   } | null;
@@ -36,6 +44,8 @@ export type Config = {
   autoupdate?: "enabled" | "disabled" | null;
   installDir: string;
   registryAuths?: Array<RegistryAuth> | null;
+  /** Per-agent configuration settings */
+  agents?: Record<string, AgentConfig> | null;
 };
 
 /**
@@ -94,6 +104,37 @@ export const getRegistryAuth = (args: {
         normalizeUrl({ baseUrl: auth.registryUrl }) === normalizedSearchUrl,
     ) ?? null
   );
+};
+
+/**
+ * Get the profile for a specific agent
+ * @param args - Configuration arguments
+ * @param args.config - The config to search
+ * @param args.agentName - The agent name to get profile for
+ *
+ * @returns The agent's profile or null if not found
+ */
+export const getAgentProfile = (args: {
+  config: Config;
+  agentName: string;
+}): { baseProfile: string } | null => {
+  const { config, agentName } = args;
+
+  // First check the agents field (new format)
+  if (config.agents != null) {
+    const agentConfig = config.agents[agentName];
+    if (agentConfig?.profile != null) {
+      return agentConfig.profile;
+    }
+    return null;
+  }
+
+  // Fallback to legacy profile field for claude-code only
+  if (agentName === "claude-code" && config.profile != null) {
+    return config.profile;
+  }
+
+  return null;
 };
 
 /**
@@ -186,10 +227,23 @@ export const loadConfig = async (args: {
         }
       }
 
-      // Return result if we have at least auth, profile, or sendSessionTranscript
+      // Check if agents field exists (new multi-agent config format)
+      if (config.agents && typeof config.agents === "object") {
+        result.agents = config.agents;
+      } else if (result.profile != null) {
+        // Backwards compatibility: if only legacy profile exists, mirror it to agents.claude-code
+        result.agents = {
+          "claude-code": {
+            profile: result.profile,
+          },
+        };
+      }
+
+      // Return result if we have at least auth, profile, agents, or sendSessionTranscript
       if (
         result.auth != null ||
         result.profile != null ||
+        result.agents != null ||
         result.sendSessionTranscript != null
       ) {
         return result;
@@ -208,11 +262,12 @@ export const loadConfig = async (args: {
  * @param args.username - User's username (null to skip auth)
  * @param args.password - User's password (null to skip auth)
  * @param args.organizationUrl - Organization URL (null to skip auth)
- * @param args.profile - Profile selection (null to skip profile)
+ * @param args.profile - Profile selection (null to skip profile) - deprecated, use agents instead
  * @param args.sendSessionTranscript - Session transcript setting (null to skip)
  * @param args.autoupdate - Autoupdate setting (null to skip)
  * @param args.installDir - Installation directory
  * @param args.registryAuths - Array of registry authentication credentials (null to skip)
+ * @param args.agents - Per-agent configuration settings (null to skip)
  */
 export const saveConfig = async (args: {
   username: string | null;
@@ -222,6 +277,7 @@ export const saveConfig = async (args: {
   sendSessionTranscript?: "enabled" | "disabled" | null;
   autoupdate?: "enabled" | "disabled" | null;
   registryAuths?: Array<RegistryAuth> | null;
+  agents?: Record<string, AgentConfig> | null;
   installDir: string;
 }): Promise<void> => {
   const {
@@ -232,6 +288,7 @@ export const saveConfig = async (args: {
     sendSessionTranscript,
     autoupdate,
     registryAuths,
+    agents,
     installDir,
   } = args;
   const configPath = getConfigPath({ installDir });
@@ -248,8 +305,17 @@ export const saveConfig = async (args: {
     config.organizationUrl = normalizedUrl;
   }
 
-  // Add profile if provided
-  if (profile != null) {
+  // Add agents if provided (new multi-agent format)
+  if (agents != null) {
+    config.agents = agents;
+
+    // For backwards compatibility, also write legacy profile field if claude-code has a profile
+    const claudeCodeProfile = agents["claude-code"]?.profile;
+    if (claudeCodeProfile != null) {
+      config.profile = claudeCodeProfile;
+    }
+  } else if (profile != null) {
+    // Legacy: Add profile if provided (when agents is not used)
     config.profile = profile;
   }
 
@@ -315,6 +381,20 @@ const configSchema = {
           registryUrl: { type: "string" },
         },
         required: ["username", "password", "registryUrl"],
+      },
+    },
+    agents: {
+      type: "object",
+      additionalProperties: {
+        type: "object",
+        properties: {
+          profile: {
+            type: "object",
+            properties: {
+              baseProfile: { type: "string" },
+            },
+          },
+        },
       },
     },
   },

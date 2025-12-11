@@ -33,11 +33,13 @@ program
     (value) => normalizeInstallDir({ installDir: value }),
   )
   .option("-n, --non-interactive", "Run without interactive prompts")
+  .option("-a, --agent <name>", "AI agent to use (claude-code)", "claude-code")
   .addHelpText(
     "after",
     `
 Examples:
   $ nori-ai install --install-dir ~/my-dir
+  $ nori-ai install --agent claude-code
   $ nori-ai uninstall
   $ nori-ai check
   $ nori-ai install-location

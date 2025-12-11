@@ -4,11 +4,20 @@ Path: @/src/cli/features/claude-code
 
 ### Overview
 
-Claude Code-specific feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements.
+Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: version, config, profiles, hooks, statusline, global slashcommands, and announcements.
 
 ### How it fits into the larger codebase
 
-This `claude-code/` subdirectory under `@/src/cli/features/` contains all Claude Code-specific feature implementations. The parent `@/src/cli/features/` directory is designed to support multiple agentic tools in the future (e.g., Cursor IDE), with each tool having its own subdirectory. All existing features are specific to Claude Code (the Anthropic CLI tool), hence the placement under `claude-code/`.
+This `claude-code/` subdirectory implements the Agent interface defined in @/src/cli/features/agentRegistry.ts. The `claudeCodeAgent` object in agent.ts provides:
+- `name`: "claude-code"
+- `displayName`: "Claude Code"
+- `getLoaderRegistry()`: Returns the LoaderRegistry singleton with all Claude Code loaders
+- `listProfiles({ installDir })`: Scans `.claude/profiles/` for directories containing `CLAUDE.md`
+- `switchProfile({ installDir, profileName })`: Validates profile exists, updates config, logs success message
+
+The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent and provides lookup by name. CLI commands use `AgentRegistry.getInstance().get({ name: "claude-code" })` to obtain the agent implementation and access its loaders.
+
+This architecture enables future support for additional AI agents (e.g., Cursor IDE) by creating new agent implementations in sibling directories that satisfy the same Agent interface.
 
 The LoaderRegistry (@/src/cli/features/claude-code/loaderRegistry.ts) manages all feature loaders and executes them sequentially during installation by @/src/cli/commands/install/install.ts. Loaders execute in order: version, config, profiles, hooks, statusline, slashcommands, announcements. During uninstall, the order is reversed.
 

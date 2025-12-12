@@ -407,58 +407,6 @@ export const saveConfig = async (args: {
 };
 
 /**
- * Update config by merging with existing values
- * This is the preferred way to update config as it automatically preserves existing fields.
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- * @param args.updates - Partial config with only the fields to update
- */
-export const updateConfig = async (args: {
-  installDir: string;
-  updates: Partial<Omit<Config, "installDir">>;
-}): Promise<void> => {
-  const { installDir, updates } = args;
-
-  // Load existing config
-  const existingConfig = await loadConfig({ installDir });
-
-  // Determine the agents field to use
-  // If updates.profile is provided but updates.agents is not, don't use existing agents
-  // because loadConfig auto-generates agents from profile for backwards compatibility
-  // and we want the new profile to take precedence
-  const agentsToUse =
-    updates.agents != null
-      ? updates.agents
-      : updates.profile != null
-        ? null
-        : (existingConfig?.agents ?? null);
-
-  // Merge updates with existing config
-  await saveConfig({
-    username: updates.auth?.username ?? existingConfig?.auth?.username ?? null,
-    password: updates.auth?.password ?? existingConfig?.auth?.password ?? null,
-    refreshToken:
-      updates.auth?.refreshToken ?? existingConfig?.auth?.refreshToken ?? null,
-    organizationUrl:
-      updates.auth?.organizationUrl ??
-      existingConfig?.auth?.organizationUrl ??
-      null,
-    profile: updates.profile ?? existingConfig?.profile ?? null,
-    agents: agentsToUse,
-    sendSessionTranscript:
-      updates.sendSessionTranscript ??
-      existingConfig?.sendSessionTranscript ??
-      null,
-    autoupdate: updates.autoupdate ?? existingConfig?.autoupdate ?? null,
-    registryAuths:
-      updates.registryAuths ?? existingConfig?.registryAuths ?? null,
-    installedAgents:
-      updates.installedAgents ?? existingConfig?.installedAgents ?? null,
-    installDir,
-  });
-};
-
-/**
  * Validation result type
  */
 export type ConfigValidationResult = {

@@ -89,13 +89,6 @@ The logger.ts module provides console output formatting with ANSI color codes. S
 
 The config.ts module provides a unified `Config` type for both disk persistence and runtime use. The `Config` type contains: auth credentials via `AuthCredentials` type (username, organizationUrl, refreshToken, password), profile selection (profile.baseProfile - deprecated), agents (per-agent configuration), user preferences (sendSessionTranscript, autoupdate), registry authentication (registryAuths array), installedAgents (list of AI agents installed at this installDir), and the required installDir field.
 
-**Config Update Functions:** The module provides three functions for config persistence:
-- `saveConfig({ ... })`: Low-level function that writes all fields explicitly. Requires all fields to be passed.
-- `updateConfig({ installDir, updates })`: Higher-level function that loads existing config, merges updates, and saves. Use this when you only need to change specific fields - it automatically preserves other fields.
-- `loadConfig({ installDir })`: Reads config from disk with validation and backwards compatibility handling.
-
-The `updateConfig` function handles a special case: when `updates.profile` is provided but `updates.agents` is not, it does NOT use the existing `agents` field. This is because `loadConfig()` auto-generates `agents` from `profile` for backwards compatibility - using auto-generated agents would cause the new profile to be overwritten by the old one.
-
 **AuthCredentials Type:** Supports both token-based and legacy password-based authentication:
 - `username` and `organizationUrl` - required for all paid installs
 - `refreshToken` - preferred, secure token-based auth (Firebase refresh token)

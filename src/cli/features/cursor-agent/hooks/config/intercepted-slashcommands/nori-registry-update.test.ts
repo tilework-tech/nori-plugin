@@ -98,9 +98,7 @@ describe("nori-registry-update", () => {
     return {
       prompt,
       cwd: cwd ?? testDir,
-      
-      
-      
+
       hook_event_name: "beforeSubmitPrompt",
     };
   };

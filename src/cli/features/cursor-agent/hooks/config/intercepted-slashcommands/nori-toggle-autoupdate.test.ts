@@ -60,9 +60,7 @@ describe("nori-toggle-autoupdate", () => {
     return {
       prompt,
       cwd: cwd ?? testDir,
-      
-      
-      
+
       hook_event_name: "beforeSubmitPrompt",
     };
   };

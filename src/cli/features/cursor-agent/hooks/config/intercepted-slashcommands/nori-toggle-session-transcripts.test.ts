@@ -60,9 +60,7 @@ describe("nori-toggle-session-transcripts", () => {
     return {
       prompt,
       cwd: cwd ?? testDir,
-      
-      
-      
+
       hook_event_name: "beforeSubmitPrompt",
     };
   };

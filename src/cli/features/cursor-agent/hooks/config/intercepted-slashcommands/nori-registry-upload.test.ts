@@ -80,9 +80,7 @@ describe("nori-registry-upload", () => {
     return {
       prompt,
       cwd: cwd ?? testDir,
-      
-      
-      
+
       hook_event_name: "beforeSubmitPrompt",
     };
   };

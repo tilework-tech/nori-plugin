@@ -98,9 +98,7 @@ describe("nori-registry-download", () => {
     return {
       prompt,
       cwd: cwd ?? testDir,
-      
-      
-      
+
       hook_event_name: "beforeSubmitPrompt",
     };
   };

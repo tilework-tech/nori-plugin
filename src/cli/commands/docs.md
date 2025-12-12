@@ -27,6 +27,8 @@ Each agent declares its own global features (e.g., claude-code has hooks, status
 
 The install command sets `installedAgents: [agentName]` in the config, which the config loader merges with any existing agents. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
 
+**Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. If exactly one agent is in `installedAgents`, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
+
 ```
 cli.ts
   |

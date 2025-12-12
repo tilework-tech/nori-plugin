@@ -33,7 +33,10 @@ program
     (value) => normalizeInstallDir({ installDir: value }),
   )
   .option("-n, --non-interactive", "Run without interactive prompts")
-  .option("-a, --agent <name>", "AI agent to use (claude-code)", "claude-code")
+  .option(
+    "-a, --agent <name>",
+    "AI agent to use (auto-detected from config, or claude-code)",
+  )
   .addHelpText(
     "after",
     `

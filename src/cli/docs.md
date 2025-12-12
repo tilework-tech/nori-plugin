@@ -16,9 +16,9 @@ CLI for Nori Profiles that prompts for configuration, installs features into Cla
 |--------|-------------|
 | `-d, --install-dir <path>` | Custom installation directory (default: current working directory) |
 | `-n, --non-interactive` | Run without interactive prompts |
-| `-a, --agent <name>` | AI agent to use (default: "claude-code") |
+| `-a, --agent <name>` | AI agent to use (auto-detected from config, or defaults to claude-code) |
 
-The `--agent` option enables support for multiple AI agents. Commands use the AgentRegistry (@/src/cli/features/agentRegistry.ts) to look up the agent implementation and obtain agent-specific loaders and environment paths.
+The `--agent` option enables support for multiple AI agents. Commands use the AgentRegistry (@/src/cli/features/agentRegistry.ts) to look up the agent implementation and obtain agent-specific loaders and environment paths. When `--agent` is not provided, commands may auto-detect the agent from the existing config's `installedAgents` field.
 
 **CLI Directory Structure:**
 

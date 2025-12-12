@@ -198,30 +198,23 @@ export const generatePromptConfig = async (args: {
   }
 
   if (existingConfig?.auth) {
-    info({ message: "Found existing Nori configuration:" });
+    info({ message: "Found paid mode configuration:" });
     info({ message: `  Username: ${existingConfig.auth.username}` });
     info({
       message: `  Organization URL: ${existingConfig.auth.organizationUrl}`,
     });
     console.log();
-  } else {
-    info({
-      message:
-        "No existing configuration found. Will uninstall free mode features.",
-    });
-    console.log();
   }
 
+  // Get the agent's loaders to show what will be removed
+  const agentImpl = AgentRegistry.getInstance().get({ name: selectedAgent });
+  const registry = agentImpl.getLoaderRegistry();
+  const loaders = registry.getAll();
+
   info({ message: "The following will be removed:" });
-  if (existingConfig?.auth) {
-    info({ message: "  - nori-knowledge-researcher subagent" });
-    info({ message: "  - Automatic memorization hooks" });
+  for (const loader of loaders) {
+    info({ message: `  - ${loader.description}` });
   }
-  info({ message: "  - Desktop notification hook" });
-  info({ message: "  - Skills and profiles" });
-  info({ message: "  - Slash commands" });
-  info({ message: "  - CLAUDE.md (with confirmation)" });
-  info({ message: "  - Nori configuration file" });
   console.log();
 
   const proceed = await promptUser({
@@ -235,8 +228,7 @@ export const generatePromptConfig = async (args: {
 
   console.log();
 
-  // Get the agent's global loaders
-  const agentImpl = AgentRegistry.getInstance().get({ name: selectedAgent });
+  // Get the agent's global loaders (reusing agentImpl from above)
   const globalLoaders = agentImpl.getGlobalLoaders();
 
   // If agent has no global features, skip the prompt
@@ -500,7 +492,20 @@ export const noninteractive = async (args?: {
   agent?: string | null;
 }): Promise<void> => {
   const installDir = normalizeInstallDir({ installDir: args?.installDir });
-  const agentName = args?.agent ?? "claude-code";
+
+  // Detect agent from config if not explicitly specified
+  let agentName = args?.agent ?? null;
+  if (agentName == null) {
+    const existingConfig = await loadConfig({ installDir });
+    const installedAgents = existingConfig?.installedAgents ?? [];
+    if (installedAgents.length === 1) {
+      // Single agent installed - use it
+      agentName = installedAgents[0];
+    } else {
+      // No agents or multiple agents - default to claude-code
+      agentName = "claude-code";
+    }
+  }
 
   // Show directory being uninstalled from
   info({ message: `Uninstalling from: ${installDir}` });

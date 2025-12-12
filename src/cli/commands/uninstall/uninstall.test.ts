@@ -99,7 +99,12 @@ vi.mock("@/cli/features/claude-code/loaderRegistry.js", () => ({
 
 // Import after mocking
 
-import { runUninstall, main, type PromptConfig } from "./uninstall.js";
+import {
+  runUninstall,
+  main,
+  noninteractive,
+  type PromptConfig,
+} from "./uninstall.js";
 
 vi.mock("@/cli/prompt.js", () => ({
   promptUser: vi.fn(),
@@ -713,5 +718,104 @@ describe("uninstall with ancestor directory detection", () => {
 
     // Verify only one prompt (cancelled after invalid selection)
     expect(promptUser).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("uninstall agent detection from config", () => {
+  let tempDir: string;
+  let originalHome: string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let agentRegistryGetSpy: any;
+
+  beforeEach(async () => {
+    originalHome = process.env.HOME;
+    tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "uninstall-agent-detection-"),
+    );
+    process.env.HOME = tempDir;
+
+    // Set mock paths
+    mockClaudeDir = path.join(tempDir, ".claude");
+    mockConfigPath = path.join(tempDir, ".nori-config.json");
+
+    // Spy on AgentRegistry to see which agent is being used
+    const { AgentRegistry } = await import("@/cli/features/agentRegistry.js");
+    agentRegistryGetSpy = vi.spyOn(AgentRegistry.getInstance(), "get");
+
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    if (originalHome !== undefined) {
+      process.env.HOME = originalHome;
+    } else {
+      delete process.env.HOME;
+    }
+    await fs.rm(tempDir, { recursive: true, force: true });
+    agentRegistryGetSpy?.mockRestore();
+    vi.clearAllMocks();
+  });
+
+  it("should detect cursor-agent from config in non-interactive mode", async () => {
+    // Create config with cursor-agent installed
+    mockLoadedConfig = {
+      installedAgents: ["cursor-agent"],
+      installDir: tempDir,
+    };
+    await fs.writeFile(
+      mockConfigPath,
+      JSON.stringify({ installedAgents: ["cursor-agent"] }),
+    );
+
+    // Run non-interactive uninstall WITHOUT --agent flag
+    await noninteractive({ installDir: tempDir });
+
+    // Verify that cursor-agent was used (not claude-code)
+    // The AgentRegistry.get() should have been called with cursor-agent
+    expect(agentRegistryGetSpy).toHaveBeenCalledWith({ name: "cursor-agent" });
+  });
+
+  it("should default to claude-code when no installedAgents in config", async () => {
+    // Create config without installedAgents
+    mockLoadedConfig = {
+      installDir: tempDir,
+    };
+    await fs.writeFile(mockConfigPath, JSON.stringify({}));
+
+    // Run non-interactive uninstall WITHOUT --agent flag
+    await noninteractive({ installDir: tempDir });
+
+    // Should use claude-code by default
+    expect(agentRegistryGetSpy).toHaveBeenCalledWith({ name: "claude-code" });
+  });
+
+  it("should default to claude-code when config doesn't exist", async () => {
+    // No config file
+    mockLoadedConfig = null;
+
+    // Run non-interactive uninstall WITHOUT --agent flag
+    await noninteractive({ installDir: tempDir });
+
+    // Should use claude-code by default
+    expect(agentRegistryGetSpy).toHaveBeenCalledWith({ name: "claude-code" });
+  });
+
+  it("should default to claude-code when multiple agents are installed", async () => {
+    // Create config with multiple agents installed
+    mockLoadedConfig = {
+      installedAgents: ["claude-code", "cursor-agent"],
+      installDir: tempDir,
+    };
+    await fs.writeFile(
+      mockConfigPath,
+      JSON.stringify({ installedAgents: ["claude-code", "cursor-agent"] }),
+    );
+
+    // Run non-interactive uninstall WITHOUT --agent flag
+    await noninteractive({ installDir: tempDir });
+
+    // Should default to claude-code when there are multiple agents
+    // (can't auto-detect which one to uninstall)
+    expect(agentRegistryGetSpy).toHaveBeenCalledWith({ name: "claude-code" });
   });
 });

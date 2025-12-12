@@ -200,7 +200,7 @@ const validate = async (args: {
  */
 export const globalSlashCommandsLoader: Loader = {
   name: "slashcommands",
-  description: "Register profile-agnostic Nori slash commands with Claude Code",
+  description: "Global Nori slash commands",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await registerSlashCommands({ config });

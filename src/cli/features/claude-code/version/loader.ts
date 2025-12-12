@@ -85,7 +85,7 @@ const uninstallVersion = async (args: { config: Config }): Promise<void> => {
  */
 export const versionLoader: Loader = {
   name: "version",
-  description: "Manage .nori-installed-version file",
+  description: "Version file (.nori-installed-version)",
   run: installVersion,
   uninstall: uninstallVersion,
 };

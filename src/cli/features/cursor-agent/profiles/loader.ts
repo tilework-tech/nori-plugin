@@ -325,7 +325,7 @@ const validate = async (args: {
  */
 export const profilesLoader: Loader = {
   name: "profiles",
-  description: "Install Cursor profile templates to ~/.cursor/profiles/",
+  description: "Profile templates in ~/.cursor/profiles/",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installProfiles({ config });

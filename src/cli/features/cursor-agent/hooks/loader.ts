@@ -523,8 +523,7 @@ const validate = async (args: {
  */
 export const hooksLoader: Loader = {
   name: "hooks",
-  description:
-    "Configure Cursor hooks for notifications, slash commands, and startup warnings",
+  description: "Cursor hooks (notifications, slash commands, etc.)",
   run: async (args: { config: Config }) => {
     await configureHooks(args);
   },

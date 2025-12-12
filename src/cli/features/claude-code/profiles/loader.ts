@@ -579,7 +579,7 @@ const validate = async (args: {
  */
 export const profilesLoader: Loader = {
   name: "profiles",
-  description: "Install Nori profile templates to ~/.claude/profiles/",
+  description: "Profile templates in ~/.claude/profiles/",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await installProfiles({ config });

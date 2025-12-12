@@ -695,7 +695,7 @@ const validate = async (args: {
  */
 export const hooksLoader: Loader = {
   name: "hooks",
-  description: "Configure Claude Code hooks for memorization and notifications",
+  description: "Claude Code hooks (memorization, notifications, etc.)",
   run: async (args: { config: Config }) => {
     const { config } = args;
 

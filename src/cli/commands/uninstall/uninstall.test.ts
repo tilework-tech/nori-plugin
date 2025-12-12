@@ -721,6 +721,72 @@ describe("uninstall with ancestor directory detection", () => {
   });
 });
 
+describe("loader descriptions for uninstall display", () => {
+  // These tests verify that loader descriptions are noun phrases that read naturally
+  // in the uninstall prompt: "The following will be removed: - [description]"
+  // Descriptions should NOT start with action verbs like "Configure", "Install", "Manage"
+
+  const actionVerbPrefixes = [
+    "Configure",
+    "Install",
+    "Manage",
+    "Register",
+    "Set up",
+    "Setup",
+    "Create",
+    "Add",
+    "Enable",
+    "Update",
+  ];
+
+  it("should have claude-code loader descriptions that are noun phrases (not action verbs)", async () => {
+    // Import the real LoaderRegistry using importActual to bypass the mock
+    const { LoaderRegistry } = (await vi.importActual(
+      "@/cli/features/claude-code/loaderRegistry.js",
+    )) as any;
+
+    // Reset singleton to ensure we get fresh instance with real loaders
+    LoaderRegistry.instance = null;
+    const registry = LoaderRegistry.getInstance();
+    const loaders = registry.getAll();
+
+    // Check each loader's description
+    for (const loader of loaders) {
+      for (const verb of actionVerbPrefixes) {
+        expect(
+          loader.description.startsWith(verb),
+          `Loader "${loader.name}" description "${loader.description}" starts with action verb "${verb}". ` +
+            `Descriptions should be noun phrases that read naturally after "The following will be removed:". ` +
+            `Example: "Profile templates in ~/.claude/profiles/" instead of "Install Nori profile templates..."`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("should have cursor-agent loader descriptions that are noun phrases (not action verbs)", async () => {
+    // Import the real CursorLoaderRegistry (not mocked) to get actual descriptions
+    const { CursorLoaderRegistry } =
+      await import("@/cli/features/cursor-agent/loaderRegistry.js");
+
+    // Reset singleton to ensure we get fresh instance with real loaders
+    (CursorLoaderRegistry as any).instance = null;
+    const registry = CursorLoaderRegistry.getInstance();
+    const loaders = registry.getAll();
+
+    // Check each loader's description
+    for (const loader of loaders) {
+      for (const verb of actionVerbPrefixes) {
+        expect(
+          loader.description.startsWith(verb),
+          `Loader "${loader.name}" description "${loader.description}" starts with action verb "${verb}". ` +
+            `Descriptions should be noun phrases that read naturally after "The following will be removed:". ` +
+            `Example: "Profile templates in ~/.cursor/profiles/" instead of "Install Cursor profile templates..."`,
+        ).toBe(false);
+      }
+    }
+  });
+});
+
 describe("uninstall agent detection from config", () => {
   let tempDir: string;
   let originalHome: string | undefined;

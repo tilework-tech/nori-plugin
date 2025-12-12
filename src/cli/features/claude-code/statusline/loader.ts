@@ -129,7 +129,7 @@ const removeStatusLine = async (args: { config: Config }): Promise<void> => {
  */
 export const statuslineLoader: Loader = {
   name: "statusline",
-  description: "Configure Claude Code status line with git, cost, and tokens",
+  description: "Claude Code status line configuration",
   run: async (args: { config: Config }) => {
     await configureStatusLine(args);
   },

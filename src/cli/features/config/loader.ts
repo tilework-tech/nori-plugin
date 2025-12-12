@@ -191,7 +191,7 @@ const uninstallConfig = async (args: { config: Config }): Promise<void> => {
  */
 export const configLoader: Loader = {
   name: "config",
-  description: "Manage .nori-config.json file",
+  description: "Configuration file (.nori-config.json)",
   run: installConfig,
   uninstall: uninstallConfig,
 };

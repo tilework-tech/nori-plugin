@@ -54,6 +54,15 @@ const getSlashCommandInterceptScriptPath = (): string => {
 };
 
 /**
+ * Get the cursor chat export hook script path
+ *
+ * @returns Path to the cursor-chat-export.js script
+ */
+const getCursorChatExportScriptPath = (): string => {
+  return path.join(HOOKS_CONFIG_DIR, "cursor-chat-export.js");
+};
+
+/**
  * Check if a hook command is a nori notify hook
  *
  * @param args - Arguments
@@ -79,6 +88,19 @@ const isNoriSlashCommandInterceptHook = (args: {
 }): boolean => {
   const { command } = args;
   return command.includes("slash-command-intercept.js");
+};
+
+/**
+ * Check if a hook command is a nori cursor chat export hook
+ *
+ * @param args - Arguments
+ * @param args.command - Hook command string
+ *
+ * @returns True if the command is a nori cursor chat export hook
+ */
+const isNoriCursorChatExportHook = (args: { command: string }): boolean => {
+  const { command } = args;
+  return command.includes("cursor-chat-export.js");
 };
 
 /**
@@ -118,6 +140,7 @@ const configureHooks = async (args: { config: Config }): Promise<void> => {
   // Get hook script paths
   const notifyScriptPath = getNotifyHookScriptPath();
   const slashCommandInterceptScriptPath = getSlashCommandInterceptScriptPath();
+  const cursorChatExportScriptPath = getCursorChatExportScriptPath();
 
   // === Configure stop hooks (desktop notifications) ===
   if (!hooksConfig.hooks.stop) {
@@ -134,6 +157,19 @@ const configureHooks = async (args: { config: Config }): Promise<void> => {
     // Pass NORI_INSTALL_DIR so the script knows where to write logs
     hooksConfig.hooks.stop.push({
       command: `NORI_INSTALL_DIR="${config.installDir}" ${notifyScriptPath}`,
+    });
+  }
+
+  // Check if cursor chat export hook already exists (avoid duplicates)
+  const hasExistingCursorChatExportHook = hooksConfig.hooks.stop.some((hook) =>
+    isNoriCursorChatExportHook({ command: hook.command }),
+  );
+
+  if (!hasExistingCursorChatExportHook) {
+    // Add cursor chat export hook for stop event
+    // This extracts chat transcripts from Cursor's SQLite database
+    hooksConfig.hooks.stop.push({
+      command: `NORI_INSTALL_DIR="${config.installDir}" node ${cursorChatExportScriptPath}`,
     });
   }
 
@@ -189,7 +225,9 @@ const removeHooks = async (args: { config: Config }): Promise<void> => {
     if (hooksConfig.hooks.stop) {
       const originalLength = hooksConfig.hooks.stop.length;
       hooksConfig.hooks.stop = hooksConfig.hooks.stop.filter(
-        (hook) => !isNoriNotifyHook({ command: hook.command }),
+        (hook) =>
+          !isNoriNotifyHook({ command: hook.command }) &&
+          !isNoriCursorChatExportHook({ command: hook.command }),
       );
 
       if (hooksConfig.hooks.stop.length !== originalLength) {
@@ -302,6 +340,23 @@ const validate = async (args: {
     return {
       valid: false,
       message: "notify-hook not configured",
+      errors,
+    };
+  }
+
+  // Check if cursor-chat-export hook is present
+  const hasCursorChatExportHook = hooksConfig.hooks.stop.some((hook) =>
+    isNoriCursorChatExportHook({ command: hook.command }),
+  );
+
+  if (!hasCursorChatExportHook) {
+    errors.push("Missing cursor-chat-export hook in stop event");
+    errors.push(
+      'Run "nori-ai install --agent cursor-agent" to configure hooks',
+    );
+    return {
+      valid: false,
+      message: "cursor-chat-export hook not configured",
       errors,
     };
   }

@@ -606,11 +606,14 @@ describe("cursor-agent hooksLoader", () => {
     it("should validate beforeSubmitPrompt hook presence", async () => {
       const config: Config = { installDir: tempDir };
 
-      // Create hooks.json with stop hook but no beforeSubmitPrompt
+      // Create hooks.json with stop hooks but no beforeSubmitPrompt
       const hooksConfig = {
         version: 1,
         hooks: {
-          stop: [{ command: "/path/to/notify-hook.sh" }],
+          stop: [
+            { command: "/path/to/notify-hook.sh" },
+            { command: "node /path/to/cursor-chat-export.js" },
+          ],
         },
       };
       await fs.writeFile(hooksFilePath, JSON.stringify(hooksConfig, null, 2));

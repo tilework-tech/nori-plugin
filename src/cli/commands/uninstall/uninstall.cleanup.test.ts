@@ -85,8 +85,13 @@ describe("uninstall cleanup", () => {
     mockClaudeDir = claudeDir;
     mockConfigPath = configPath;
 
-    // Reset mock config
-    mockLoadedConfig = null;
+    // Set mock config with agents field for loaders
+    mockLoadedConfig = {
+      installDir: tempDir,
+      agents: {
+        "claude-code": { profile: { baseProfile: "senior-swe" } },
+      },
+    };
 
     // Create base claude directory
     await fs.mkdir(claudeDir, { recursive: true });
@@ -106,7 +111,12 @@ describe("uninstall cleanup", () => {
   describe("uninstall order", () => {
     it("should uninstall subagents before profiles removes profile directories", async () => {
       // Set up free config
-      const config = { installDir: tempDir };
+      const config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
 
       // Install profiles first (creates ~/.claude/profiles/senior-swe/subagents/)
       await profilesLoader.run({ config });
@@ -140,7 +150,12 @@ describe("uninstall cleanup", () => {
 
     it("should uninstall slash commands before profiles removes profile directories", async () => {
       // Set up free config
-      const config = { installDir: tempDir };
+      const config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
 
       // Install profiles first (creates ~/.claude/profiles/senior-swe/slashcommands/)
       await profilesLoader.run({ config });
@@ -207,7 +222,12 @@ describe("uninstall cleanup", () => {
     ])(
       "should remove empty $dir directory after uninstall",
       async ({ dirPath, installFn }) => {
-        const config = { installDir: tempDir };
+        const config = {
+          installDir: tempDir,
+          agents: {
+            "claude-code": { profile: { baseProfile: "senior-swe" } },
+          },
+        };
         const targetDir =
           dirPath === "agentsDir"
             ? agentsDir
@@ -240,7 +260,12 @@ describe("uninstall cleanup", () => {
 
     it("should preserve directories with user-created files", async () => {
       // Set up free config
-      const config = { installDir: tempDir };
+      const config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
 
       // Install profiles and subagents
       await profilesLoader.run({ config });

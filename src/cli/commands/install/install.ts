@@ -34,6 +34,7 @@ import {
   brightCyan,
   boldWhite,
   gray,
+  setSilentMode,
 } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
 import {
@@ -333,13 +334,27 @@ export const interactive = async (args?: {
   }
 
   // Handle existing installation cleanup
-  if (
-    !skipUninstall &&
-    hasExistingInstallation({ installDir: normalizedInstallDir })
-  ) {
-    const previousVersion = getInstalledVersion({
-      installDir: normalizedInstallDir,
-    });
+  // Only uninstall if THIS SPECIFIC agent is already installed
+  const existingConfig = await loadConfig({
+    installDir: normalizedInstallDir,
+  });
+  const previousVersion = getInstalledVersion({
+    installDir: normalizedInstallDir,
+  });
+
+  // Determine which agents are installed
+  // For backwards compatibility: if no installedAgents but existing installation exists,
+  // assume claude-code is installed (old installations didn't track agents)
+  let installedAgents = existingConfig?.installedAgents ?? [];
+  const existingInstall = hasExistingInstallation({
+    installDir: normalizedInstallDir,
+  });
+  if (installedAgents.length === 0 && existingInstall) {
+    installedAgents = ["claude-code"];
+  }
+  const agentAlreadyInstalled = installedAgents.includes(agentImpl.name);
+
+  if (!skipUninstall && agentAlreadyInstalled) {
     info({
       message: `Cleaning up previous installation (v${previousVersion})...`,
     });
@@ -360,6 +375,10 @@ export const interactive = async (args?: {
     info({
       message: "Skipping uninstall step (preserving existing installation)...",
     });
+  } else if (installedAgents.length > 0) {
+    info({
+      message: `Adding new agent (preserving existing ${installedAgents.join(", ")} installation)...`,
+    });
   } else {
     info({ message: "First-time installation detected. No cleanup needed." });
   }
@@ -369,11 +388,6 @@ export const interactive = async (args?: {
   console.log();
   info({ message: "Let's personalize Nori to your needs." });
   console.log();
-
-  // Load existing config
-  const existingConfig = await loadConfig({
-    installDir: normalizedInstallDir,
-  });
 
   // Generate configuration through prompts
   const config = await generatePromptConfig({
@@ -524,13 +538,27 @@ export const noninteractive = async (args?: {
   }
 
   // Handle existing installation cleanup
-  if (
-    !skipUninstall &&
-    hasExistingInstallation({ installDir: normalizedInstallDir })
-  ) {
-    const previousVersion = getInstalledVersion({
-      installDir: normalizedInstallDir,
-    });
+  // Only uninstall if THIS SPECIFIC agent is already installed
+  const existingConfig = await loadConfig({
+    installDir: normalizedInstallDir,
+  });
+  const previousVersion = getInstalledVersion({
+    installDir: normalizedInstallDir,
+  });
+
+  // Determine which agents are installed
+  // For backwards compatibility: if no installedAgents but existing installation exists,
+  // assume claude-code is installed (old installations didn't track agents)
+  let installedAgents = existingConfig?.installedAgents ?? [];
+  const existingInstall = hasExistingInstallation({
+    installDir: normalizedInstallDir,
+  });
+  if (installedAgents.length === 0 && existingInstall) {
+    installedAgents = ["claude-code"];
+  }
+  const agentAlreadyInstalled = installedAgents.includes(agentImpl.name);
+
+  if (!skipUninstall && agentAlreadyInstalled) {
     info({
       message: `Cleaning up previous installation (v${previousVersion})...`,
     });
@@ -551,14 +579,13 @@ export const noninteractive = async (args?: {
     info({
       message: "Skipping uninstall step (preserving existing installation)...",
     });
+  } else if (installedAgents.length > 0) {
+    info({
+      message: `Adding new agent (preserving existing ${installedAgents.join(", ")} installation)...`,
+    });
   } else {
     info({ message: "First-time installation detected. No cleanup needed." });
   }
-
-  // Load existing config or use defaults
-  const existingConfig = await loadConfig({
-    installDir: normalizedInstallDir,
-  });
 
   const existingInstalledAgents = existingConfig?.installedAgents ?? [];
   const config: Config = existingConfig
@@ -668,17 +695,28 @@ export const noninteractive = async (args?: {
  * @param args.skipUninstall - Whether to skip uninstall step (useful for profile switching)
  * @param args.installDir - Custom installation directory (optional)
  * @param args.agent - AI agent to use (defaults to claude-code)
+ * @param args.silent - Whether to suppress all output (implies nonInteractive)
  */
 export const main = async (args?: {
   nonInteractive?: boolean | null;
   skipUninstall?: boolean | null;
   installDir?: string | null;
   agent?: string | null;
+  silent?: boolean | null;
 }): Promise<void> => {
-  const { nonInteractive, skipUninstall, installDir, agent } = args || {};
+  const { nonInteractive, skipUninstall, installDir, agent, silent } =
+    args || {};
+
+  // Save original console.log and suppress all output if silent mode requested
+  const originalConsoleLog = console.log;
+  if (silent) {
+    setSilentMode({ silent: true });
+    console.log = () => undefined;
+  }
 
   try {
-    if (nonInteractive) {
+    // Silent mode implies non-interactive
+    if (nonInteractive || silent) {
       await noninteractive({ skipUninstall, installDir, agent });
     } else {
       await interactive({ skipUninstall, installDir, agent });
@@ -686,6 +724,12 @@ export const main = async (args?: {
   } catch (err: any) {
     error({ message: err.message });
     process.exit(1);
+  } finally {
+    // Always restore console.log and silent mode when done
+    if (silent) {
+      console.log = originalConsoleLog;
+      setSilentMode({ silent: false });
+    }
   }
 };
 
@@ -708,6 +752,7 @@ export const registerInstallCommand = (args: { program: Command }): void => {
         nonInteractive: globalOpts.nonInteractive || null,
         installDir: globalOpts.installDir || null,
         agent: globalOpts.agent || null,
+        silent: globalOpts.silent || null,
       });
     });
 };

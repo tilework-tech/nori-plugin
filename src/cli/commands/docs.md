@@ -35,6 +35,12 @@ Each agent declares its own global features (e.g., claude-code has hooks, status
 
 The install command sets both `agents: { [agentName]: { profile } }` (the per-agent profile configuration) and `installedAgents: [agentName]` (the list of installed agents) in the config. The config loader merges `installedAgents` with any existing agents. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
 
+**Install Agent-Specific Uninstall Logic:** The install command only runs uninstall cleanup when reinstalling the SAME agent (upgrade scenario). When installing a different agent (e.g., cursor-agent when claude-code is already installed), it skips uninstall to preserve the existing agent's installation. The logic:
+1. Reads config at start to get `installedAgents` list
+2. For backwards compatibility: if `installedAgents` is empty but an installation exists (detected via version file), assumes `["claude-code"]` (old installs didn't track agents)
+3. Only runs uninstall if the agent being installed is already in `installedAgents`
+4. Logs "Adding new agent (preserving existing X installation)..." when installing a different agent alongside existing ones
+
 **Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. If exactly one agent is in `installedAgents`, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
 
 ```
@@ -52,7 +58,7 @@ cli.ts
 
 Commands use shared utilities from the parent @/src/cli/ directory:
 - `config.ts` - Config type and persistence (with per-agent profile support)
-- `logger.ts` - Console output formatting (error, success, info, warn)
+- `logger.ts` - Console output formatting (error, success, info, warn) with silent mode support via `setSilentMode()` and `isSilentMode()`
 - `prompt.ts` - User input prompting
 - `version.ts` - Version tracking for upgrades and CLI flag compatibility checking
 - `analytics.ts` - GA4 event tracking
@@ -93,9 +99,11 @@ export const registerXCommand = (args: { program: Command }): void => {
 ### Things to Know
 
 The `install/` directory contains command-specific utilities:
-- `asciiArt.ts` - ASCII banners displayed during installation
+- `asciiArt.ts` - ASCII banners displayed during installation. All display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.
 - `installState.ts` - Helper to check for existing installations (wraps version.ts)
 - `registryAuthPrompt.ts` - Prompts for private registry authentication during interactive install. Collects registry URL, username, and password (hidden input). Supports preserving existing registryAuths from config and adding multiple registries. Uses `RegistryAuth` type from `@/cli/config.js`.
+
+**Install Command Silent Mode:** The `main()` function in install.ts accepts a `silent` parameter. When `silent: true`, the function calls `setSilentMode({ silent: true })` before execution and restores it to false in a `finally` block to prevent state leakage. Silent mode implies non-interactive mode. This is used by intercepted slash commands (e.g., `/nori-switch-profile` in both claude-code and cursor-agent) that call `installMain()` and need clean stdout to return JSON responses without corruption from installation messages like ASCII art banners.
 
 The install command uses `agent.listSourceProfiles()` to get available profiles from the package source directory, combined with `agent.listProfiles({ installDir })` to include any user-installed profiles. This ensures each agent displays its own profiles (claude-code shows amol, senior-swe, etc.; cursor-agent shows its own profiles).
 

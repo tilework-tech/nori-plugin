@@ -46,7 +46,7 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 - `getLoaderRegistry()`: Returns an object implementing the `LoaderRegistry` interface
 - `listProfiles({ installDir })`: Returns array of installed profile names from `~/.{agent}/profiles/`
 - `listSourceProfiles()`: Returns array of `SourceProfile` objects from the package's source directory (for install UI profile selection)
-- `switchProfile({ installDir, profileName })`: Validates profile exists and updates config
+- `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, and updates config
 - `getGlobalFeatureNames()`: Returns human-readable names of features installed to the user's home directory for display in prompts (e.g., `["hooks", "statusline", "global slash commands"]` for claude-code)
 - `getGlobalLoaderNames()`: Returns loader names for global features, used by uninstall to skip loaders when preserving global settings (e.g., `["hooks", "statusline", "slashcommands"]` for claude-code)
 
@@ -88,7 +88,7 @@ Profile management is owned by the Agent interface. Two separate methods handle 
 - `listProfiles({ installDir })`: Scans the agent's installed profiles directory (`~/.{agent}/profiles/`) for valid profiles (directories containing the agent's instruction file). Used when switching profiles after installation.
 - `listSourceProfiles()`: Scans the package's source profiles directory (`profiles/config/`) and returns profiles with metadata. Used by the install command to present profile options to the user.
 
-The `switchProfile` method validates the profile exists, updates the config, and logs success/restart messages. CLI commands add additional behavior on top (e.g., applying changes immediately via reinstall).
+The `switchProfile` method validates the profile exists, filters the `agents` config object to only include entries for agents listed in `installedAgents`, updates the config, and logs success/restart messages. The filtering step is necessary because `loadConfig` creates synthetic agent entries for backwards compatibility when migrating from legacy configs; without filtering, these synthetic entries would persist even though the agent isn't installed. CLI commands add additional behavior on top (e.g., applying changes immediately via reinstall).
 
 Agent implementations manage their own internal paths (config directories, instruction file names, etc.) without exposing them through the public interface. This keeps the abstraction clean and allows each agent to have different directory structures. For example, Claude Code's path helpers (getClaudeDir, getClaudeSkillsDir, etc.) live in @/src/cli/features/claude-code/paths.ts rather than in the CLI-level @/src/cli/env.ts. The env.ts file re-exports these functions for backward compatibility, but new code within agent directories should import from the agent's own paths module.
 

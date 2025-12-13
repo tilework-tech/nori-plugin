@@ -14,7 +14,7 @@ This `claude-code/` subdirectory implements the Agent interface defined in @/src
 - `getLoaderRegistry()`: Returns the LoaderRegistry singleton with all Claude Code loaders
 - `listProfiles({ installDir })`: Scans installed `.claude/profiles/` for directories containing `CLAUDE.md`
 - `listSourceProfiles()`: Scans package's `profiles/config/` for directories with `profile.json`, returns `SourceProfile[]` with name and description
-- `switchProfile({ installDir, profileName })`: Validates profile exists, updates config, logs success message
+- `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, updates config with new profile, logs success message
 - `getGlobalFeatureNames()`: Returns `["hooks", "statusline", "global slash commands"]` - human-readable names used by the uninstall command to generate agent-specific prompts
 - `getGlobalLoaderNames()`: Returns `["hooks", "statusline", "slashcommands"]` - loader names used by uninstall to skip global loaders when `removeGlobalSettings` is false
 

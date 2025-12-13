@@ -519,6 +519,84 @@ describe("install integration test", () => {
     expect(config.installedAgents).toHaveLength(2);
   });
 
+  it("should NOT run uninstall when installing a different agent than what is already installed", async () => {
+    const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+    // STEP 1: Create existing installation with claude-code
+    fs.writeFileSync(VERSION_FILE_PATH, "12.0.0");
+    fs.writeFileSync(MARKER_FILE_PATH, "installed by v12.0.0");
+    fs.writeFileSync(
+      CONFIG_PATH,
+      JSON.stringify({
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: ["claude-code"],
+        installDir: tempDir,
+      }),
+    );
+
+    // Verify initial state
+    expect(fs.existsSync(MARKER_FILE_PATH)).toBe(true);
+
+    // STEP 2: Install cursor-agent (different agent)
+    await installMain({
+      nonInteractive: true,
+      installDir: tempDir,
+      agent: "cursor-agent",
+    });
+
+    // STEP 3: Verify uninstall was NOT called
+    // The cursor-agent was not previously installed, so no cleanup needed
+    expect(uninstallCalled).toBe(false);
+
+    // Verify the marker file still exists (wasn't removed by uninstall)
+    expect(fs.existsSync(MARKER_FILE_PATH)).toBe(true);
+
+    // Verify version file is updated
+    const newVersion = fs.readFileSync(VERSION_FILE_PATH, "utf-8");
+    expect(newVersion).toBe("13.0.0");
+  });
+
+  it("should run uninstall when reinstalling the same agent (upgrade scenario)", async () => {
+    const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+    // STEP 1: Create existing installation with claude-code
+    // Use version 19.0.0+ to ensure --agent flag is supported
+    fs.writeFileSync(VERSION_FILE_PATH, "19.0.0");
+    fs.writeFileSync(MARKER_FILE_PATH, "installed by v19.0.0");
+    fs.writeFileSync(
+      CONFIG_PATH,
+      JSON.stringify({
+        profile: { baseProfile: "senior-swe" },
+        installedAgents: ["claude-code"],
+        installDir: tempDir,
+      }),
+    );
+
+    // Verify initial state
+    expect(fs.existsSync(MARKER_FILE_PATH)).toBe(true);
+
+    // STEP 2: Install claude-code again (same agent - upgrade scenario)
+    await installMain({
+      nonInteractive: true,
+      installDir: tempDir,
+      agent: "claude-code",
+    });
+
+    // STEP 3: Verify uninstall WAS called
+    // The same agent was already installed, so cleanup is needed before upgrade
+    expect(uninstallCalled).toBe(true);
+
+    // Verify the uninstall command was for claude-code
+    expect(uninstallCommand).toContain("claude-code");
+
+    // Verify the marker file was removed by uninstall
+    expect(fs.existsSync(MARKER_FILE_PATH)).toBe(false);
+
+    // Verify version file is updated
+    const newVersion = fs.readFileSync(VERSION_FILE_PATH, "utf-8");
+    expect(newVersion).toBe("13.0.0");
+  });
+
   it("should include agents field with agent-specific profile in config after installation", async () => {
     const CONFIG_PATH = getConfigPath({ installDir: tempDir });
 

@@ -21,6 +21,7 @@ import { promptRegistryAuths } from "@/cli/commands/install/registryAuthPrompt.j
 import {
   loadConfig,
   getDefaultProfile,
+  getAgentProfile,
   isPaidInstall,
   getInstalledAgents,
   type Config,
@@ -116,9 +117,13 @@ export const generatePromptConfig = async (args: {
     info({
       message: `  Organization URL: ${existingConfig.auth.organizationUrl}`,
     });
-    if (existingConfig.profile) {
+    const existingProfile = getAgentProfile({
+      config: existingConfig,
+      agentName: agent.name,
+    });
+    if (existingProfile) {
       info({
-        message: `  Profile: ${existingConfig.profile.baseProfile}`,
+        message: `  Profile: ${existingProfile.baseProfile}`,
       });
     }
     newline();
@@ -129,7 +134,11 @@ export const generatePromptConfig = async (args: {
 
     if (useExisting.match(/^[Yy]$/)) {
       info({ message: "Using existing configuration..." });
-      const profile = existingConfig.profile ?? getDefaultProfile();
+      // Use agent-specific profile first, fall back to legacy top-level profile, then default
+      const profile =
+        getAgentProfile({ config: existingConfig, agentName: agent.name }) ??
+        existingConfig.profile ??
+        getDefaultProfile();
       return {
         ...existingConfig,
         profile,

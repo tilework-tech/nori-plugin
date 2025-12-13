@@ -56,6 +56,8 @@ export type Config = {
   agents?: Record<string, AgentConfig> | null;
   /** List of AI agents installed at this installDir */
   installedAgents?: Array<string> | null;
+  /** Installed version of Nori */
+  version?: string | null;
 };
 
 /**
@@ -284,6 +286,11 @@ export const loadConfig = async (args: {
         }
       }
 
+      // Check if version exists and is valid string
+      if (config.version && typeof config.version === "string") {
+        result.version = config.version;
+      }
+
       // Return result if we have at least auth, profile, agents, sendSessionTranscript, or installedAgents
       if (
         result.auth != null ||
@@ -316,6 +323,7 @@ export const loadConfig = async (args: {
  * @param args.registryAuths - Array of registry authentication credentials (null to skip)
  * @param args.agents - Per-agent configuration settings (null to skip)
  * @param args.installedAgents - List of installed AI agents (null to skip)
+ * @param args.version - Installed version of Nori (null to skip)
  */
 export const saveConfig = async (args: {
   username: string | null;
@@ -328,6 +336,7 @@ export const saveConfig = async (args: {
   registryAuths?: Array<RegistryAuth> | null;
   agents?: Record<string, AgentConfig> | null;
   installedAgents?: Array<string> | null;
+  version?: string | null;
   installDir: string;
 }): Promise<void> => {
   const {
@@ -341,6 +350,7 @@ export const saveConfig = async (args: {
     registryAuths,
     agents,
     installedAgents,
+    version,
     installDir,
   } = args;
   const configPath = getConfigPath({ installDir });
@@ -398,6 +408,11 @@ export const saveConfig = async (args: {
   // Add installedAgents if provided and not empty
   if (installedAgents != null && installedAgents.length > 0) {
     config.installedAgents = installedAgents;
+  }
+
+  // Add version if provided
+  if (version != null) {
+    config.version = version;
   }
 
   // Always save installDir
@@ -468,6 +483,7 @@ const configSchema = {
       type: "array",
       items: { type: "string" },
     },
+    version: { type: "string" },
   },
   additionalProperties: false,
 };

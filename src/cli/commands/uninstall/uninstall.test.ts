@@ -833,7 +833,6 @@ describe("uninstall agent detection from config", () => {
 describe("uninstall multi-agent config preservation", () => {
   let tempDir: string;
   let configPath: string;
-  let versionPath: string;
   let originalHome: string | undefined;
 
   beforeEach(async () => {
@@ -842,7 +841,6 @@ describe("uninstall multi-agent config preservation", () => {
     process.env.HOME = tempDir;
 
     configPath = path.join(tempDir, ".nori-config.json");
-    versionPath = path.join(tempDir, ".nori-installed-version");
 
     // Set mock paths for this test
     mockClaudeDir = path.join(tempDir, ".claude");
@@ -865,14 +863,14 @@ describe("uninstall multi-agent config preservation", () => {
   });
 
   it("should preserve config file when uninstalling one of multiple agents with removeConfig=true", async () => {
-    // Create config with multiple agents installed
+    // Create config with multiple agents installed (version is now in config)
     const initialConfig = {
       installDir: tempDir,
       profile: { baseProfile: "senior-swe" },
       installedAgents: ["claude-code", "cursor-agent"],
+      version: "19.0.0",
     };
     await fs.writeFile(configPath, JSON.stringify(initialConfig));
-    await fs.writeFile(versionPath, "19.0.0");
 
     // Mock loadConfig to return our multi-agent config
     mockLoadedConfig = {
@@ -895,23 +893,20 @@ describe("uninstall multi-agent config preservation", () => {
       .catch(() => false);
     expect(configExists).toBe(true);
 
-    // Version file should be preserved
-    const versionExists = await fs
-      .access(versionPath)
-      .then(() => true)
-      .catch(() => false);
-    expect(versionExists).toBe(true);
+    // Version should be preserved in config
+    const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
+    expect(config.version).toBe("19.0.0");
   });
 
-  it("should delete config and version files when uninstalling last agent with removeConfig=true", async () => {
-    // Create config with single agent
+  it("should delete config when uninstalling last agent with removeConfig=true", async () => {
+    // Create config with single agent (version is now in config)
     const initialConfig = {
       installDir: tempDir,
       profile: { baseProfile: "senior-swe" },
       installedAgents: ["claude-code"],
+      version: "19.0.0",
     };
     await fs.writeFile(configPath, JSON.stringify(initialConfig));
-    await fs.writeFile(versionPath, "19.0.0");
 
     // Mock loadConfig to return single-agent config
     mockLoadedConfig = {
@@ -927,29 +922,23 @@ describe("uninstall multi-agent config preservation", () => {
       agent: "claude-code",
     });
 
-    // Both files should be deleted since no agents remain
+    // Config file should be deleted since no agents remain (version is in config)
     const configExists = await fs
       .access(configPath)
       .then(() => true)
       .catch(() => false);
     expect(configExists).toBe(false);
-
-    const versionExists = await fs
-      .access(versionPath)
-      .then(() => true)
-      .catch(() => false);
-    expect(versionExists).toBe(false);
   });
 
   it("should show remaining agents message when uninstalling one of multiple agents", async () => {
-    // Create config with multiple agents installed
+    // Create config with multiple agents installed (version is now in config)
     const initialConfig = {
       installDir: tempDir,
       profile: { baseProfile: "senior-swe" },
       installedAgents: ["claude-code", "cursor-agent"],
+      version: "19.0.0",
     };
     await fs.writeFile(configPath, JSON.stringify(initialConfig));
-    await fs.writeFile(versionPath, "19.0.0");
 
     // Mock loadConfig to return our multi-agent config
     mockLoadedConfig = {

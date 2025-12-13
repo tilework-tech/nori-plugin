@@ -9,7 +9,6 @@ import * as path from "path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { getConfigPath } from "@/cli/config.js";
-import { getVersionFilePath } from "@/cli/version.js";
 
 import type { Config } from "@/cli/config.js";
 import type * as firebaseAuth from "firebase/auth";
@@ -443,21 +442,20 @@ describe("configLoader", () => {
       expect(fs.existsSync(configFile)).toBe(false);
     });
 
-    it("should delete version file when uninstalling last agent", async () => {
+    it("should delete config with version when uninstalling last agent", async () => {
       const configFile = getConfigPath({ installDir: tempDir });
-      const versionFile = getVersionFilePath({ installDir: tempDir });
 
-      // Create config and version files
+      // Create config with version
       fs.writeFileSync(
         configFile,
         JSON.stringify({
           installDir: tempDir,
           profile: { baseProfile: "senior-swe" },
           installedAgents: ["claude-code"],
+          version: "19.0.0",
         }),
         "utf-8",
       );
-      fs.writeFileSync(versionFile, "19.0.0", "utf-8");
 
       // Uninstall the only agent
       const config: Config = {
@@ -467,26 +465,24 @@ describe("configLoader", () => {
 
       await configLoader.uninstall({ config });
 
-      // Both config and version files should be deleted
+      // Config file should be deleted (includes version)
       expect(fs.existsSync(configFile)).toBe(false);
-      expect(fs.existsSync(versionFile)).toBe(false);
     });
 
-    it("should preserve version file when other agents remain", async () => {
+    it("should preserve version in config when other agents remain", async () => {
       const configFile = getConfigPath({ installDir: tempDir });
-      const versionFile = getVersionFilePath({ installDir: tempDir });
 
-      // Create config and version files with multiple agents
+      // Create config with version and multiple agents
       fs.writeFileSync(
         configFile,
         JSON.stringify({
           installDir: tempDir,
           profile: { baseProfile: "senior-swe" },
           installedAgents: ["claude-code", "cursor-agent"],
+          version: "19.0.0",
         }),
         "utf-8",
       );
-      fs.writeFileSync(versionFile, "19.0.0", "utf-8");
 
       // Uninstall only cursor-agent
       const config: Config = {
@@ -501,34 +497,31 @@ describe("configLoader", () => {
       const fileContents = JSON.parse(fs.readFileSync(configFile, "utf-8"));
       expect(fileContents.installedAgents).toEqual(["claude-code"]);
 
-      // Version file should be preserved
-      expect(fs.existsSync(versionFile)).toBe(true);
-      expect(fs.readFileSync(versionFile, "utf-8")).toBe("19.0.0");
+      // Version should be preserved in config
+      expect(fileContents.version).toBe("19.0.0");
     });
 
-    it("should delete version file when no installedAgents field exists (legacy behavior)", async () => {
+    it("should delete config when no installedAgents field exists (legacy behavior)", async () => {
       const configFile = getConfigPath({ installDir: tempDir });
-      const versionFile = getVersionFilePath({ installDir: tempDir });
 
-      // Create config and version files (legacy config without installedAgents)
+      // Create legacy config without installedAgents
       fs.writeFileSync(
         configFile,
         JSON.stringify({
           installDir: tempDir,
           profile: { baseProfile: "senior-swe" },
+          version: "18.0.0",
           // No installedAgents field
         }),
         "utf-8",
       );
-      fs.writeFileSync(versionFile, "18.0.0", "utf-8");
 
       const config: Config = { installDir: tempDir };
 
       await configLoader.uninstall({ config });
 
-      // Both config and version files should be deleted (legacy behavior)
+      // Config file should be deleted (legacy behavior)
       expect(fs.existsSync(configFile)).toBe(false);
-      expect(fs.existsSync(versionFile)).toBe(false);
     });
 
     it("should preserve agents field when uninstalling one of multiple agents", async () => {

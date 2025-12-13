@@ -14,11 +14,7 @@ import {
   isPaidInstall,
 } from "@/cli/config.js";
 import { info, success, error, debug } from "@/cli/logger.js";
-import {
-  getVersionFilePath,
-  saveInstalledVersion,
-  getCurrentPackageVersion,
-} from "@/cli/version.js";
+import { getCurrentPackageVersion } from "@/cli/version.js";
 import { configureFirebase, getFirebase } from "@/providers/firebase.js";
 
 import type { Config } from "@/cli/config.js";
@@ -115,6 +111,9 @@ const installConfig = async (args: { config: Config }): Promise<void> => {
     }
   }
 
+  // Get current package version to save in config
+  const currentVersion = getCurrentPackageVersion();
+
   // Save config to disk with refresh token (not password)
   // This ensures we never store passwords, only secure tokens
   await saveConfig({
@@ -128,42 +127,14 @@ const installConfig = async (args: { config: Config }): Promise<void> => {
     registryAuths:
       config.registryAuths ?? existingConfig?.registryAuths ?? null,
     installedAgents: mergedAgents.length > 0 ? mergedAgents : null,
+    version: currentVersion,
     installDir: config.installDir,
   });
 
   const configPath = getConfigPath({ installDir: config.installDir });
   success({ message: `✓ Config file created: ${configPath}` });
-
-  // Create version file to track installed version
-  const currentVersion = getCurrentPackageVersion();
   if (currentVersion != null) {
-    saveInstalledVersion({
-      version: currentVersion,
-      installDir: config.installDir,
-    });
-    const versionFilePath = getVersionFilePath({
-      installDir: config.installDir,
-    });
-    success({ message: `✓ Version file created: ${versionFilePath}` });
-  } else {
-    info({
-      message: "Could not determine package version, skipping version file",
-    });
-  }
-};
-
-/**
- * Remove the version file if it exists
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- */
-const removeVersionFile = (args: { installDir: string }): void => {
-  const { installDir } = args;
-  const versionFile = getVersionFilePath({ installDir });
-
-  if (existsSync(versionFile)) {
-    unlinkSync(versionFile);
-    success({ message: `✓ Version file removed: ${versionFile}` });
+    success({ message: `✓ Version ${currentVersion} saved to config` });
   }
 };
 
@@ -190,7 +161,6 @@ const uninstallConfig = async (args: { config: Config }): Promise<void> => {
   if (existingConfig?.installedAgents == null) {
     unlinkSync(configFile);
     success({ message: `✓ Config file removed: ${configFile}` });
-    removeVersionFile({ installDir: config.installDir });
     return;
   }
 
@@ -200,15 +170,14 @@ const uninstallConfig = async (args: { config: Config }): Promise<void> => {
     (agent) => !agentsToRemove.includes(agent),
   );
 
-  // If no agents remain, delete the config file and version file
+  // If no agents remain, delete the config file
   if (remainingAgents.length === 0) {
     unlinkSync(configFile);
     success({ message: `✓ Config file removed: ${configFile}` });
-    removeVersionFile({ installDir: config.installDir });
     return;
   }
 
-  // Otherwise, update the config with remaining agents (preserve version file)
+  // Otherwise, update the config with remaining agents (preserve version)
   await saveConfig({
     username: existingConfig.auth?.username ?? null,
     refreshToken: existingConfig.auth?.refreshToken ?? null,
@@ -219,6 +188,7 @@ const uninstallConfig = async (args: { config: Config }): Promise<void> => {
     autoupdate: existingConfig.autoupdate ?? null,
     registryAuths: existingConfig.registryAuths ?? null,
     installedAgents: remainingAgents,
+    version: existingConfig.version ?? null,
     installDir: config.installDir,
   });
 

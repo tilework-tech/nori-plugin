@@ -41,7 +41,6 @@ import {
   buildUninstallCommand,
   getCurrentPackageVersion,
   getInstalledVersion,
-  saveInstalledVersion,
 } from "@/cli/version.js";
 import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
@@ -338,7 +337,7 @@ export const interactive = async (args?: {
     !skipUninstall &&
     hasExistingInstallation({ installDir: normalizedInstallDir })
   ) {
-    const previousVersion = getInstalledVersion({
+    const previousVersion = await getInstalledVersion({
       installDir: normalizedInstallDir,
     });
     info({
@@ -419,15 +418,6 @@ export const interactive = async (args?: {
   }
 
   console.log();
-
-  // Save version
-  const finalVersion = getCurrentPackageVersion();
-  if (finalVersion) {
-    saveInstalledVersion({
-      version: finalVersion,
-      installDir: normalizedInstallDir,
-    });
-  }
 
   // Remove progress marker
   const markerPath = path.join(
@@ -529,7 +519,7 @@ export const noninteractive = async (args?: {
     !skipUninstall &&
     hasExistingInstallation({ installDir: normalizedInstallDir })
   ) {
-    const previousVersion = getInstalledVersion({
+    const previousVersion = await getInstalledVersion({
       installDir: normalizedInstallDir,
     });
     info({
@@ -615,15 +605,6 @@ export const noninteractive = async (args?: {
   }
 
   console.log();
-
-  // Save version
-  const finalVersion = getCurrentPackageVersion();
-  if (finalVersion) {
-    saveInstalledVersion({
-      version: finalVersion,
-      installDir: normalizedInstallDir,
-    });
-  }
 
   // Remove progress marker
   const markerPath = path.join(

@@ -204,7 +204,7 @@ const validate = async (args: {
  */
 export const cursorSlashCommandsLoader: Loader = {
   name: "slashcommands",
-  description: "Register Nori slash commands with Cursor",
+  description: "Nori slash commands for Cursor",
   run: async (args: { config: Config }) => {
     const { config } = args;
     await registerSlashCommands({ config });

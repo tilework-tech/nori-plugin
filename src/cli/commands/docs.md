@@ -19,13 +19,21 @@ Commands that interact with agent-specific features (install, uninstall, check, 
 - If multiple agents installed (interactive mode): prompt user to select from numbered list
 - If multiple agents installed (non-interactive mode): throw error with helpful message listing installed agents
 
+**switch-profile Confirmation:** After agent resolution, the switch-profile command prompts the user to confirm before proceeding. The `confirmSwitchProfile()` function displays:
+- Install directory being operated on
+- Agent display name and ID (e.g., "Claude Code (claude-code)")
+- Current profile (read from agent-specific config or legacy format, or "(none)" if not set)
+- New profile being switched to
+
+The user must enter "y" or "Y" to proceed; any other input cancels the operation. In non-interactive mode (`--non-interactive`), confirmation is skipped to allow automated/scripted usage.
+
 The uninstall command uses two agent methods for global features:
 - `agent.getGlobalFeatureNames()`: Human-readable names for displaying in prompts (e.g., "hooks, statusline, and global slash commands")
 - `agent.getGlobalLoaderNames()`: Loader names for determining which loaders to skip when preserving global settings (e.g., `["hooks", "statusline", "slashcommands"]`)
 
 Each agent declares its own global features (e.g., claude-code has hooks, statusline, and global slash commands; cursor-agent has hooks and slash commands). If an agent has no global features, the global settings prompt is skipped entirely.
 
-The install command sets `installedAgents: [agentName]` in the config, which the config loader merges with any existing agents. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
+The install command sets both `agents: { [agentName]: { profile } }` (the per-agent profile configuration) and `installedAgents: [agentName]` (the list of installed agents) in the config. The config loader merges `installedAgents` with any existing agents. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
 
 **Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. If exactly one agent is in `installedAgents`, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
 

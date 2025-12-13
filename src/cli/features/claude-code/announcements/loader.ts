@@ -91,7 +91,7 @@ const removeAnnouncements = async (args: { config: Config }): Promise<void> => {
  */
 export const announcementsLoader: Loader = {
   name: "announcements",
-  description: "Configure Claude Code company announcements with Nori branding",
+  description: "Claude Code announcements configuration",
   run: async (args: { config: Config }) => {
     await configureAnnouncements(args);
   },

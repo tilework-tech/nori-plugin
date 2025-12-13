@@ -36,7 +36,7 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 | Type | Purpose |
 |------|---------|
 | `AgentName` | Type alias for canonical agent identifiers (`"claude-code" \| "cursor-agent"`). Used as the registry key and source of truth for agent identity. |
-| `Loader` | Interface for feature installation with `run()`, `uninstall()`, and optional `validate()` methods |
+| `Loader` | Interface for feature installation with `name`, `description`, `run()`, `uninstall()`, and optional `validate()` methods |
 | `ValidationResult` | Result type for loader validation checks (`valid`, `message`, `errors`) |
 | `LoaderRegistry` | Interface that agent-specific registry classes must implement (`getAll()`, `getAllReversed()`) |
 
@@ -64,12 +64,14 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 - Shared loader that manages the `.nori-config.json` file lifecycle
 - All agents MUST include this loader in their registry
 - Handles saving/removing config with auth credentials, profile selection, user preferences, and installedAgents tracking
-- During install: Merges and deduplicates `installedAgents` from existing and new config
+- During install: Merges and deduplicates `installedAgents` from existing and new config. Preserves the `agents` field from existing config when not explicitly provided in the new config (ensures per-agent profiles set by `switchProfile` survive reinstallation)
 - During uninstall: Removes the uninstalled agent from `installedAgents`. Deletes config file if no agents remain; updates config with remaining agents otherwise
 
 ### Things to Know
 
 **`AgentName` is the canonical UID for agents.** The `AgentName` type (`"claude-code" | "cursor-agent"`) is the source of truth for valid agent identifiers. `Agent.name` is typed as `AgentName`, which ensures type safety. CLI entry points parse the `--agent` option string, look up the `Agent` object once via `AgentRegistry.get({ name })`, then pass the `Agent` object around. Functions that need the agent identifier access `agent.name` rather than receiving a separate string parameter. This pattern makes it impossible for the agent name and agent object to get out of sync.
+
+**Loader descriptions must be noun phrases.** Loader `description` fields are displayed in both install and uninstall contexts. The uninstall command shows "The following will be removed:" followed by loader descriptions. Descriptions should be noun phrases (e.g., "Profile templates in ~/.claude/profiles/") not action verbs (e.g., "Install Nori profile templates...") so they read naturally in both contexts. Tests in @/src/cli/commands/uninstall/uninstall.test.ts enforce this convention.
 
 **Critical: All agents must include the config loader.** The `configLoader` from @/src/cli/features/config/loader.ts manages the shared `.nori-config.json` file. Each agent's LoaderRegistry class must register this loader to ensure proper config file creation during install and removal during uninstall.
 

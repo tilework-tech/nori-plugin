@@ -117,6 +117,7 @@ const installConfig = async (args: { config: Config }): Promise<void> => {
     refreshToken: tokenToSave,
     organizationUrl,
     profile: config.profile ?? null,
+    agents: config.agents ?? existingConfig?.agents ?? null,
     sendSessionTranscript,
     autoupdate: existingConfig?.autoupdate,
     registryAuths:
@@ -191,7 +192,7 @@ const uninstallConfig = async (args: { config: Config }): Promise<void> => {
  */
 export const configLoader: Loader = {
   name: "config",
-  description: "Manage .nori-config.json file",
+  description: "Configuration file (.nori-config.json)",
   run: installConfig,
   uninstall: uninstallConfig,
 };

@@ -334,7 +334,7 @@ export const interactive = async (args?: {
 
   // Handle existing installation cleanup
   // Only uninstall if THIS SPECIFIC agent is already installed
-  const preInstallConfig = await loadConfig({
+  const existingConfig = await loadConfig({
     installDir: normalizedInstallDir,
   });
   const previousVersion = getInstalledVersion({
@@ -344,7 +344,7 @@ export const interactive = async (args?: {
   // Determine which agents are installed
   // For backwards compatibility: if no installedAgents but existing installation exists,
   // assume claude-code is installed (old installations didn't track agents)
-  let installedAgents = preInstallConfig?.installedAgents ?? [];
+  let installedAgents = existingConfig?.installedAgents ?? [];
   const existingInstall = hasExistingInstallation({
     installDir: normalizedInstallDir,
   });
@@ -387,9 +387,6 @@ export const interactive = async (args?: {
   console.log();
   info({ message: "Let's personalize Nori to your needs." });
   console.log();
-
-  // Load existing config (reuse preInstallConfig loaded earlier)
-  const existingConfig = preInstallConfig;
 
   // Generate configuration through prompts
   const config = await generatePromptConfig({
@@ -541,7 +538,7 @@ export const noninteractive = async (args?: {
 
   // Handle existing installation cleanup
   // Only uninstall if THIS SPECIFIC agent is already installed
-  const preInstallConfig = await loadConfig({
+  const existingConfig = await loadConfig({
     installDir: normalizedInstallDir,
   });
   const previousVersion = getInstalledVersion({
@@ -551,7 +548,7 @@ export const noninteractive = async (args?: {
   // Determine which agents are installed
   // For backwards compatibility: if no installedAgents but existing installation exists,
   // assume claude-code is installed (old installations didn't track agents)
-  let installedAgents = preInstallConfig?.installedAgents ?? [];
+  let installedAgents = existingConfig?.installedAgents ?? [];
   const existingInstall = hasExistingInstallation({
     installDir: normalizedInstallDir,
   });
@@ -588,9 +585,6 @@ export const noninteractive = async (args?: {
   } else {
     info({ message: "First-time installation detected. No cleanup needed." });
   }
-
-  // Load existing config or use defaults (reuse preInstallConfig)
-  const existingConfig = preInstallConfig;
 
   const existingInstalledAgents = existingConfig?.installedAgents ?? [];
   const config: Config = existingConfig

@@ -35,6 +35,12 @@ Each agent declares its own global features (e.g., claude-code has hooks, status
 
 The install command sets both `agents: { [agentName]: { profile } }` (the per-agent profile configuration) and `installedAgents: [agentName]` (the list of installed agents) in the config. The config loader merges `installedAgents` with any existing agents. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
 
+**Install Agent-Specific Uninstall Logic:** The install command only runs uninstall cleanup when reinstalling the SAME agent (upgrade scenario). When installing a different agent (e.g., cursor-agent when claude-code is already installed), it skips uninstall to preserve the existing agent's installation. The logic:
+1. Reads config at start to get `installedAgents` list
+2. For backwards compatibility: if `installedAgents` is empty but an installation exists (detected via version file), assumes `["claude-code"]` (old installs didn't track agents)
+3. Only runs uninstall if the agent being installed is already in `installedAgents`
+4. Logs "Adding new agent (preserving existing X installation)..." when installing a different agent alongside existing ones
+
 **Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. If exactly one agent is in `installedAgents`, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
 
 ```

@@ -13,8 +13,6 @@ import semver from "semver";
 import { loadConfig } from "@/cli/config.js";
 import { CLI_ROOT } from "@/cli/env.js";
 
-const DEFAULT_VERSION = "12.1.0";
-
 /**
  * Minimum version that supports the --agent CLI flag.
  * The --agent flag was introduced in 19.0.0 with multi-agent support.
@@ -42,11 +40,12 @@ export const getCurrentPackageVersion = (): string | null => {
 
 /**
  * Get the installed version from .nori-config.json
- * Defaults to 12.1.0 if config does not exist or has no version
- * (assumes existing installations without version field are 12.1.0)
+ * Throws an error if config does not exist or has no version field.
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
+ *
+ * @throws Error if version cannot be detected
  *
  * @returns The installed version string
  */
@@ -54,16 +53,13 @@ export const getInstalledVersion = async (args: {
   installDir: string;
 }): Promise<string> => {
   const { installDir } = args;
-  try {
-    const config = await loadConfig({ installDir });
-    if (config?.version) {
-      return config.version;
-    }
-    return DEFAULT_VERSION;
-  } catch {
-    // Config doesn't exist or can't be read - default to 12.1.0
-    return DEFAULT_VERSION;
+  const config = await loadConfig({ installDir });
+  if (config?.version == null) {
+    throw new Error(
+      "Installation out of date: no version field found in .nori-config.json file.",
+    );
   }
+  return config.version;
 };
 
 /**

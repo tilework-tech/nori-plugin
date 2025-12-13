@@ -332,10 +332,6 @@ export const interactive = async (args?: {
   const existingConfig = await loadConfig({
     installDir: normalizedInstallDir,
   });
-  // Get version from config (async getInstalledVersion reads from config)
-  const previousVersion = await getInstalledVersion({
-    installDir: normalizedInstallDir,
-  });
 
   // Determine which agents are installed using agents object keys
   // For backwards compatibility: if no agents but existing installation exists,
@@ -352,6 +348,10 @@ export const interactive = async (args?: {
   const agentAlreadyInstalled = installedAgents.includes(agentImpl.name);
 
   if (!skipUninstall && agentAlreadyInstalled) {
+    // Get version from config - only when we know an installation exists
+    const previousVersion = await getInstalledVersion({
+      installDir: normalizedInstallDir,
+    });
     info({
       message: `Cleaning up previous installation (v${previousVersion})...`,
     });
@@ -530,10 +530,6 @@ export const noninteractive = async (args?: {
   const existingConfig = await loadConfig({
     installDir: normalizedInstallDir,
   });
-  // Get version from config (async getInstalledVersion reads from config)
-  const previousVersion = await getInstalledVersion({
-    installDir: normalizedInstallDir,
-  });
 
   // Determine which agents are installed using agents object keys
   // For backwards compatibility: if no agents but existing installation exists,
@@ -550,6 +546,10 @@ export const noninteractive = async (args?: {
   const agentAlreadyInstalled = installedAgents.includes(agentImpl.name);
 
   if (!skipUninstall && agentAlreadyInstalled) {
+    // Get version from config - only when we know an installation exists
+    const previousVersion = await getInstalledVersion({
+      installDir: normalizedInstallDir,
+    });
     info({
       message: `Cleaning up previous installation (v${previousVersion})...`,
     });

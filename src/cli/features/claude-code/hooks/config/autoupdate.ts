@@ -17,8 +17,6 @@ import { loadConfig } from "@/cli/config.js";
 import { debug, error, LOG_FILE } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
-const DEFAULT_VERSION = "12.1.0";
-
 const PACKAGE_NAME = "nori-ai";
 
 /**
@@ -154,7 +152,12 @@ const main = async (): Promise<void> => {
     }
 
     // Get installed version from config
-    const installedVersion = diskConfig.version ?? DEFAULT_VERSION;
+    if (diskConfig.version == null) {
+      throw new Error(
+        "Installation out of date: no version field found in .nori-config.json file.",
+      );
+    }
+    const installedVersion = diskConfig.version;
 
     // Check for updates
     const latestVersion = await getLatestVersion();

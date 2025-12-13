@@ -33,9 +33,9 @@ The uninstall command uses two agent methods for global features:
 
 Each agent declares its own global features (e.g., claude-code has hooks, statusline, and global slash commands; cursor-agent has hooks and slash commands). If an agent has no global features, the global settings prompt is skipped entirely.
 
-The install command sets both `agents: { [agentName]: { profile } }` (the per-agent profile configuration) and `installedAgents: [agentName]` (the list of installed agents) in the config. The config loader merges `installedAgents` with any existing agents. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
+The install command sets `agents: { [agentName]: { profile } }` in the config, where the keys of the `agents` object indicate which agents are installed. The config loader merges `agents` objects with any existing config. The uninstall command prompts the user to select which agent to uninstall when multiple agents are installed at a location (in interactive mode).
 
-**Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. If exactly one agent is in `installedAgents`, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
+**Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. It uses `getInstalledAgents({ config })` to determine installed agents from the `agents` object keys. If exactly one agent is installed, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
 
 ```
 cli.ts

@@ -63,9 +63,9 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 **Config Loader** (config/loader.ts):
 - Shared loader that manages the `.nori-config.json` file lifecycle
 - All agents MUST include this loader in their registry
-- Handles saving/removing config with auth credentials, profile selection, user preferences, and installedAgents tracking
-- During install: Merges and deduplicates `installedAgents` from existing and new config. Preserves the `agents` field from existing config when not explicitly provided in the new config (ensures per-agent profiles set by `switchProfile` survive reinstallation)
-- During uninstall: Removes the uninstalled agent from `installedAgents`. Deletes config file if no agents remain; updates config with remaining agents otherwise
+- Handles saving/removing config with auth credentials, profile selection, user preferences, and agent tracking
+- During install: Merges `agents` objects from existing and new config. Preserves existing agent profiles (ensures per-agent profiles set by `switchProfile` survive reinstallation)
+- During uninstall: Removes the uninstalled agent from the `agents` object. Deletes config file if no agents remain; updates config with remaining agents otherwise
 
 ### Things to Know
 
@@ -88,7 +88,7 @@ Profile management is owned by the Agent interface. Two separate methods handle 
 - `listProfiles({ installDir })`: Scans the agent's installed profiles directory (`~/.{agent}/profiles/`) for valid profiles (directories containing the agent's instruction file). Used when switching profiles after installation.
 - `listSourceProfiles()`: Scans the package's source profiles directory (`profiles/config/`) and returns profiles with metadata. Used by the install command to present profile options to the user.
 
-The `switchProfile` method validates the profile exists, filters the `agents` config object to only include entries for agents listed in `installedAgents`, updates the config, and logs success/restart messages. The filtering step is necessary because `loadConfig` creates synthetic agent entries for backwards compatibility when migrating from legacy configs; without filtering, these synthetic entries would persist even though the agent isn't installed. CLI commands add additional behavior on top (e.g., applying changes immediately via reinstall).
+The `switchProfile` method validates the profile exists, updates the agent's profile in the `agents` object, and logs success/restart messages. CLI commands add additional behavior on top (e.g., applying changes immediately via reinstall).
 
 Agent implementations manage their own internal paths (config directories, instruction file names, etc.) without exposing them through the public interface. This keeps the abstraction clean and allows each agent to have different directory structures. For example, Claude Code's path helpers (getClaudeDir, getClaudeSkillsDir, etc.) live in @/src/cli/features/claude-code/paths.ts rather than in the CLI-level @/src/cli/env.ts. The env.ts file re-exports these functions for backward compatibility, but new code within agent directories should import from the agent's own paths module.
 

@@ -128,7 +128,6 @@ export const generatePromptConfig = async (args: {
     if (useExisting.match(/^[Yy]$/)) {
       info({ message: "Using existing configuration..." });
       const profile = existingConfig.profile ?? getDefaultProfile();
-      const existingInstalledAgents = existingConfig.installedAgents ?? [];
       return {
         ...existingConfig,
         profile,
@@ -137,9 +136,6 @@ export const generatePromptConfig = async (args: {
           [agent.name]: { profile },
         },
         installDir,
-        installedAgents: existingInstalledAgents.includes(agent.name)
-          ? existingInstalledAgents
-          : [...existingInstalledAgents, agent.name],
       };
     }
 
@@ -252,7 +248,6 @@ export const generatePromptConfig = async (args: {
 
   // Build config directly
   const profile = { baseProfile: selectedProfileName };
-  const existingInstalledAgents = existingConfig?.installedAgents ?? [];
   return {
     auth: auth ?? null,
     profile,
@@ -262,9 +257,6 @@ export const generatePromptConfig = async (args: {
     },
     installDir,
     registryAuths: registryAuths ?? null,
-    installedAgents: existingInstalledAgents.includes(agent.name)
-      ? existingInstalledAgents
-      : [...existingInstalledAgents, agent.name],
   };
 };
 
@@ -561,7 +553,6 @@ export const noninteractive = async (args?: {
     installDir: normalizedInstallDir,
   });
 
-  const existingInstalledAgents = existingConfig?.installedAgents ?? [];
   const config: Config = existingConfig
     ? {
         ...existingConfig,
@@ -571,9 +562,6 @@ export const noninteractive = async (args?: {
             profile: existingConfig.profile ?? getDefaultProfile(),
           },
         },
-        installedAgents: existingInstalledAgents.includes(agentImpl.name)
-          ? existingInstalledAgents
-          : [...existingInstalledAgents, agentImpl.name],
       }
     : {
         profile: getDefaultProfile(),
@@ -581,7 +569,6 @@ export const noninteractive = async (args?: {
           [agentImpl.name]: { profile: getDefaultProfile() },
         },
         installDir: normalizedInstallDir,
-        installedAgents: [agentImpl.name],
       };
 
   // Track installation start

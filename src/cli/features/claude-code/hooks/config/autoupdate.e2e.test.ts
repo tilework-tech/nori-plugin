@@ -17,11 +17,14 @@ vi.mock("child_process", async (importOriginal) => {
   };
 });
 
-// Mock logger to suppress output
-vi.mock("@/cli/logger.js", () => ({
-  error: vi.fn(),
-  LOG_FILE: "/tmp/nori.log",
-}));
+// Mock logger - use real debug() to write to log file for testing
+vi.mock("@/cli/logger.js", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
+  return {
+    ...actual,
+    error: vi.fn(), // Suppress error console output
+  };
+});
 
 // Mock analytics
 vi.mock("@/cli/analytics.js", () => ({

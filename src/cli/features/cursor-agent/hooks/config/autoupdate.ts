@@ -8,13 +8,13 @@
  */
 
 import { execSync, spawn } from "child_process";
-import { appendFileSync, openSync, closeSync, existsSync } from "fs";
+import { openSync, closeSync, existsSync } from "fs";
 
 import semver from "semver";
 
 import { trackEvent } from "@/cli/analytics.js";
 import { loadConfig } from "@/cli/config.js";
-import { error, LOG_FILE } from "@/cli/logger.js";
+import { debug, error, LOG_FILE } from "@/cli/logger.js";
 import { getInstalledVersion } from "@/cli/version.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -57,9 +57,9 @@ const installUpdate = (args: {
   // Build full shell command: first update global package, then run install
   const fullCommand = `npm install -g ${PACKAGE_NAME}@${version} && nori-ai ${installArgs.join(" ")}`;
 
-  // Log to consolidated log file
-  const logHeader = `\n=== Nori Autoupdate: ${new Date().toISOString()} ===\nInstalling v${version}...\nCommand: ${fullCommand}\n`;
-  appendFileSync(LOG_FILE, logHeader);
+  // Log to consolidated log file using Winston
+  const logHeader = `=== Nori Autoupdate: ${new Date().toISOString()} ===\nInstalling v${version}...\nCommand: ${fullCommand}`;
+  debug({ message: logHeader });
 
   // Use openSync to get file descriptor for spawn stdio
   const logFd = openSync(LOG_FILE, "a");
@@ -73,7 +73,7 @@ const installUpdate = (args: {
 
   // Listen for spawn errors
   child.on("error", (err) => {
-    appendFileSync(LOG_FILE, `\nSpawn error: ${err.message}\n`);
+    debug({ message: `Spawn error: ${err.message}` });
     error({ message: `Autoupdate spawn failed: ${err.message}` });
   });
 
@@ -117,12 +117,12 @@ const main = async (): Promise<void> => {
 
     if (configDir == null) {
       // No config found - log to consolidated log file and exit
-      appendFileSync(
-        LOG_FILE,
-        `\n=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+      debug({
+        message:
+          `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
           `Could not find .nori-config.json in current directory or any parent directory.\n` +
-          `Searched from: ${cwd}\n`,
-      );
+          `Searched from: ${cwd}`,
+      });
       return;
     }
 
@@ -132,11 +132,11 @@ const main = async (): Promise<void> => {
 
     if (diskConfig?.installDir == null) {
       // Config exists but has no installDir - log error and exit
-      appendFileSync(
-        LOG_FILE,
-        `\n=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
-          `Config file exists at ${configDir} but has no installDir field.\n`,
-      );
+      debug({
+        message:
+          `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+          `Config file exists at ${configDir} but has no installDir field.`,
+      });
       return;
     }
 
@@ -144,11 +144,11 @@ const main = async (): Promise<void> => {
 
     // Validate that installDir exists
     if (!existsSync(installDir)) {
-      appendFileSync(
-        LOG_FILE,
-        `\n=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
-          `Config specifies installDir: ${installDir} but directory does not exist.\n`,
-      );
+      debug({
+        message:
+          `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+          `Config specifies installDir: ${installDir} but directory does not exist.`,
+      });
       return;
     }
 

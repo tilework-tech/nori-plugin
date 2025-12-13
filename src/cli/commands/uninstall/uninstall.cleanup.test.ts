@@ -49,6 +49,7 @@ vi.mock("@/cli/logger.js", () => ({
   success: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
+  newline: vi.fn(),
 }));
 
 // Import after mocking

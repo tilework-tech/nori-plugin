@@ -180,6 +180,36 @@ export const debug = (args: { message: string }): void => {
 };
 
 /**
+ * Output a blank line to console for spacing
+ * File logging is skipped for blank lines
+ */
+export const newline = (): void => {
+  if (!consoleTransport.silent) {
+    console.log();
+  }
+};
+
+/**
+ * Output raw text without any color formatting
+ * Used for pre-formatted output like ASCII art
+ * @param args - Configuration arguments
+ * @param args.message - Raw message to display
+ */
+export const raw = (args: { message: string }): void => {
+  const { message } = args;
+  // Log to file as info level
+  fileTransport.log?.(
+    { level: "info", message, [Symbol.for("level")]: "info" },
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    () => {},
+  );
+  // Output to console without formatting
+  if (!consoleTransport.silent) {
+    console.log(message);
+  }
+};
+
+/**
  * Print text in bright cyan (for numbers/indices)
  * @param args - Configuration arguments
  * @param args.text - Text to display

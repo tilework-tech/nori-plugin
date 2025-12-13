@@ -283,73 +283,44 @@ export const loadConfig = async (args: {
     const validated = configClone as unknown as RawDiskConfig;
 
     // Build the Config result from validated data
+    // After schema validation, types are guaranteed - only need null checks
     const result: Config = {
       auth: null,
       profile: null,
-      installDir:
-        typeof validated.installDir === "string"
-          ? validated.installDir
-          : installDir,
+      installDir: validated.installDir ?? installDir,
       sendSessionTranscript: validated.sendSessionTranscript,
       autoupdate: validated.autoupdate,
+      registryAuths: filteredRegistryAuths,
+      version: validated.version,
     };
 
-    // Check if auth credentials exist and are valid
-    const hasUsername =
-      validated.username != null && typeof validated.username === "string";
-    const hasOrganizationUrl =
-      validated.organizationUrl != null &&
-      typeof validated.organizationUrl === "string";
-    const hasRefreshToken =
-      validated.refreshToken != null &&
-      typeof validated.refreshToken === "string";
-    const hasPassword =
-      validated.password != null && typeof validated.password === "string";
-
-    if (hasUsername && hasOrganizationUrl && (hasRefreshToken || hasPassword)) {
-      result.auth = {
-        username: validated.username!,
-        organizationUrl: validated.organizationUrl!,
-        refreshToken: hasRefreshToken ? validated.refreshToken! : null,
-        password: hasPassword ? validated.password! : null,
-      };
-    }
-
-    // Check if profile exists with valid baseProfile
+    // Build auth if we have username + organizationUrl + (refreshToken or password)
     if (
-      validated.profile != null &&
-      typeof validated.profile === "object" &&
-      validated.profile.baseProfile != null &&
-      typeof validated.profile.baseProfile === "string"
+      validated.username != null &&
+      validated.organizationUrl != null &&
+      (validated.refreshToken != null || validated.password != null)
     ) {
-      result.profile = {
-        baseProfile: validated.profile.baseProfile,
+      result.auth = {
+        username: validated.username,
+        organizationUrl: validated.organizationUrl,
+        refreshToken: validated.refreshToken ?? null,
+        password: validated.password ?? null,
       };
     }
 
-    // Set registryAuths from filtered array
-    if (filteredRegistryAuths != null && filteredRegistryAuths.length > 0) {
-      result.registryAuths = filteredRegistryAuths;
+    // Set profile if it has a baseProfile
+    if (validated.profile?.baseProfile != null) {
+      result.profile = { baseProfile: validated.profile.baseProfile };
     }
 
-    // Check if agents field exists (new multi-agent config format)
-    if (validated.agents != null && typeof validated.agents === "object") {
+    // Set agents, or mirror legacy profile to agents.claude-code for backwards compat
+    if (validated.agents != null) {
       result.agents = validated.agents;
     } else if (result.profile != null) {
-      // Backwards compatibility: if only legacy profile exists, mirror it to agents.claude-code
-      result.agents = {
-        "claude-code": {
-          profile: result.profile,
-        },
-      };
+      result.agents = { "claude-code": { profile: result.profile } };
     }
 
-    // Check if version exists
-    if (validated.version != null && typeof validated.version === "string") {
-      result.version = validated.version;
-    }
-
-    // Return result if we have at least auth, profile, agents, or sendSessionTranscript
+    // Return result if we have meaningful config data
     if (
       result.auth != null ||
       result.profile != null ||
@@ -597,11 +568,10 @@ export const validateConfig = async (args: {
     };
   }
 
-  // Check if all required fields are present for paid mode
-  const hasUsername = config.username && typeof config.username === "string";
-  const hasPassword = config.password && typeof config.password === "string";
-  const hasOrgUrl =
-    config.organizationUrl && typeof config.organizationUrl === "string";
+  // Check if credentials are present (schema validation will check types)
+  const hasUsername = config.username != null;
+  const hasPassword = config.password != null;
+  const hasOrgUrl = config.organizationUrl != null;
 
   const credentialsProvided = [hasUsername, hasPassword, hasOrgUrl];
   const someProvided = credentialsProvided.some((v) => v);

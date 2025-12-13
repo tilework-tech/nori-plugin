@@ -31,14 +31,9 @@ vi.mock("@/cli/analytics.js", () => ({
   trackEvent: vi.fn(),
 }));
 
-// Mock config to provide install_type
+// Mock config to provide install_type and version
 vi.mock("@/cli/config.js", () => ({
   loadConfig: vi.fn(),
-}));
-
-// Mock version utilities
-vi.mock("@/cli/version.js", () => ({
-  getInstalledVersion: vi.fn(),
 }));
 
 // Mock path utilities
@@ -120,21 +115,17 @@ exit 0
     const mockExecSync = vi.mocked(execSync);
     mockExecSync.mockReturnValue("14.2.0\n");
 
-    // Mock getInstalledVersion to return old version
-    const { getInstalledVersion } = await import("@/cli/version.js");
-    const mockGetInstalledVersion = vi.mocked(getInstalledVersion);
-    mockGetInstalledVersion.mockReturnValue("1.0.0");
-
     // Mock path utilities to find config in tempHomeDir
     const { getInstallDirs } = await import("@/utils/path.js");
     vi.mocked(getInstallDirs).mockReturnValue([tempHomeDir]);
 
-    // Mock loadConfig with autoupdate explicitly enabled
+    // Mock loadConfig with version and autoupdate explicitly enabled
     const { loadConfig } = await import("@/cli/config.js");
     const mockLoadConfig = vi.mocked(loadConfig);
     mockLoadConfig.mockResolvedValue({
       auth: null,
       profile: null,
+      version: "1.0.0",
       autoupdate: "enabled",
       installDir: tempHomeDir,
     });

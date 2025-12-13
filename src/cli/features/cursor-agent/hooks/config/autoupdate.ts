@@ -15,8 +15,9 @@ import semver from "semver";
 import { trackEvent } from "@/cli/analytics.js";
 import { loadConfig } from "@/cli/config.js";
 import { debug, error, LOG_FILE } from "@/cli/logger.js";
-import { getInstalledVersion } from "@/cli/version.js";
 import { getInstallDirs } from "@/utils/path.js";
+
+const DEFAULT_VERSION = "12.1.0";
 
 const PACKAGE_NAME = "nori-ai";
 
@@ -152,8 +153,8 @@ const main = async (): Promise<void> => {
       return;
     }
 
-    // Get installed version from the actual install directory
-    const installedVersion = getInstalledVersion({ installDir });
+    // Get installed version from config
+    const installedVersion = diskConfig.version ?? DEFAULT_VERSION;
 
     // Check for updates
     const latestVersion = await getLatestVersion();

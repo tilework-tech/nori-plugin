@@ -451,6 +451,7 @@ describe("registerSwitchProfileCommand", () => {
         "nori-ai",
         "switch-profile",
         "senior-swe",
+        "--non-interactive",
         "--install-dir",
         testInstallDir,
         "--non-interactive",

@@ -436,7 +436,7 @@ describe("registerSwitchProfileCommand", () => {
     // Reset mock to track this specific call
     mockInstallMain.mockClear();
 
-    // Mock user confirmation prompt
+    // Mock confirmation prompt to return "y"
     vi.mocked(promptUser).mockResolvedValueOnce("y");
 
     // Mock claude-code's switchProfile

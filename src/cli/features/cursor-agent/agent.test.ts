@@ -249,5 +249,110 @@ describe("cursorAgent", () => {
         "new-profile",
       );
     });
+
+    test("does not add config for agents not in installedAgents", async () => {
+      // Create profile directory
+      const profilesDir = path.join(testInstallDir, ".cursor", "profiles");
+      const profileDir = path.join(profilesDir, "new-profile");
+      await fs.mkdir(profileDir, { recursive: true });
+      await fs.writeFile(path.join(profileDir, "AGENTS.md"), "# New Profile");
+
+      // Create config with legacy profile field (no agents field) and only cursor-agent installed
+      // When loadConfig runs, backwards compat creates agents.claude-code from profile
+      const configPath = path.join(testInstallDir, ".nori-config.json");
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          profile: { baseProfile: "amol" },
+          installedAgents: ["cursor-agent"],
+          installDir: testInstallDir,
+        }),
+      );
+
+      await cursorAgent.switchProfile({
+        installDir: testInstallDir,
+        profileName: "new-profile",
+      });
+
+      const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+
+      // Verify cursor-agent is updated
+      expect(updatedConfig.agents?.["cursor-agent"]?.profile?.baseProfile).toBe(
+        "new-profile",
+      );
+
+      // Verify claude-code is NOT in agents (it was only in backwards compat, not installed)
+      expect(updatedConfig.agents?.["claude-code"]).toBeUndefined();
+    });
+
+    test("preserves config for other installed agents", async () => {
+      // Create profile directory
+      const profilesDir = path.join(testInstallDir, ".cursor", "profiles");
+      const profileDir = path.join(profilesDir, "new-profile");
+      await fs.mkdir(profileDir, { recursive: true });
+      await fs.writeFile(path.join(profileDir, "AGENTS.md"), "# New Profile");
+
+      // Create config with both agents installed and configured
+      const configPath = path.join(testInstallDir, ".nori-config.json");
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          agents: {
+            "claude-code": { profile: { baseProfile: "senior-swe" } },
+            "cursor-agent": { profile: { baseProfile: "amol" } },
+          },
+          installedAgents: ["claude-code", "cursor-agent"],
+          installDir: testInstallDir,
+        }),
+      );
+
+      await cursorAgent.switchProfile({
+        installDir: testInstallDir,
+        profileName: "new-profile",
+      });
+
+      const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+
+      // Verify cursor-agent is updated
+      expect(updatedConfig.agents?.["cursor-agent"]?.profile?.baseProfile).toBe(
+        "new-profile",
+      );
+
+      // Verify claude-code is preserved (it IS installed)
+      expect(updatedConfig.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "senior-swe",
+      );
+    });
+
+    test("preserves installedAgents field", async () => {
+      // Create profile directory
+      const profilesDir = path.join(testInstallDir, ".cursor", "profiles");
+      const profileDir = path.join(profilesDir, "new-profile");
+      await fs.mkdir(profileDir, { recursive: true });
+      await fs.writeFile(path.join(profileDir, "AGENTS.md"), "# New Profile");
+
+      // Create config with installedAgents
+      const configPath = path.join(testInstallDir, ".nori-config.json");
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          agents: {
+            "cursor-agent": { profile: { baseProfile: "amol" } },
+          },
+          installedAgents: ["cursor-agent"],
+          installDir: testInstallDir,
+        }),
+      );
+
+      await cursorAgent.switchProfile({
+        installDir: testInstallDir,
+        profileName: "new-profile",
+      });
+
+      const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+
+      // Verify installedAgents is preserved
+      expect(updatedConfig.installedAgents).toEqual(["cursor-agent"]);
+    });
   });
 });

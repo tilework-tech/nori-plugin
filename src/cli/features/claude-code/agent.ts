@@ -146,12 +146,26 @@ export const claudeCodeAgent: Agent = {
     // Load current config
     const currentConfig = await loadConfig({ installDir });
 
-    // Preserve auth and other settings, update profile for this agent
+    // Get installed agents - only preserve config for agents that are installed
+    const installedAgents = currentConfig?.installedAgents ?? null;
     const existingAgents = currentConfig?.agents ?? {};
+
+    // Filter existing agents to only include those that are installed
+    // If installedAgents is not set (backwards compat), preserve all existing agent configs
+    const filteredAgents =
+      installedAgents != null
+        ? Object.fromEntries(
+            Object.entries(existingAgents).filter(([agentName]) =>
+              installedAgents.includes(agentName),
+            ),
+          )
+        : existingAgents;
+
+    // Update profile for this agent
     const updatedAgents = {
-      ...existingAgents,
+      ...filteredAgents,
       ["claude-code"]: {
-        ...existingAgents["claude-code"],
+        ...filteredAgents["claude-code"],
         profile: { baseProfile: profileName },
       },
     };
@@ -164,6 +178,7 @@ export const claudeCodeAgent: Agent = {
       sendSessionTranscript: currentConfig?.sendSessionTranscript ?? null,
       autoupdate: currentConfig?.autoupdate,
       registryAuths: currentConfig?.registryAuths ?? null,
+      installedAgents: currentConfig?.installedAgents ?? null,
       installDir,
     });
 

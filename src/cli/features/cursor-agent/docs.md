@@ -36,7 +36,7 @@ The cursor-agent follows the same architectural pattern as claude-code. The `cur
 - `getLoaderRegistry()`: Returns the CursorLoaderRegistry singleton
 - `listProfiles({ installDir })`: Scans installed `.cursor/profiles/` for directories containing `AGENTS.md`
 - `listSourceProfiles()`: Scans package's `profiles/config/` for directories with `profile.json`, returns `SourceProfile[]` with name and description
-- `switchProfile({ installDir, profileName })`: Validates profile exists, updates config's `agents["cursor-agent"]` field, logs success message
+- `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, updates config's `agents["cursor-agent"]` field, logs success message
 - `getGlobalFeatureNames()`: Returns `["hooks", "slash commands"]` - human-readable names for prompts (note: cursor-agent has no statusline feature unlike claude-code)
 - `getGlobalLoaderNames()`: Returns `["hooks", "slashcommands"]` - loader names used by uninstall to skip global loaders when `removeGlobalSettings` is false
 

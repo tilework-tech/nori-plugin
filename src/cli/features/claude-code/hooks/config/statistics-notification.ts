@@ -6,12 +6,24 @@
  * This script is called by Claude Code hooks on SessionEnd event.
  * It outputs a synchronous message to inform the user that statistics
  * are being calculated (before statistics.ts processes the transcript).
+ *
+ * Uses exit code 2 to trigger Claude Code's failure display mechanism,
+ * and ANSI escape codes to clear the "SessionEnd hook [path] failed:" prefix.
  */
 
 import { debug } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
-import { formatSuccess } from "./intercepted-slashcommands/format.js";
+import { formatWithLineClear } from "./intercepted-slashcommands/format.js";
+
+/**
+ * Get the hook script path for ANSI line clearing calculations
+ *
+ * @returns The path to this hook script from process.argv[1]
+ */
+const getHookPath = (): string => {
+  return process.argv[1] || "";
+};
 
 /**
  * Main entry point
@@ -22,16 +34,20 @@ export const main = async (): Promise<void> => {
 
   if (allInstallations.length === 0) {
     // Silent failure - no installation found
-    // Log to file only, don't show error to user
+    // Log to file only, don't show error to user, don't exit with code 2
     debug({ message: "statistics-notification: No Nori installation found" });
     return;
   }
 
-  const message = formatSuccess({
+  const hookPath = getHookPath();
+  const message = formatWithLineClear({
     message: "Calculating Nori statistics... (Ctrl-C to exit early)\n\n",
+    hookPath,
+    isSuccess: true,
   });
 
   console.error(message);
+  process.exit(2);
 };
 
 // Run if executed directly

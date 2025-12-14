@@ -277,6 +277,10 @@ describe("statistics hook script behavior", () => {
       // Mock implementation
     });
 
+    vi.spyOn(process, "exit").mockImplementation((() => {
+      // Mock implementation - don't actually exit
+    }) as () => never);
+
     // Mock getInstallDirs to return a valid installation directory
     vi.spyOn(pathUtils, "getInstallDirs").mockReturnValue([process.cwd()]);
   });
@@ -368,6 +372,78 @@ describe("statistics hook script behavior", () => {
       expect(output).toContain("Nori");
       expect(output).toContain("Session");
       expect(output).toContain("Statistics");
+    } finally {
+      Object.defineProperty(process, "stdin", {
+        value: originalStdin,
+        writable: true,
+        configurable: true,
+      });
+    }
+  });
+
+  it("should output statistics with ANSI line-clearing codes", async () => {
+    const { main } = await import("./statistics.js");
+
+    const transcript = `{"type":"user","message":{"role":"user","content":"Hello"}}
+{"type":"assistant","message":{"role":"assistant","content":"Hi!"}}`;
+
+    const { Readable } = await import("stream");
+    const mockStdin = new Readable({
+      read() {
+        this.push(Buffer.from(transcript));
+        this.push(null);
+      },
+    });
+
+    originalStdin = process.stdin;
+    Object.defineProperty(process, "stdin", {
+      value: mockStdin,
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      await main();
+
+      // Verify output contains ANSI cursor up and clear codes
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      const output = consoleErrorSpy.mock.calls[0][0];
+      expect(output).toMatch(/^\x1b\[\d+A\x1b\[J/); // Cursor up + clear to end
+    } finally {
+      Object.defineProperty(process, "stdin", {
+        value: originalStdin,
+        writable: true,
+        configurable: true,
+      });
+    }
+  });
+
+  it("should exit with code 2 to trigger Claude Code's failure display", async () => {
+    const { main } = await import("./statistics.js");
+
+    const transcript = `{"type":"user","message":{"role":"user","content":"Hello"}}
+{"type":"assistant","message":{"role":"assistant","content":"Hi!"}}`;
+
+    const { Readable } = await import("stream");
+    const mockStdin = new Readable({
+      read() {
+        this.push(Buffer.from(transcript));
+        this.push(null);
+      },
+    });
+
+    originalStdin = process.stdin;
+    Object.defineProperty(process, "stdin", {
+      value: mockStdin,
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      await main();
+
+      // Verify exit code 2 is called
+      expect(process.exit).toHaveBeenCalledWith(2);
     } finally {
       Object.defineProperty(process, "stdin", {
         value: originalStdin,

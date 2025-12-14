@@ -4,7 +4,12 @@
 
 import { describe, it, expect } from "vitest";
 
-import { formatSuccess, formatError } from "./format.js";
+import {
+  formatSuccess,
+  formatError,
+  calculatePrefixLines,
+  formatWithLineClear,
+} from "./format.js";
 
 // ANSI color codes for verification
 const GREEN = "\x1b[0;32m";
@@ -146,5 +151,166 @@ describe("terminal re-wrap resilience", () => {
     for (const word of words) {
       expect(result).toContain(`${GREEN}${word}${NC}`);
     }
+  });
+});
+
+describe("calculatePrefixLines", () => {
+  /**
+   * Claude Code displays hook failures with this prefix format:
+   * "SessionEnd hook [node {hookPath}] failed: "
+   *
+   * We need to calculate how many terminal lines this takes so we can
+   * use ANSI escape codes to clear them.
+   */
+
+  it("should return 1 line for short hook path at wide terminal", () => {
+    const result = calculatePrefixLines({
+      hookPath: "/short/path.js",
+      terminalWidth: 200,
+    });
+
+    // "SessionEnd hook [node /short/path.js] failed: " = 49 chars < 200
+    expect(result).toBe(1);
+  });
+
+  it("should return 2 lines when prefix wraps once", () => {
+    const result = calculatePrefixLines({
+      hookPath:
+        "/home/user/code/nori/nori-profiles/build/src/cli/features/claude-code/hooks/config/summarize-notification.js",
+      terminalWidth: 80,
+    });
+
+    // Prefix is ~140 chars, at 80 width = ceil(140/80) = 2 lines
+    expect(result).toBe(2);
+  });
+
+  it("should return 3 lines when prefix wraps twice", () => {
+    const result = calculatePrefixLines({
+      hookPath:
+        "/home/user/code/nori/nori-profiles/build/src/cli/features/claude-code/hooks/config/summarize-notification.js",
+      terminalWidth: 60,
+    });
+
+    // Prefix is ~140 chars, at 60 width = ceil(140/60) = 3 lines
+    expect(result).toBe(3);
+  });
+
+  it("should handle very narrow terminal", () => {
+    const result = calculatePrefixLines({
+      hookPath: "/path/to/hook.js",
+      terminalWidth: 20,
+    });
+
+    // "SessionEnd hook [node /path/to/hook.js] failed: " = 50 chars
+    // At 20 width = ceil(50/20) = 3 lines
+    expect(result).toBe(3);
+  });
+
+  it("should default to 80 columns when terminalWidth is 0", () => {
+    const result = calculatePrefixLines({
+      hookPath: "/short/path.js",
+      terminalWidth: 0,
+    });
+
+    // Should use 80 as default, prefix ~49 chars = 1 line
+    expect(result).toBe(1);
+  });
+
+  it("should default to 80 columns when terminalWidth is undefined", () => {
+    const result = calculatePrefixLines({
+      hookPath: "/short/path.js",
+    });
+
+    // Should use 80 as default, prefix ~49 chars = 1 line
+    expect(result).toBe(1);
+  });
+});
+
+describe("formatWithLineClear", () => {
+  /**
+   * formatWithLineClear prepends ANSI escape codes to move the cursor up
+   * and clear the Claude Code prefix, then applies success/error coloring.
+   *
+   * ANSI codes reference:
+   * - \x1b[{n}A = cursor up n lines
+   * - \x1b[J = clear from cursor to end of screen
+   */
+
+  it("should prepend ANSI codes to clear 1 line for short prefix", () => {
+    const result = formatWithLineClear({
+      message: "Test message",
+      hookPath: "/short/path.js",
+      terminalWidth: 200,
+      isSuccess: true,
+    });
+
+    // Should start with cursor up 1 line + clear to end
+    expect(result).toMatch(/^\x1b\[1A\x1b\[J/);
+  });
+
+  it("should prepend ANSI codes to clear 2 lines for medium prefix", () => {
+    const result = formatWithLineClear({
+      message: "Test message",
+      hookPath:
+        "/home/user/code/nori/nori-profiles/build/src/cli/features/claude-code/hooks/config/summarize-notification.js",
+      terminalWidth: 80,
+      isSuccess: true,
+    });
+
+    // Should start with cursor up 2 lines + clear to end
+    expect(result).toMatch(/^\x1b\[2A\x1b\[J/);
+  });
+
+  it("should apply green coloring for success messages", () => {
+    const result = formatWithLineClear({
+      message: "Success",
+      hookPath: "/path.js",
+      terminalWidth: 200,
+      isSuccess: true,
+    });
+
+    // Should contain green color code
+    expect(result).toContain(GREEN);
+    expect(result).toContain("Success");
+  });
+
+  it("should apply red coloring for error messages", () => {
+    const result = formatWithLineClear({
+      message: "Error",
+      hookPath: "/path.js",
+      terminalWidth: 200,
+      isSuccess: false,
+    });
+
+    // Should contain red color code
+    expect(result).toContain(RED);
+    expect(result).toContain("Error");
+  });
+
+  it("should handle multi-line messages with per-word coloring", () => {
+    const result = formatWithLineClear({
+      message: "Line one\nLine two",
+      hookPath: "/path.js",
+      terminalWidth: 200,
+      isSuccess: true,
+    });
+
+    // Each word should be colored
+    expect(result).toContain(`${GREEN}Line${NC}`);
+    expect(result).toContain(`${GREEN}one${NC}`);
+    expect(result).toContain(`${GREEN}two${NC}`);
+  });
+
+  it("should use process.stdout.columns when terminalWidth not provided", () => {
+    // This test verifies the function works without explicit terminalWidth
+    // The actual width will come from process.stdout.columns or default to 80
+    const result = formatWithLineClear({
+      message: "Test",
+      hookPath: "/short/path.js",
+      isSuccess: true,
+    });
+
+    // Should still have ANSI clear codes at start
+    expect(result).toMatch(/^\x1b\[\d+A\x1b\[J/);
   });
 });

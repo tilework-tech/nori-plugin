@@ -198,8 +198,11 @@ const main = async (): Promise<void> => {
   });
 
   // Notify user via additionalContext
+  // Note: Hook errors at session exit are expected because Claude Code caches hook paths
+  // at session start. The update replaces those files, causing MODULE_NOT_FOUND errors.
+  // This is harmless - the user just needs to restart Claude to use the new version.
   logToClaudeSession({
-    message: `🔄 Nori Profiles update available: v${installedVersion} → v${latestVersion}. Installing in background...`,
+    message: `🔄 Nori Profiles updating: v${installedVersion} → v${latestVersion}. You may see hook errors when this session ends - this is expected. Restart Claude to use the new version.`,
   });
 };
 

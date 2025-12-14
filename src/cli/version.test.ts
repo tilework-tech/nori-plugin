@@ -140,12 +140,15 @@ describe("version", () => {
       expect(version).toBe("13.5.2");
     });
 
-    it("should return 12.1.0 if config file does not exist", async () => {
-      const version = await getInstalledVersion({ installDir: tempDir });
-      expect(version).toBe("12.1.0");
+    it("should throw error if config file does not exist", async () => {
+      await expect(
+        getInstalledVersion({ installDir: tempDir }),
+      ).rejects.toThrow(
+        "Installation out of date: no version field found in .nori-config.json file.",
+      );
     });
 
-    it("should return 12.1.0 if config has no version field", async () => {
+    it("should throw error if config has no version field", async () => {
       // Create config without version field
       await saveConfig({
         username: null,
@@ -154,8 +157,11 @@ describe("version", () => {
         installDir: tempDir,
       });
 
-      const version = await getInstalledVersion({ installDir: tempDir });
-      expect(version).toBe("12.1.0");
+      await expect(
+        getInstalledVersion({ installDir: tempDir }),
+      ).rejects.toThrow(
+        "Installation out of date: no version field found in .nori-config.json file.",
+      );
     });
 
     it("should never delete real user config file", async () => {

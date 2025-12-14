@@ -228,6 +228,8 @@ describe("install integration test", () => {
       profile: {
         baseProfile: "senior-swe",
       },
+      version: "18.0.0",
+      agents: { "claude-code": {} },
     };
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(paidConfig, null, 2));
 
@@ -274,6 +276,8 @@ describe("install integration test", () => {
       profile: {
         baseProfile: "senior-swe",
       },
+      version: "18.0.0",
+      agents: { "claude-code": {} },
     };
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(freeConfig, null, 2));
 
@@ -408,6 +412,8 @@ describe("install integration test", () => {
       profile: {
         baseProfile: "senior-swe",
       },
+      version: "18.0.0",
+      agents: { "claude-code": {} },
     };
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(paidConfig, null, 2));
 

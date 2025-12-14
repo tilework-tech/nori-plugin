@@ -129,6 +129,158 @@ describe("agent.switchProfile", () => {
       },
     ]);
   });
+
+  it("should preserve version when switching profiles for claude-code", async () => {
+    // Create profiles directory with test profiles
+    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+    await fs.mkdir(profilesDir, { recursive: true });
+
+    for (const name of ["profile-a", "profile-b"]) {
+      const dir = path.join(profilesDir, name);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, "CLAUDE.md"), `# ${name}`);
+    }
+
+    // Create initial config with version
+    const configPath = path.join(testInstallDir, ".nori-config.json");
+    const initialConfig = {
+      agents: {
+        "claude-code": { profile: { baseProfile: "profile-a" } },
+      },
+      version: "v19.0.0",
+    };
+    await fs.writeFile(configPath, JSON.stringify(initialConfig, null, 2));
+
+    // Switch to profile-b using agent method
+    const agent = AgentRegistry.getInstance().get({ name: "claude-code" });
+    await agent.switchProfile({
+      installDir: testInstallDir,
+      profileName: "profile-b",
+    });
+
+    // Verify version was preserved
+    const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+    expect(updatedConfig.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+      "profile-b",
+    );
+    expect(updatedConfig.version).toBe("v19.0.0");
+  });
+
+  it("should preserve version when switching profiles for cursor-agent", async () => {
+    // Create cursor profiles directory with test profiles
+    const profilesDir = path.join(testInstallDir, ".cursor", "profiles");
+    await fs.mkdir(profilesDir, { recursive: true });
+
+    for (const name of ["profile-a", "profile-b"]) {
+      const dir = path.join(profilesDir, name);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, "AGENTS.md"), `# ${name}`);
+    }
+
+    // Create initial config with version
+    const configPath = path.join(testInstallDir, ".nori-config.json");
+    const initialConfig = {
+      agents: {
+        "cursor-agent": { profile: { baseProfile: "profile-a" } },
+      },
+      version: "v19.0.0",
+    };
+    await fs.writeFile(configPath, JSON.stringify(initialConfig, null, 2));
+
+    // Switch to profile-b using agent method
+    const agent = AgentRegistry.getInstance().get({ name: "cursor-agent" });
+    await agent.switchProfile({
+      installDir: testInstallDir,
+      profileName: "profile-b",
+    });
+
+    // Verify version was preserved
+    const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+    expect(updatedConfig.agents?.["cursor-agent"]?.profile?.baseProfile).toBe(
+      "profile-b",
+    );
+    expect(updatedConfig.version).toBe("v19.0.0");
+  });
+
+  it("should preserve refreshToken when switching profiles for claude-code", async () => {
+    // Create profiles directory with test profiles
+    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+    await fs.mkdir(profilesDir, { recursive: true });
+
+    for (const name of ["profile-a", "profile-b"]) {
+      const dir = path.join(profilesDir, name);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, "CLAUDE.md"), `# ${name}`);
+    }
+
+    // Create initial config with auth containing refreshToken
+    const configPath = path.join(testInstallDir, ".nori-config.json");
+    const initialConfig = {
+      agents: {
+        "claude-code": { profile: { baseProfile: "profile-a" } },
+      },
+      auth: {
+        username: "test@example.com",
+        refreshToken: "test-refresh-token-12345",
+        organizationUrl: "https://org.example.com",
+      },
+    };
+    await fs.writeFile(configPath, JSON.stringify(initialConfig, null, 2));
+
+    // Switch to profile-b using agent method
+    const agent = AgentRegistry.getInstance().get({ name: "claude-code" });
+    await agent.switchProfile({
+      installDir: testInstallDir,
+      profileName: "profile-b",
+    });
+
+    // Verify refreshToken was preserved
+    const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+    expect(updatedConfig.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+      "profile-b",
+    );
+    expect(updatedConfig.auth?.refreshToken).toBe("test-refresh-token-12345");
+  });
+
+  it("should preserve refreshToken when switching profiles for cursor-agent", async () => {
+    // Create cursor profiles directory with test profiles
+    const profilesDir = path.join(testInstallDir, ".cursor", "profiles");
+    await fs.mkdir(profilesDir, { recursive: true });
+
+    for (const name of ["profile-a", "profile-b"]) {
+      const dir = path.join(profilesDir, name);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, "AGENTS.md"), `# ${name}`);
+    }
+
+    // Create initial config with auth containing refreshToken
+    const configPath = path.join(testInstallDir, ".nori-config.json");
+    const initialConfig = {
+      agents: {
+        "cursor-agent": { profile: { baseProfile: "profile-a" } },
+      },
+      auth: {
+        username: "test@example.com",
+        refreshToken: "test-refresh-token-12345",
+        organizationUrl: "https://org.example.com",
+      },
+    };
+    await fs.writeFile(configPath, JSON.stringify(initialConfig, null, 2));
+
+    // Switch to profile-b using agent method
+    const agent = AgentRegistry.getInstance().get({ name: "cursor-agent" });
+    await agent.switchProfile({
+      installDir: testInstallDir,
+      profileName: "profile-b",
+    });
+
+    // Verify refreshToken was preserved
+    const updatedConfig = JSON.parse(await fs.readFile(configPath, "utf-8"));
+    expect(updatedConfig.agents?.["cursor-agent"]?.profile?.baseProfile).toBe(
+      "profile-b",
+    );
+    expect(updatedConfig.auth?.refreshToken).toBe("test-refresh-token-12345");
+  });
 });
 
 describe("registerSwitchProfileCommand", () => {

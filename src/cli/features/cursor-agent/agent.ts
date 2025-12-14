@@ -160,11 +160,13 @@ export const cursorAgent: Agent = {
     await saveConfig({
       username: currentConfig?.auth?.username ?? null,
       password: currentConfig?.auth?.password ?? null,
+      refreshToken: currentConfig?.auth?.refreshToken ?? null,
       organizationUrl: currentConfig?.auth?.organizationUrl ?? null,
       agents: updatedAgents,
       sendSessionTranscript: currentConfig?.sendSessionTranscript ?? null,
       autoupdate: currentConfig?.autoupdate,
       registryAuths: currentConfig?.registryAuths ?? null,
+      version: currentConfig?.version ?? null,
       installDir,
     });
 

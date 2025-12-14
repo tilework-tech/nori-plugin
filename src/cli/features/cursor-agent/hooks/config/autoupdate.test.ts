@@ -128,13 +128,13 @@ describe("autoupdate", () => {
       // Verify child.unref was called
       expect(mockChild.unref).toHaveBeenCalled();
 
-      // Verify user notification was logged
+      // Verify user notification was logged with warning about hook errors
       expect(consoleLogSpy).toHaveBeenCalled();
       const logOutput = consoleLogSpy.mock.calls[0][0];
       const parsed = JSON.parse(logOutput);
       expect(parsed.systemMessage).toContain("14.1.0"); // current version
       expect(parsed.systemMessage).toContain("14.2.0"); // new version
-      expect(parsed.systemMessage).toContain("update available");
+      expect(parsed.systemMessage).toContain("updating");
 
       consoleLogSpy.mockRestore();
     });
@@ -983,11 +983,13 @@ describe("autoupdate", () => {
       const spawnCall = mockSpawn.mock.calls[0];
       expect(spawnCall[1][1]).toContain("nori-ai install --non-interactive");
 
-      // Verify notification was about installing, not just available
+      // Verify notification warns about hook errors at session end
       expect(consoleLogSpy).toHaveBeenCalled();
       const logOutput = consoleLogSpy.mock.calls[0][0];
       const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain("Installing in background");
+      expect(parsed.systemMessage).toContain(
+        "Restart Claude to use the new version",
+      );
 
       consoleLogSpy.mockRestore();
     });
@@ -1045,11 +1047,13 @@ describe("autoupdate", () => {
         },
       );
 
-      // Verify notification was about installing
+      // Verify notification warns about hook errors at session end
       expect(consoleLogSpy).toHaveBeenCalled();
       const logOutput = consoleLogSpy.mock.calls[0][0];
       const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain("Installing in background");
+      expect(parsed.systemMessage).toContain(
+        "Restart Claude to use the new version",
+      );
 
       consoleLogSpy.mockRestore();
     });

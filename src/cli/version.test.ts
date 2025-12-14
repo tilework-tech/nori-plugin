@@ -9,7 +9,6 @@ import { hasExistingInstallation } from "@/cli/commands/install/installState.js"
 
 import { getConfigPath, saveConfig } from "./config.js";
 import {
-  buildUninstallCommand,
   getCurrentPackageVersion,
   getInstalledVersion,
   supportsAgentFlag,
@@ -239,52 +238,6 @@ describe("version", () => {
       expect(supportsAgentFlag({ version: "invalid" })).toBe(false);
       expect(supportsAgentFlag({ version: "" })).toBe(false);
       expect(supportsAgentFlag({ version: "abc.def.ghi" })).toBe(false);
-    });
-  });
-
-  describe("buildUninstallCommand", () => {
-    it("should include --agent flag for versions >= 19.0.0", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user",
-        agentName: "claude-code",
-        installedVersion: "19.0.0",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user" --agent="claude-code"',
-      );
-    });
-
-    it("should NOT include --agent flag for versions < 19.0.0", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user",
-        agentName: "claude-code",
-        installedVersion: "18.3.1",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user"',
-      );
-    });
-
-    it("should handle paths with spaces", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user/my dir",
-        agentName: "claude-code",
-        installedVersion: "19.0.0",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user/my dir" --agent="claude-code"',
-      );
-    });
-
-    it("should NOT include --agent flag for invalid versions (fail-safe)", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user",
-        agentName: "claude-code",
-        installedVersion: "invalid",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user"',
-      );
     });
   });
 

@@ -131,28 +131,3 @@ export const supportsAgentFlag = (args: { version: string }): boolean => {
     return false;
   }
 };
-
-/**
- * Build the uninstall command for cleanup during installation.
- * Conditionally includes --agent flag based on installed version compatibility.
- *
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- * @param args.agentName - Name of the agent being installed
- * @param args.installedVersion - Currently installed version
- *
- * @returns The uninstall command string
- */
-export const buildUninstallCommand = (args: {
-  installDir: string;
-  agentName: string;
-  installedVersion: string;
-}): string => {
-  const { installDir, agentName, installedVersion } = args;
-  const base = `nori-ai uninstall --non-interactive --install-dir="${installDir}"`;
-
-  if (supportsAgentFlag({ version: installedVersion })) {
-    return `${base} --agent="${agentName}"`;
-  }
-  return base;
-};

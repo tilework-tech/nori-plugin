@@ -42,9 +42,9 @@ import {
 } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
 import {
-  buildUninstallCommand,
   getCurrentPackageVersion,
   getInstalledVersion,
+  supportsAgentFlag,
 } from "@/cli/version.js";
 import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
@@ -366,11 +366,10 @@ export const interactive = async (args?: {
     });
 
     try {
-      const uninstallCmd = buildUninstallCommand({
-        installDir: normalizedInstallDir,
-        agentName: agentImpl.name,
-        installedVersion: previousVersion,
-      });
+      let uninstallCmd = `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}"`;
+      if (supportsAgentFlag({ version: previousVersion })) {
+        uninstallCmd += ` --agent="${agentImpl.name}"`;
+      }
       execSync(uninstallCmd, { stdio: "inherit" });
     } catch (err: any) {
       info({
@@ -566,11 +565,10 @@ export const noninteractive = async (args?: {
     });
 
     try {
-      const uninstallCmd = buildUninstallCommand({
-        installDir: normalizedInstallDir,
-        agentName: agentImpl.name,
-        installedVersion: previousVersion,
-      });
+      let uninstallCmd = `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}"`;
+      if (supportsAgentFlag({ version: previousVersion })) {
+        uninstallCmd += ` --agent="${agentImpl.name}"`;
+      }
       execSync(uninstallCmd, { stdio: "inherit" });
     } catch (err: any) {
       info({

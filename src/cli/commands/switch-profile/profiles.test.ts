@@ -956,3 +956,192 @@ describe("switch-profile confirmation", () => {
     expect(switchProfileSpy).toHaveBeenCalled();
   });
 });
+
+describe("switch-profile getInstallDirs auto-detection", () => {
+  let testInstallDir: string;
+  let originalCwd: string;
+
+  beforeEach(async () => {
+    originalCwd = process.cwd();
+    testInstallDir = await fs.mkdtemp(
+      path.join(tmpdir(), "switch-profile-autodetect-test-"),
+    );
+
+    // Create profiles directory with test profiles
+    const claudeDir = path.join(testInstallDir, ".claude");
+    const profilesDir = path.join(claudeDir, "profiles");
+    await fs.mkdir(profilesDir, { recursive: true });
+    for (const name of ["senior-swe", "product-manager"]) {
+      const dir = path.join(profilesDir, name);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, "CLAUDE.md"), `# ${name}`);
+    }
+
+    // Create config file to mark this as a Nori installation
+    const configPath = path.join(testInstallDir, ".nori-config.json");
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      }),
+    );
+
+    AgentRegistry.resetInstance();
+    vi.mocked(promptUser).mockReset();
+  });
+
+  afterEach(async () => {
+    process.chdir(originalCwd);
+    if (testInstallDir) {
+      await fs.rm(testInstallDir, { recursive: true, force: true });
+    }
+    AgentRegistry.resetInstance();
+    vi.restoreAllMocks();
+  });
+
+  it("should auto-detect installation in current directory when no --install-dir provided", async () => {
+    // Change to the installation directory
+    process.chdir(testInstallDir);
+
+    const program = new Command();
+    program.exitOverride();
+    program.configureOutput({ writeErr: () => undefined });
+    program
+      .option("-d, --install-dir <path>", "Custom installation directory")
+      .option("-n, --non-interactive", "Run without interactive prompts")
+      .option("-a, --agent <name>", "AI agent to use");
+
+    registerSwitchProfileCommand({ program });
+
+    // Mock confirmation prompt to return "y"
+    vi.mocked(promptUser).mockResolvedValueOnce("y");
+
+    // Mock switchProfile to track calls
+    const claudeAgent = AgentRegistry.getInstance().get({
+      name: "claude-code",
+    });
+    const switchProfileSpy = vi
+      .spyOn(claudeAgent, "switchProfile")
+      .mockResolvedValue(undefined);
+
+    try {
+      // Note: NO --install-dir flag - should auto-detect from cwd
+      await program.parseAsync([
+        "node",
+        "nori-ai",
+        "switch-profile",
+        "product-manager",
+      ]);
+    } catch {
+      // May throw due to exit
+    }
+
+    // Should detect installation in current directory and use it
+    expect(switchProfileSpy).toHaveBeenCalledWith({
+      installDir: testInstallDir,
+      profileName: "product-manager",
+    });
+  });
+
+  it("should auto-detect installation in parent directory when running from subdirectory", async () => {
+    // Create a subdirectory to run from
+    const subDir = path.join(testInstallDir, "src", "components");
+    await fs.mkdir(subDir, { recursive: true });
+
+    // Change to the subdirectory
+    process.chdir(subDir);
+
+    const program = new Command();
+    program.exitOverride();
+    program.configureOutput({ writeErr: () => undefined });
+    program
+      .option("-d, --install-dir <path>", "Custom installation directory")
+      .option("-n, --non-interactive", "Run without interactive prompts")
+      .option("-a, --agent <name>", "AI agent to use");
+
+    registerSwitchProfileCommand({ program });
+
+    // Mock confirmation prompt to return "y"
+    vi.mocked(promptUser).mockResolvedValueOnce("y");
+
+    // Mock switchProfile to track calls
+    const claudeAgent = AgentRegistry.getInstance().get({
+      name: "claude-code",
+    });
+    const switchProfileSpy = vi
+      .spyOn(claudeAgent, "switchProfile")
+      .mockResolvedValue(undefined);
+
+    try {
+      // Note: NO --install-dir flag - should traverse up and find installation
+      await program.parseAsync([
+        "node",
+        "nori-ai",
+        "switch-profile",
+        "product-manager",
+      ]);
+    } catch {
+      // May throw due to exit
+    }
+
+    // Should traverse up and find installation in parent directory
+    expect(switchProfileSpy).toHaveBeenCalledWith({
+      installDir: testInstallDir,
+      profileName: "product-manager",
+    });
+  });
+
+  it("should error when no installation found in current or ancestor directories", async () => {
+    // Create a directory WITHOUT a Nori installation
+    const emptyDir = await fs.mkdtemp(
+      path.join(tmpdir(), "switch-profile-empty-test-"),
+    );
+
+    try {
+      // Change to the empty directory
+      process.chdir(emptyDir);
+
+      const program = new Command();
+      program.exitOverride();
+      let errorOutput = "";
+      program.configureOutput({
+        writeErr: (str) => {
+          errorOutput += str;
+        },
+      });
+      program
+        .option("-d, --install-dir <path>", "Custom installation directory")
+        .option("-n, --non-interactive", "Run without interactive prompts")
+        .option("-a, --agent <name>", "AI agent to use");
+
+      registerSwitchProfileCommand({ program });
+
+      let thrownError: Error | null = null;
+      try {
+        // Note: NO --install-dir flag - should fail to find any installation
+        await program.parseAsync([
+          "node",
+          "nori-ai",
+          "switch-profile",
+          "product-manager",
+        ]);
+      } catch (err) {
+        thrownError = err as Error;
+      }
+
+      // Should error because no installation found
+      expect(thrownError).not.toBeNull();
+      // Error message should mention no installation found
+      expect(
+        errorOutput.toLowerCase().includes("no") ||
+          thrownError?.message.toLowerCase().includes("no") ||
+          errorOutput.toLowerCase().includes("not found") ||
+          thrownError?.message.toLowerCase().includes("not found"),
+      ).toBe(true);
+    } finally {
+      await fs.rm(emptyDir, { recursive: true, force: true });
+    }
+  });
+});

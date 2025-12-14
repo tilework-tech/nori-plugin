@@ -19,6 +19,8 @@ Commands that interact with agent-specific features (install, uninstall, check, 
 - If multiple agents installed (interactive mode): prompt user to select from numbered list
 - If multiple agents installed (non-interactive mode): throw error with helpful message listing installed agents
 
+**switch-profile Installation Directory Resolution:** The switch-profile command uses `getInstallDirs()` for auto-detection when no explicit `--install-dir` is provided, allowing users to run `nori-ai switch-profile <profile>` from any subdirectory of a Nori installation. If an explicit `--install-dir` is provided, it uses `normalizeInstallDir()` to process that path. If no installation is found in the current directory or any ancestor directories, the command throws an error with a helpful message suggesting `nori-ai install` or the `--install-dir` flag. This aligns switch-profile with the check command's behavior.
+
 **switch-profile Confirmation:** After agent resolution, the switch-profile command prompts the user to confirm before proceeding. The `confirmSwitchProfile()` function displays:
 - Install directory being operated on
 - Agent display name and ID (e.g., "Claude Code (claude-code)")

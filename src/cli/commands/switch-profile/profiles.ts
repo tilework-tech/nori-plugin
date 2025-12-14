@@ -11,7 +11,7 @@ import {
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import { error, info, success, newline } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
-import { normalizeInstallDir } from "@/utils/path.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
 
 import type { Command } from "commander";
 
@@ -140,10 +140,25 @@ export const registerSwitchProfileCommand = (args: {
     .action(async (name: string, options: { agent?: string }) => {
       // Get global options from parent
       const globalOpts = program.opts();
-      const installDir = normalizeInstallDir({
-        installDir: globalOpts.installDir || null,
-      });
       const nonInteractive = globalOpts.nonInteractive ?? false;
+
+      // Determine installation directory
+      let installDir: string;
+
+      if (globalOpts.installDir != null && globalOpts.installDir !== "") {
+        // Explicit install dir provided - use it directly
+        installDir = normalizeInstallDir({ installDir: globalOpts.installDir });
+      } else {
+        // Auto-detect installation
+        const installations = getInstallDirs({ currentDir: process.cwd() });
+        if (installations.length === 0) {
+          throw new Error(
+            "No Nori installations found in current directory or parent directories. " +
+              "Run 'nori-ai install' to create a new installation, or use --install-dir to specify a location.",
+          );
+        }
+        installDir = installations[0]; // Use closest installation
+      }
 
       // Use local --agent option if provided, otherwise auto-detect
       // We don't use globalOpts.agent because it has a default value ("claude-code")
@@ -185,7 +200,7 @@ export const registerSwitchProfileCommand = (args: {
       await installMain({
         nonInteractive: true,
         skipUninstall: true,
-        installDir: globalOpts.installDir || null,
+        installDir,
         agent: agentName,
         silent: true,
       });

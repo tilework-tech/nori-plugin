@@ -14,10 +14,8 @@ import semver from "semver";
 
 import { trackEvent } from "@/cli/analytics.js";
 import { loadConfig } from "@/cli/config.js";
-import { debug, error, LOG_FILE } from "@/cli/logger.js";
+import { debug, LOG_FILE } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
-
-const DEFAULT_VERSION = "12.1.0";
 
 const PACKAGE_NAME = "nori-ai";
 
@@ -74,8 +72,7 @@ const installUpdate = (args: {
 
   // Listen for spawn errors
   child.on("error", (err) => {
-    debug({ message: `Spawn error: ${err.message}` });
-    error({ message: `Autoupdate spawn failed: ${err.message}` });
+    debug({ message: `Autoupdate spawn failed: ${err.message}` });
   });
 
   // Close file descriptor when process exits to prevent leak
@@ -109,103 +106,101 @@ const logToClaudeSession = (args: { message: string }): void => {
  * Main entry point
  */
 const main = async (): Promise<void> => {
-  try {
-    const cwd = process.cwd();
+  const cwd = process.cwd();
 
-    // Find Nori installation by searching upward from cwd
-    const allInstallations = getInstallDirs({ currentDir: cwd });
-    const configDir = allInstallations.length > 0 ? allInstallations[0] : null;
+  // Find Nori installation by searching upward from cwd
+  const allInstallations = getInstallDirs({ currentDir: cwd });
+  const configDir = allInstallations.length > 0 ? allInstallations[0] : null;
 
-    if (configDir == null) {
-      // No config found - log to consolidated log file and exit
-      debug({
-        message:
-          `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
-          `Could not find .nori-config.json in current directory or any parent directory.\n` +
-          `Searched from: ${cwd}`,
-      });
-      return;
-    }
-
-    // Load config from found directory
-    const diskConfig = await loadConfig({ installDir: configDir });
-    const installType = diskConfig?.auth ? "paid" : "free";
-
-    if (diskConfig?.installDir == null) {
-      // Config exists but has no installDir - log error and exit
-      debug({
-        message:
-          `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
-          `Config file exists at ${configDir} but has no installDir field.`,
-      });
-      return;
-    }
-
-    const installDir = diskConfig.installDir;
-
-    // Validate that installDir exists
-    if (!existsSync(installDir)) {
-      debug({
-        message:
-          `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
-          `Config specifies installDir: ${installDir} but directory does not exist.`,
-      });
-      return;
-    }
-
-    // Get installed version from config
-    const installedVersion = diskConfig.version ?? DEFAULT_VERSION;
-
-    // Check for updates
-    const latestVersion = await getLatestVersion();
-    const updateAvailable =
-      latestVersion != null &&
-      semver.valid(latestVersion) != null &&
-      semver.gt(latestVersion, installedVersion);
-
-    // Track session start (fire and forget - non-blocking)
-    trackEvent({
-      eventName: "nori_session_started",
-      eventParams: {
-        installed_version: installedVersion,
-        update_available: updateAvailable,
-        install_type: installType,
-      },
-    }).catch(() => {
-      // Silent failure - never interrupt session startup for analytics
+  if (configDir == null) {
+    // No config found - log to consolidated log file and exit
+    debug({
+      message:
+        `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+        `Could not find .nori-config.json in current directory or any parent directory.\n` +
+        `Searched from: ${cwd}`,
     });
-
-    if (!updateAvailable) {
-      // No update needed (either no latest version found, invalid version,
-      // or installed version is already >= latest version)
-      return;
-    }
-
-    // Check if autoupdate is explicitly enabled in config (default is disabled)
-    if (diskConfig?.autoupdate !== "enabled") {
-      // Notify user that update is available but autoupdate is not enabled
-      logToClaudeSession({
-        message: `🔔 Nori Profiles v${latestVersion} available (current: v${installedVersion}). Autoupdate is disabled. Run 'npx nori-ai install' to update manually.`,
-      });
-      return;
-    }
-
-    // New version available - install in background
-    installUpdate({
-      version: latestVersion,
-      installDir: diskConfig?.installDir,
-    });
-
-    // Notify user via additionalContext
-    logToClaudeSession({
-      message: `🔄 Nori Profiles update available: v${installedVersion} → v${latestVersion}. Installing in background...`,
-    });
-  } catch (err) {
-    // Silent failure - don't interrupt session startup
-    error({
-      message: `Nori autoupdate: Error checking for updates (non-fatal): ${err}`,
-    });
+    return;
   }
+
+  // Load config from found directory
+  const diskConfig = await loadConfig({ installDir: configDir });
+  const installType = diskConfig?.auth ? "paid" : "free";
+
+  if (diskConfig?.installDir == null) {
+    // Config exists but has no installDir - log error and exit
+    debug({
+      message:
+        `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+        `Config file exists at ${configDir} but has no installDir field.`,
+    });
+    return;
+  }
+
+  const installDir = diskConfig.installDir;
+
+  // Validate that installDir exists
+  if (!existsSync(installDir)) {
+    debug({
+      message:
+        `=== Nori Autoupdate Error: ${new Date().toISOString()} ===\n` +
+        `Config specifies installDir: ${installDir} but directory does not exist.`,
+    });
+    return;
+  }
+
+  // Get installed version from config
+  if (diskConfig.version == null) {
+    throw new Error(
+      "Installation out of date: no version field found in .nori-config.json file.",
+    );
+  }
+  const installedVersion = diskConfig.version;
+
+  // Check for updates
+  const latestVersion = await getLatestVersion();
+  const updateAvailable =
+    latestVersion != null &&
+    semver.valid(latestVersion) != null &&
+    semver.gt(latestVersion, installedVersion);
+
+  // Track session start (fire and forget - non-blocking)
+  trackEvent({
+    eventName: "nori_session_started",
+    eventParams: {
+      installed_version: installedVersion,
+      update_available: updateAvailable,
+      install_type: installType,
+    },
+  }).catch(() => {
+    // Silent failure - never interrupt session startup for analytics
+  });
+
+  if (!updateAvailable) {
+    // No update needed (either no latest version found, invalid version,
+    // or installed version is already >= latest version)
+    return;
+  }
+
+  // Check if autoupdate is explicitly enabled in config (default is disabled)
+  if (diskConfig?.autoupdate !== "enabled") {
+    // Notify user that update is available but autoupdate is not enabled
+    logToClaudeSession({
+      message: `🔔 Nori Profiles v${latestVersion} available (current: v${installedVersion}). Autoupdate is disabled. Run 'npx nori-ai install' to update manually.`,
+    });
+    return;
+  }
+
+  // New version available - install in background
+  installUpdate({
+    version: latestVersion,
+    installDir: diskConfig?.installDir,
+  });
+
+  // Notify user via additionalContext
+  logToClaudeSession({
+    message: `🔄 Nori Profiles update available: v${installedVersion} → v${latestVersion}. Installing in background...`,
+  });
 };
 
 // Export for testing
@@ -214,7 +209,8 @@ export { main };
 // Run if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
-    error({ message: `Nori autoupdate: Unhandled error (non-fatal): ${err}` });
-    process.exit(0);
+    logToClaudeSession({
+      message: `❌ Nori Error: ${err instanceof Error ? err.message : String(err)}`,
+    });
   });
 }

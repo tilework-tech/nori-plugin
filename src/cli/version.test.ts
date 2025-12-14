@@ -9,7 +9,6 @@ import { hasExistingInstallation } from "@/cli/commands/install/installState.js"
 
 import { getConfigPath, saveConfig } from "./config.js";
 import {
-  buildUninstallCommand,
   getCurrentPackageVersion,
   getInstalledVersion,
   supportsAgentFlag,
@@ -141,12 +140,15 @@ describe("version", () => {
       expect(version).toBe("13.5.2");
     });
 
-    it("should return 12.1.0 if config file does not exist", async () => {
-      const version = await getInstalledVersion({ installDir: tempDir });
-      expect(version).toBe("12.1.0");
+    it("should throw error if config file does not exist", async () => {
+      await expect(
+        getInstalledVersion({ installDir: tempDir }),
+      ).rejects.toThrow(
+        "Installation out of date: no version field found in .nori-config.json file.",
+      );
     });
 
-    it("should return 12.1.0 if config has no version field", async () => {
+    it("should throw error if config has no version field", async () => {
       // Create config without version field
       await saveConfig({
         username: null,
@@ -155,8 +157,11 @@ describe("version", () => {
         installDir: tempDir,
       });
 
-      const version = await getInstalledVersion({ installDir: tempDir });
-      expect(version).toBe("12.1.0");
+      await expect(
+        getInstalledVersion({ installDir: tempDir }),
+      ).rejects.toThrow(
+        "Installation out of date: no version field found in .nori-config.json file.",
+      );
     });
 
     it("should never delete real user config file", async () => {
@@ -233,52 +238,6 @@ describe("version", () => {
       expect(supportsAgentFlag({ version: "invalid" })).toBe(false);
       expect(supportsAgentFlag({ version: "" })).toBe(false);
       expect(supportsAgentFlag({ version: "abc.def.ghi" })).toBe(false);
-    });
-  });
-
-  describe("buildUninstallCommand", () => {
-    it("should include --agent flag for versions >= 19.0.0", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user",
-        agentName: "claude-code",
-        installedVersion: "19.0.0",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user" --agent="claude-code"',
-      );
-    });
-
-    it("should NOT include --agent flag for versions < 19.0.0", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user",
-        agentName: "claude-code",
-        installedVersion: "18.3.1",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user"',
-      );
-    });
-
-    it("should handle paths with spaces", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user/my dir",
-        agentName: "claude-code",
-        installedVersion: "19.0.0",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user/my dir" --agent="claude-code"',
-      );
-    });
-
-    it("should NOT include --agent flag for invalid versions (fail-safe)", () => {
-      const cmd = buildUninstallCommand({
-        installDir: "/home/user",
-        agentName: "claude-code",
-        installedVersion: "invalid",
-      });
-      expect(cmd).toBe(
-        'nori-ai uninstall --non-interactive --install-dir="/home/user"',
-      );
     });
   });
 

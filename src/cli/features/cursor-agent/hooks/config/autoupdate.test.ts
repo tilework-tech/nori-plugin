@@ -304,6 +304,7 @@ describe("autoupdate", () => {
       const mockSpawn = vi.mocked(spawn);
       const mockChild = {
         unref: vi.fn(),
+        on: vi.fn(),
       };
       mockSpawn.mockReturnValue(mockChild as any);
 

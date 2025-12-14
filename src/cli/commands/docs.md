@@ -42,7 +42,7 @@ The install command sets `agents: { [agentName]: { profile } }` in the config, w
 2. For backwards compatibility: if no agents are installed but an installation exists (detected via hasExistingInstallation), assumes `["claude-code"]` (old installs didn't track agents)
 3. Only runs uninstall if the agent being installed is already installed
 4. Logs "Adding new agent (preserving existing X installation)..." when installing a different agent alongside existing ones
-5. The `getInstalledVersion()` call is made ONLY inside the `if (!skipUninstall && agentAlreadyInstalled)` block - this ensures the function is only called when an installation is known to exist, since `getInstalledVersion()` throws an error if the config has no `version` field
+5. The `getInstalledVersion()` call is made ONLY inside the `if (!skipUninstall && agentAlreadyInstalled)` block - this ensures the function is only called when an installation is known to exist, since `getInstalledVersion()` throws an error if no version can be determined (checks config `version` field first, then falls back to deprecated `.nori-installed-version` file)
 
 **Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. It uses `getInstalledAgents({ config })` to determine installed agents from the `agents` object keys. If exactly one agent is installed, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
 
@@ -51,6 +51,19 @@ The install command sets `agents: { [agentName]: { profile } }` in the config, w
 - If exactly one agent installed: auto-select it
 - If multiple agents installed: error with "Multiple agents installed (X, Y). Please specify which agent to check with --agent <name>."
 - If no agents in config (legacy fallback): default to `claude-code`
+
+**Registry Commands Agent Validation:** Registry commands (search, download, update, upload) require Claude Code to be installed because profiles are stored at `~/.claude/profiles/`. The shared `registryAgentCheck.ts` module provides validation:
+- `checkRegistryAgentSupport({ installDir })` - Returns `{ supported: boolean, config: Config | null }`. Rejects if config has cursor-agent but NOT claude-code; allows all other cases (backwards compatible with older installs that have no agents field)
+- `showCursorAgentNotSupportedError()` - Displays error message explaining registry requires Claude Code and how to install it
+
+All four registry commands call this validation early in their main function, after determining the install directory but before any registry API calls:
+```typescript
+const agentCheck = await checkRegistryAgentSupport({ installDir });
+if (!agentCheck.supported) {
+  showCursorAgentNotSupportedError();
+  return;
+}
+```
 
 ```
 cli.ts
@@ -106,6 +119,9 @@ export const registerXCommand = (args: { program: Command }): void => {
 **Import Path Pattern:** Commands import from `@/cli/` for shared utilities and `@/cli/features/claude-code/` for loaders. Within the install command, relative imports are used for command-specific utilities (e.g., `./asciiArt.js`, `./installState.js`).
 
 ### Things to Know
+
+The commands directory contains shared utilities at the top level:
+- `registryAgentCheck.ts` - Shared validation for registry commands. Checks if the installation has only cursor-agent (no claude-code) and rejects with a helpful error message. Used by registry-search, registry-download, registry-update, and registry-upload commands.
 
 The `install/` directory contains command-specific utilities:
 - `asciiArt.ts` - ASCII banners displayed during installation. All display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.

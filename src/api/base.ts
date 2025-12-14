@@ -60,7 +60,23 @@ export class ConfigManager {
       }
 
       try {
-        return JSON.parse(trimmedContent);
+        const parsed = JSON.parse(trimmedContent);
+
+        // Handle both nested auth format (v19+) and legacy flat format
+        // Nested format: { auth: { username, password, refreshToken, organizationUrl } }
+        // Flat format: { username, password, refreshToken, organizationUrl }
+        if (parsed.auth != null && typeof parsed.auth === "object") {
+          // Extract auth fields from nested format to root level
+          return {
+            username: parsed.auth.username ?? null,
+            password: parsed.auth.password ?? null,
+            refreshToken: parsed.auth.refreshToken ?? null,
+            organizationUrl: parsed.auth.organizationUrl ?? null,
+          };
+        }
+
+        // Legacy flat format - return as-is
+        return parsed;
       } catch {
         return null;
       }

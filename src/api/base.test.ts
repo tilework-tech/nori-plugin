@@ -142,5 +142,164 @@ describe("ConfigManager", () => {
       // Verify - should use closest (project) config
       expect(result).toEqual(projectConfigData);
     });
+
+    it("should extract auth from nested format with refreshToken (v19+)", () => {
+      // Setup: Create project with nested auth config (v19+ format)
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const configPath = path.join(projectDir, ".nori-config.json");
+      const configData = {
+        auth: {
+          username: "test@example.com",
+          refreshToken: "test-refresh-token",
+          organizationUrl: "https://test.nori.ai",
+        },
+      };
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+
+      // Change to project directory
+      process.chdir(projectDir);
+
+      // Execute
+      const result = ConfigManager.loadConfig();
+
+      // Verify - should extract auth fields to root level
+      expect(result).toEqual({
+        username: "test@example.com",
+        password: null,
+        refreshToken: "test-refresh-token",
+        organizationUrl: "https://test.nori.ai",
+      });
+    });
+
+    it("should extract auth from nested format with password (v19+)", () => {
+      // Setup: Create project with nested auth config using password
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const configPath = path.join(projectDir, ".nori-config.json");
+      const configData = {
+        auth: {
+          username: "test@example.com",
+          password: "test-password",
+          organizationUrl: "https://test.nori.ai",
+        },
+      };
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+
+      // Change to project directory
+      process.chdir(projectDir);
+
+      // Execute
+      const result = ConfigManager.loadConfig();
+
+      // Verify - should extract auth fields to root level
+      expect(result).toEqual({
+        username: "test@example.com",
+        password: "test-password",
+        refreshToken: null,
+        organizationUrl: "https://test.nori.ai",
+      });
+    });
+  });
+
+  describe("isConfigured", () => {
+    it("should return true for nested auth format with refreshToken", () => {
+      // Setup: Create project with nested auth config
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const configPath = path.join(projectDir, ".nori-config.json");
+      const configData = {
+        auth: {
+          username: "test@example.com",
+          refreshToken: "test-refresh-token",
+          organizationUrl: "https://test.nori.ai",
+        },
+      };
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+
+      // Change to project directory
+      process.chdir(projectDir);
+
+      // Execute & Verify
+      expect(ConfigManager.isConfigured()).toBe(true);
+    });
+
+    it("should return true for nested auth format with password", () => {
+      // Setup: Create project with nested auth config using password
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const configPath = path.join(projectDir, ".nori-config.json");
+      const configData = {
+        auth: {
+          username: "test@example.com",
+          password: "test-password",
+          organizationUrl: "https://test.nori.ai",
+        },
+      };
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+
+      // Change to project directory
+      process.chdir(projectDir);
+
+      // Execute & Verify
+      expect(ConfigManager.isConfigured()).toBe(true);
+    });
+
+    it("should return true for legacy flat auth format (backwards compat)", () => {
+      // Setup: Create project with legacy flat config
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const configPath = path.join(projectDir, ".nori-config.json");
+      const configData = {
+        username: "test@example.com",
+        password: "test-password",
+        organizationUrl: "https://test.nori.ai",
+      };
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+
+      // Change to project directory
+      process.chdir(projectDir);
+
+      // Execute & Verify
+      expect(ConfigManager.isConfigured()).toBe(true);
+    });
+
+    it("should return false when auth is incomplete", () => {
+      // Setup: Create project with incomplete auth
+      const projectDir = path.join(tempDir, "project");
+      fs.mkdirSync(projectDir, { recursive: true });
+
+      const configPath = path.join(projectDir, ".nori-config.json");
+      const configData = {
+        auth: {
+          username: "test@example.com",
+          // Missing password/refreshToken and organizationUrl
+        },
+      };
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
+
+      // Change to project directory
+      process.chdir(projectDir);
+
+      // Execute & Verify
+      expect(ConfigManager.isConfigured()).toBe(false);
+    });
+
+    it("should return false when no config exists", () => {
+      // Setup: Create empty directory with no config
+      const emptyDir = path.join(tempDir, "empty");
+      fs.mkdirSync(emptyDir, { recursive: true });
+
+      // Change to empty directory
+      process.chdir(emptyDir);
+
+      // Execute & Verify
+      expect(ConfigManager.isConfigured()).toBe(false);
+    });
   });
 });

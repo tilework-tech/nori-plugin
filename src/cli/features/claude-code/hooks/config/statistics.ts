@@ -5,12 +5,24 @@
  *
  * This script is called by Claude Code hooks on SessionEnd event.
  * It parses the transcript to calculate usage statistics and displays them.
+ *
+ * Uses exit code 2 to trigger Claude Code's failure display mechanism,
+ * and ANSI escape codes to clear the "SessionEnd hook [path] failed:" prefix.
  */
 
 import { debug, error } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
-import { formatSuccess } from "./intercepted-slashcommands/format.js";
+import { formatWithLineClear } from "./intercepted-slashcommands/format.js";
+
+/**
+ * Get the hook script path for ANSI line clearing calculations
+ *
+ * @returns The path to this hook script from process.argv[1]
+ */
+const getHookPath = (): string => {
+  return process.argv[1] || "";
+};
 
 type TranscriptMessage = {
   type: string;
@@ -406,9 +418,18 @@ export const main = async (): Promise<void> => {
   // Calculate statistics
   const messages = countMessages({ content: transcriptContent });
 
-  // Skip statistics for empty sessions (no user messages)
+  // For empty sessions (no user messages), output a brief message
   if (messages.user === 0) {
-    debug({ message: "No user messages found, skipping statistics" });
+    debug({ message: "No user messages found" });
+    const hookPath = getHookPath();
+    console.error(
+      formatWithLineClear({
+        message: "No statistics for this session.\n",
+        hookPath,
+        isSuccess: true,
+      }),
+    );
+    process.exit(2);
     return;
   }
 
@@ -426,10 +447,19 @@ export const main = async (): Promise<void> => {
     noriClaudeMdUsed,
   });
 
-  // Output to stderr with green ANSI formatting (Claude Code only shows stderr to users)
-  console.error(formatSuccess({ message: `\n${formattedStats}\n` }));
+  // Output to stderr with ANSI line clearing and green formatting
+  // Exit code 2 triggers Claude Code's failure display mechanism
+  const hookPath = getHookPath();
+  console.error(
+    formatWithLineClear({
+      message: `${formattedStats}\n`,
+      hookPath,
+      isSuccess: true,
+    }),
+  );
 
   debug({ message: "=== Statistics hook execution completed ===" });
+  process.exit(2);
 };
 
 // Run if executed directly
@@ -441,7 +471,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
     error({ message: "Statistics hook: Unhandled error (non-fatal):" });
     error({ message: `Error: ${err?.message || err}` });
-    // Exit with 0 to avoid crashing the session
+    // Exit with 0 to avoid crashing the session (silent failure on errors)
     process.exit(0);
   });
 }

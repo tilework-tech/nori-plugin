@@ -87,3 +87,69 @@ export const formatError = (args: { message: string }): string => {
   const { message } = args;
   return formatWithColor({ message, color: RED });
 };
+
+/**
+ * Calculate the number of terminal lines the Claude Code hook failure prefix takes
+ *
+ * Claude Code displays hook failures with this prefix format:
+ * "SessionEnd hook [node {hookPath}] failed: "
+ *
+ * @param args - The function arguments
+ * @param args.hookPath - The path to the hook script
+ * @param args.terminalWidth - Terminal width in columns (defaults to process.stdout.columns or 80)
+ *
+ * @returns The number of lines the prefix will occupy
+ */
+export const calculatePrefixLines = (args: {
+  hookPath: string;
+  terminalWidth?: number | null;
+}): number => {
+  const { hookPath } = args;
+  const terminalWidth = args.terminalWidth || process.stdout.columns || 80;
+
+  // Claude Code prefix format: "SessionEnd hook [node {hookPath}] failed: "
+  const prefix = `SessionEnd hook [node ${hookPath}] failed: `;
+
+  return Math.ceil(prefix.length / terminalWidth);
+};
+
+/**
+ * Format a message with ANSI codes to clear the Claude Code hook failure prefix
+ *
+ * This function prepends ANSI escape codes that:
+ * 1. Move the cursor up by the number of lines the prefix occupies
+ * 2. Clear from cursor to end of screen
+ * 3. Apply success (green) or error (red) coloring to the message
+ *
+ * @param args - The function arguments
+ * @param args.message - The message to format
+ * @param args.hookPath - The path to the hook script (used to calculate prefix lines)
+ * @param args.isSuccess - Whether this is a success message (green) or error (red)
+ * @param args.terminalWidth - Terminal width in columns (optional, defaults to process.stdout.columns or 80)
+ *
+ * @returns The message with ANSI line-clearing codes prepended and color applied
+ */
+export const formatWithLineClear = (args: {
+  message: string;
+  hookPath: string;
+  isSuccess: boolean;
+  terminalWidth?: number | null;
+}): string => {
+  const { message, hookPath, isSuccess, terminalWidth } = args;
+
+  // Calculate how many lines to clear
+  const linesToClear = calculatePrefixLines({ hookPath, terminalWidth });
+
+  // ANSI codes:
+  // \r = carriage return (move to column 0)
+  // \x1b[{n}A = cursor up n lines
+  // \x1b[J = clear from cursor to end of screen
+  const clearCodes = `\r\x1b[${linesToClear}A\x1b[J`;
+
+  // Apply color formatting
+  const coloredMessage = isSuccess
+    ? formatSuccess({ message })
+    : formatError({ message });
+
+  return clearCodes + coloredMessage;
+};

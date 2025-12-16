@@ -13,6 +13,7 @@ import { registrarApi } from "@/api/registrar.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig, getRegistryAuth } from "@/cli/config.js";
 import { getInstallDirs } from "@/utils/path.js";
+import { extractOrgId, buildRegistryUrl } from "@/utils/url.js";
 
 import type {
   HookInput,
@@ -60,6 +61,7 @@ const parseUploadArgs = (
 
 /**
  * Get list of registries the user can upload to
+ * Includes both org-based auth (config.auth) and legacy registryAuths
  * @param args - The function arguments
  * @param args.config - The Nori configuration
  *
@@ -69,12 +71,35 @@ const getAvailableUploadRegistries = (args: {
   config: Config;
 }): Array<RegistryAuth> => {
   const { config } = args;
+  const availableRegistries: Array<RegistryAuth> = [];
 
-  if (config.registryAuths == null || config.registryAuths.length === 0) {
-    return [];
+  // Add registry derived from org-based auth (config.auth)
+  if (config.auth != null && config.auth.organizationUrl != null) {
+    const orgId = extractOrgId({ url: config.auth.organizationUrl });
+    if (orgId != null) {
+      const derivedRegistryUrl = buildRegistryUrl({ orgId });
+      availableRegistries.push({
+        registryUrl: derivedRegistryUrl,
+        username: config.auth.username,
+        password: config.auth.password ?? "",
+      });
+    }
   }
 
-  return config.registryAuths;
+  // Add legacy registryAuths entries
+  if (config.registryAuths != null) {
+    for (const auth of config.registryAuths) {
+      // Avoid duplicates if the same registry URL already exists from org-based auth
+      const alreadyExists = availableRegistries.some(
+        (existing) => existing.registryUrl === auth.registryUrl,
+      );
+      if (!alreadyExists) {
+        availableRegistries.push(auth);
+      }
+    }
+  }
+
+  return availableRegistries;
 };
 
 /**
@@ -276,7 +301,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatError({
-        message: `No registry authentication configured.\n\nAdd registry credentials to .nori-config.json:\n{\n  "registryAuths": [{\n    "username": "your-email@example.com",\n    "password": "your-password",\n    "registryUrl": "https://registry.example.com"\n  }]\n}`,
+        message: `No registry authentication configured.\n\nEither log in with 'nori-ai install' or add registry credentials to .nori-config.json:\n{\n  "registryAuths": [{\n    "username": "your-email@example.com",\n    "password": "your-password",\n    "registryUrl": "https://registry.example.com"\n  }]\n}`,
       }),
     };
   }

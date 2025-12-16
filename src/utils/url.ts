@@ -116,3 +116,47 @@ export const isValidUrl = (args: { input: string }): boolean => {
     return false;
   }
 };
+
+/**
+ * Extract organization ID from a Nori service URL
+ * Supports both Watchtower (*.tilework.tech) and Registry (*.nori-registry.ai) URLs
+ * @param args - Extraction arguments
+ * @param args.url - The service URL to extract org ID from
+ *
+ * @returns The organization ID, or null if not a valid Nori service URL
+ *
+ * @example
+ * extractOrgId({ url: "https://tilework.tilework.tech" })
+ * // Returns: "tilework"
+ * @example
+ * extractOrgId({ url: "https://myorg.nori-registry.ai" })
+ * // Returns: "myorg"
+ * @example
+ * extractOrgId({ url: "http://localhost:3000" })
+ * // Returns: null (not a Nori service URL)
+ */
+export const extractOrgId = (args: { url: string }): string | null => {
+  const { url } = args;
+
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+
+    // Check for Watchtower URL pattern: {orgId}.tilework.tech
+    if (hostname.endsWith(".tilework.tech")) {
+      const orgId = hostname.replace(".tilework.tech", "");
+      return isValidOrgId({ orgId }) ? orgId : null;
+    }
+
+    // Check for Registry URL pattern: {orgId}.nori-registry.ai
+    if (hostname.endsWith(".nori-registry.ai")) {
+      const orgId = hostname.replace(".nori-registry.ai", "");
+      return isValidOrgId({ orgId }) ? orgId : null;
+    }
+
+    // Not a recognized Nori service URL (e.g., localhost for local dev)
+    return null;
+  } catch {
+    return null;
+  }
+};

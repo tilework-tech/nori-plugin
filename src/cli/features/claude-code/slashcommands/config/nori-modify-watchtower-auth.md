@@ -57,15 +57,21 @@ The Watchtower auth credentials are stored in the `auth` object of the config fi
 5. Display a success message:
 
 ```
-Watchtower authentication updated successfully!
+Nori authentication updated successfully!
 
 Username: <username>
 Organization URL: <organizationUrl>
 
-You now have access to premium Nori features:
+You now have access to all Nori features:
+
+Watchtower:
   - recall: Search the knowledge base for relevant context
   - memorize: Save important context for future sessions
   - noridocs: Server-side documentation with versioning
+
+Registry:
+  - /nori-registry-search: Search private profile packages
+  - /nori-registry-download: Download private profiles
 
 This configuration was saved to {{install_dir}}/.nori-config.json.
 ```
@@ -98,14 +104,24 @@ Premium features are no longer available. You can re-add credentials at any time
 
 </required>
 
-## What is Nori Watchtower?
+## What is Nori Authentication?
 
-Nori Watchtower is a backend service that enables shared knowledge features:
+Nori uses **unified authentication** - one set of credentials works for all Nori services:
+
+**Watchtower** (`https://{orgId}.tilework.tech`):
 - **recall**: Search and recall past solutions across your team
 - **memorize**: Save learnings for future sessions
 - **noridocs**: Server-side documentation with versioning
 
-If you have Watchtower credentials (you should have received them from Josh or Amol), you can use this command to configure access to these premium features.
+**Registry** (`https://{orgId}.nori-registry.ai`):
+- Download private profile packages
+- Search and browse your organization's profiles
+
+When you configure your organization ID (e.g., 'tilework'), both URLs are derived automatically:
+- Watchtower: `https://tilework.tilework.tech`
+- Registry: `https://tilework.nori-registry.ai`
+
+If you have Nori credentials (you should have received them from Josh or Amol), you can use this command to configure access to these features.
 
 # Current Configuration
 

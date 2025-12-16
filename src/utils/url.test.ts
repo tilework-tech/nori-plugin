@@ -6,6 +6,7 @@ import {
   buildWatchtowerUrl,
   buildRegistryUrl,
   isValidUrl,
+  extractOrgId,
 } from "./url";
 
 describe("normalizeUrl", () => {
@@ -189,5 +190,69 @@ describe("isValidUrl", () => {
 
   it("should return false for empty string", () => {
     expect(isValidUrl({ input: "" })).toBe(false);
+  });
+});
+
+describe("extractOrgId", () => {
+  describe("watchtower URLs", () => {
+    it("should extract org ID from watchtower URL", () => {
+      expect(extractOrgId({ url: "https://tilework.tilework.tech" })).toBe(
+        "tilework",
+      );
+    });
+
+    it("should extract org ID with hyphens from watchtower URL", () => {
+      expect(extractOrgId({ url: "https://my-company.tilework.tech" })).toBe(
+        "my-company",
+      );
+    });
+
+    it("should handle watchtower URL with path", () => {
+      expect(
+        extractOrgId({ url: "https://myorg.tilework.tech/api/test" }),
+      ).toBe("myorg");
+    });
+  });
+
+  describe("registry URLs", () => {
+    it("should extract org ID from registry URL", () => {
+      expect(extractOrgId({ url: "https://myorg.nori-registry.ai" })).toBe(
+        "myorg",
+      );
+    });
+
+    it("should extract org ID with hyphens from registry URL", () => {
+      expect(extractOrgId({ url: "https://my-org.nori-registry.ai" })).toBe(
+        "my-org",
+      );
+    });
+  });
+
+  describe("non-Nori URLs", () => {
+    it("should return null for localhost URL", () => {
+      expect(extractOrgId({ url: "http://localhost:3000" })).toBe(null);
+    });
+
+    it("should return null for generic URL", () => {
+      expect(extractOrgId({ url: "https://example.com" })).toBe(null);
+    });
+
+    it("should return null for invalid URL", () => {
+      expect(extractOrgId({ url: "not-a-url" })).toBe(null);
+    });
+
+    it("should return null for empty string", () => {
+      expect(extractOrgId({ url: "" })).toBe(null);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should normalize uppercase hostnames to lowercase (URL spec behavior)", () => {
+      // URL hostnames are case-insensitive and normalized to lowercase by the URL parser
+      // So "https://MyCompany.tilework.tech" becomes "mycompany.tilework.tech"
+      expect(extractOrgId({ url: "https://MyCompany.tilework.tech" })).toBe(
+        "mycompany",
+      );
+    });
   });
 });

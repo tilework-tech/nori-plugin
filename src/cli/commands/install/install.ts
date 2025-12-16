@@ -19,7 +19,6 @@ import {
   displaySeaweedBed,
 } from "@/cli/commands/install/asciiArt.js";
 import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
-import { promptRegistryAuths } from "@/cli/commands/install/registryAuthPrompt.js";
 import {
   loadConfig,
   getDefaultProfile,
@@ -335,14 +334,9 @@ export const generatePromptConfig = async (args: {
     newline();
   }
 
-  // Prompt for private registry authentication
-  newline();
-  const registryAuths = await promptRegistryAuths({
-    existingRegistryAuths: existingConfig?.registryAuths ?? null,
-    watchtowerAuth: auth,
-  });
-
   // Build config directly
+  // Registry auth is now unified with Watchtower auth - no separate prompt needed
+  // Keep existing registryAuths for backwards compatibility with legacy configs
   const profile = { baseProfile: selectedProfileName };
   return {
     auth: auth ?? null,
@@ -351,7 +345,7 @@ export const generatePromptConfig = async (args: {
       [agent.name]: { profile },
     },
     installDir,
-    registryAuths: registryAuths ?? null,
+    registryAuths: existingConfig?.registryAuths ?? null,
   };
 };
 

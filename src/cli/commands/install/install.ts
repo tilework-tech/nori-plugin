@@ -339,6 +339,7 @@ export const generatePromptConfig = async (args: {
   newline();
   const registryAuths = await promptRegistryAuths({
     existingRegistryAuths: existingConfig?.registryAuths ?? null,
+    watchtowerAuth: auth,
   });
 
   // Build config directly

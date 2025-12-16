@@ -43,13 +43,15 @@ const parseOrgIdOrUrl = (args: {
  * Prompt user for private registry authentication credentials
  * @param args - Configuration arguments
  * @param args.existingRegistryAuths - Existing registry auths from config (if any)
+ * @param args.watchtowerAuth - Watchtower auth credentials to reuse (if any)
  *
  * @returns Array of RegistryAuth objects, or null if user declines
  */
 export const promptRegistryAuths = async (args: {
   existingRegistryAuths?: Array<RegistryAuth> | null;
+  watchtowerAuth?: { username: string; password: string } | null;
 }): Promise<Array<RegistryAuth> | null> => {
-  const { existingRegistryAuths } = args;
+  const { existingRegistryAuths, watchtowerAuth } = args;
 
   // If existing registryAuths exist, ask if user wants to keep them
   if (existingRegistryAuths != null && existingRegistryAuths.length > 0) {
@@ -113,16 +115,30 @@ export const promptRegistryAuths = async (args: {
       });
     }
 
-    // Collect username
-    const username = await promptUser({
-      prompt: "Username: ",
-    });
+    let username: string;
+    let password: string;
 
-    // Collect password (hidden)
-    const password = await promptUser({
-      prompt: "Password: ",
-      hidden: true,
-    });
+    // Reuse Watchtower credentials if available
+    if (watchtowerAuth != null) {
+      info({
+        message: gray({
+          text: `Using Watchtower credentials (${watchtowerAuth.username})`,
+        }),
+      });
+      username = watchtowerAuth.username;
+      password = watchtowerAuth.password;
+    } else {
+      // Collect username
+      username = await promptUser({
+        prompt: "Username: ",
+      });
+
+      // Collect password (hidden)
+      password = await promptUser({
+        prompt: "Password: ",
+        hidden: true,
+      });
+    }
 
     registryAuths.push({
       registryUrl,

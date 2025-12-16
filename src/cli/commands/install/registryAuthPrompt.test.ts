@@ -261,4 +261,108 @@ describe("promptRegistryAuths", () => {
       },
     ]);
   });
+
+  describe("watchtowerAuth credential reuse", () => {
+    it("should reuse watchtower credentials when provided", async () => {
+      // User answers "y" to add registry
+      mockedPromptUser.mockResolvedValueOnce("y");
+      // Organization ID only - no username/password prompts expected
+      mockedPromptUser.mockResolvedValueOnce("mycompany");
+      // User answers "n" to add another
+      mockedPromptUser.mockResolvedValueOnce("n");
+
+      const result = await promptRegistryAuths({
+        existingRegistryAuths: null,
+        watchtowerAuth: {
+          username: "watchtower@example.com",
+          password: "watchtowerpass",
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          registryUrl: "https://mycompany.nori-registry.ai",
+          username: "watchtower@example.com",
+          password: "watchtowerpass",
+        },
+      ]);
+
+      // Should only have 3 prompts: initial y/n, org ID, add another y/n
+      // No username or password prompts
+      expect(mockedPromptUser).toHaveBeenCalledTimes(3);
+      const allPrompts = mockedPromptUser.mock.calls.map((call) => call[0]);
+      expect(
+        allPrompts.some((p) => p.prompt.toLowerCase().includes("username")),
+      ).toBe(false);
+      expect(
+        allPrompts.some((p) => p.prompt.toLowerCase().includes("password")),
+      ).toBe(false);
+    });
+
+    it("should prompt for credentials when watchtowerAuth is null", async () => {
+      // User answers "y" to add registry
+      mockedPromptUser.mockResolvedValueOnce("y");
+      // Organization ID
+      mockedPromptUser.mockResolvedValueOnce("mycompany");
+      // Username - should be prompted
+      mockedPromptUser.mockResolvedValueOnce("manual@example.com");
+      // Password - should be prompted
+      mockedPromptUser.mockResolvedValueOnce("manualpass");
+      // User answers "n" to add another
+      mockedPromptUser.mockResolvedValueOnce("n");
+
+      const result = await promptRegistryAuths({
+        existingRegistryAuths: null,
+        watchtowerAuth: null,
+      });
+
+      expect(result).toEqual([
+        {
+          registryUrl: "https://mycompany.nori-registry.ai",
+          username: "manual@example.com",
+          password: "manualpass",
+        },
+      ]);
+
+      // Should have 5 prompts: initial y/n, org ID, username, password, add another y/n
+      expect(mockedPromptUser).toHaveBeenCalledTimes(5);
+    });
+
+    it("should reuse watchtower credentials for multiple registries", async () => {
+      // User answers "y" to add registry
+      mockedPromptUser.mockResolvedValueOnce("y");
+      // First org ID
+      mockedPromptUser.mockResolvedValueOnce("company1");
+      // User answers "y" to add another
+      mockedPromptUser.mockResolvedValueOnce("y");
+      // Second org ID
+      mockedPromptUser.mockResolvedValueOnce("company2");
+      // User answers "n" to add another
+      mockedPromptUser.mockResolvedValueOnce("n");
+
+      const result = await promptRegistryAuths({
+        existingRegistryAuths: null,
+        watchtowerAuth: {
+          username: "shared@example.com",
+          password: "sharedpass",
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          registryUrl: "https://company1.nori-registry.ai",
+          username: "shared@example.com",
+          password: "sharedpass",
+        },
+        {
+          registryUrl: "https://company2.nori-registry.ai",
+          username: "shared@example.com",
+          password: "sharedpass",
+        },
+      ]);
+
+      // Should have 5 prompts total, none for username/password
+      expect(mockedPromptUser).toHaveBeenCalledTimes(5);
+    });
+  });
 });

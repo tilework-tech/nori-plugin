@@ -43,7 +43,7 @@ const parseOrgIdOrUrl = (args: {
  * Prompt user for private registry authentication credentials
  * @param args - Configuration arguments
  * @param args.existingRegistryAuths - Existing registry auths from config (if any)
- * @param args.watchtowerAuth - Watchtower auth credentials to reuse (if any)
+ * @param args.watchtowerAuth - Nori auth credentials to reuse (if any)
  *
  * @returns Array of RegistryAuth objects, or null if user declines
  */
@@ -118,11 +118,11 @@ export const promptRegistryAuths = async (args: {
     let username: string;
     let password: string;
 
-    // Reuse Watchtower credentials if available
+    // Reuse Nori credentials if available
     if (watchtowerAuth != null) {
       info({
         message: gray({
-          text: `Using Watchtower credentials (${watchtowerAuth.username})`,
+          text: `Using existing credentials (${watchtowerAuth.username})`,
         }),
       });
       username = watchtowerAuth.username;

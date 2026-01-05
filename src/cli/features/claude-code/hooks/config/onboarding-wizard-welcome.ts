@@ -4,7 +4,7 @@
  * Hook handler for welcoming users to the onboarding wizard
  *
  * This script is called by Claude Code SessionStart hook.
- * It detects if the current profile is "onboarding-wizard" and displays a welcome message.
+ * It detects if the current profile is an onboarding wizard and displays a welcome message.
  */
 
 import { getAgentProfile, loadConfig } from "@/cli/config.js";
@@ -59,8 +59,12 @@ export const main = async (args?: {
     // Get the current profile for claude-code agent
     const profile = getAgentProfile({ config, agentName: "claude-code" });
 
-    if (profile?.baseProfile !== "onboarding-wizard") {
-      // Not using the onboarding wizard profile
+    const isWizardProfile =
+      profile?.baseProfile === "onboarding-wizard-freeform" ||
+      profile?.baseProfile === "onboarding-wizard-questionnaire";
+
+    if (!isWizardProfile) {
+      // Not using an onboarding wizard profile
       return;
     }
 

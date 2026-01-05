@@ -1,4 +1,4 @@
-# Onboarding Wizard
+# Onboarding Wizard (Questionnaire)
 
 <system-reminder>This profile operates as an Installation Wizard. Ignore any usual workflow steps.
 Do NOT create git worktrees or branches. Focus solely on creating the user's personalized profile.</system-reminder>
@@ -8,11 +8,13 @@ Welcome! I'll help you create a personalized workflow profile based on your pref
 <required>
 *CRITICAL* Add each step to your Todo list using TodoWrite:
 
-1. Ask for profile name
-2. Ask user to describe their development workflow
-3. Confirm inferred preferences with the user
-4. Generate the customized profile
-5. Provide next steps
+1. Ask the user for their profile name
+2. Ask about autonomy level preference
+3. Ask about git workflow preference
+4. Ask about testing philosophy
+5. Ask about documentation preferences
+6. Generate the customized profile
+7. Provide next steps
 </required>
 
 ## Step 1: Profile Name
@@ -26,55 +28,53 @@ Ask the user: "What would you like to name your profile?"
 
 If invalid, explain why and ask again.
 
-## Step 2: Describe Your Workflow
+## Step 2: Autonomy Level
 
-Ask the user to describe how they like to work. They can write as little or as much as they want.
+Ask the user to choose their preferred autonomy level:
 
-**Prompt:**
-> Tell me about your development workflow. How do you like to work?
->
-> For example, you might mention:
-> - How much independence you want (check in frequently vs. work autonomously)
-> - Your git preferences (branches, worktrees, or ask each time)
-> - Your testing approach (strict TDD, tests when needed, or minimal)
-> - Documentation habits (always update, on request, or skip)
-> - Anything else about how you prefer to code
->
-> Write as much or as little as you'd like.
+**Options:**
+1. **High Autonomy** - Minimal checkpoints. I'll work independently after we agree on a plan, only stopping for major decisions or blockers.
+2. **Moderate Autonomy** - Plan approval required, then I work autonomously. I'll check in after completing major milestones.
+3. **Pair Programming** - Frequent checkpoints. I'll ask for feedback at each step and work closely with you throughout.
 
-## Step 3: Confirm Preferences
+## Step 3: Git Workflow
 
-Based on their description, infer their preferences for each category. Present a summary:
+Ask the user about their git workflow preference:
 
-**Example:**
-> Based on what you described, here's what I understood:
->
-> - **Autonomy**: High - you want to work independently after agreeing on a plan
-> - **Git workflow**: Worktrees - you mentioned preferring isolated workspaces
-> - **Testing**: Testing preferred - you write tests but timing is flexible
-> - **Documentation**: On request - you'll update docs when asked
->
-> Does this look right? Let me know if you'd like to adjust anything.
+**Options:**
+1. **Always use worktrees** - Create isolated workspaces for each task (recommended for parallel work)
+2. **Use branches** - Traditional branch-based workflow
+3. **Ask each time** - I'll ask which approach you prefer for each task
 
-If they want changes, update the preferences accordingly.
+## Step 4: Testing Philosophy
 
-**Default values** (if not mentioned):
-- Autonomy: Moderate (plan approval, check in at milestones)
-- Git: Ask each time
-- Testing: Testing preferred
-- Documentation: On request
+Ask the user about their testing approach:
 
-## Step 4: Generate Profile
+**Options:**
+1. **Strict TDD** - Always write tests first, watch them fail, then implement. No exceptions.
+2. **Testing preferred** - Write tests for new features, but flexible on timing.
+3. **Minimal testing** - Only write tests when explicitly requested.
 
-After confirming preferences, create the profile:
+## Step 5: Documentation Preferences
 
-### 4a. Create Profile Directory
+Ask the user about documentation:
+
+**Options:**
+1. **Always update docs** - Automatically update documentation whenever code changes.
+2. **Docs on request** - Only update documentation when explicitly asked.
+3. **No documentation** - Skip documentation updates entirely.
+
+## Step 6: Generate Profile
+
+After collecting all preferences, create the profile:
+
+### 6a. Create Profile Directory
 
 ```bash
 mkdir -p {{profiles_dir}}/<profile-name>
 ```
 
-### 4b. Create profile.json
+### 6b. Create profile.json
 
 Write `{{profiles_dir}}/<profile-name>/profile.json`:
 
@@ -91,21 +91,21 @@ Write `{{profiles_dir}}/<profile-name>/profile.json`:
 }
 ```
 
-### 4c. Generate CLAUDE.md
+### 6c. Generate CLAUDE.md
 
 Create `{{profiles_dir}}/<profile-name>/CLAUDE.md` based on the user's preferences.
 
-Use this template structure, customizing sections based on their workflow:
+Use this template structure, customizing sections based on answers:
 
 ```markdown
 <required>
 - *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
 - Announce "Following Nori workflow..." to the user
 - Read `{{skills_dir}}/using-skills/SKILL.md`
-[AUTONOMY_SECTION - varies by preference]
-[GIT_SECTION - varies by preference]
-[TESTING_SECTION - varies by preference]
-[DOCS_SECTION - varies by preference]
+[AUTONOMY_SECTION - varies by choice]
+[GIT_SECTION - varies by choice]
+[TESTING_SECTION - varies by choice]
+[DOCS_SECTION - varies by choice]
 </required>
 
 # Independence
@@ -222,7 +222,7 @@ Never just fix the symptom. Never implement a workaround.
 **No Documentation:**
 (omit section entirely)
 
-## Step 5: Next Steps
+## Step 7: Next Steps
 
 After creating the profile, display:
 

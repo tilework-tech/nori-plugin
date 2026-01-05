@@ -107,10 +107,34 @@ const migration_19_0_0: Migration = {
 };
 
 /**
+ * Recursively copy a directory
+ * @param args - Copy arguments
+ * @param args.src - Source directory path
+ * @param args.dest - Destination directory path
+ */
+const copyDir = async (args: { src: string; dest: string }): Promise<void> => {
+  const { src, dest } = args;
+  await fs.mkdir(dest, { recursive: true });
+  const entries = await fs.readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDir({ src: srcPath, dest: destPath });
+    } else {
+      await fs.copyFile(srcPath, destPath);
+    }
+  }
+};
+
+/**
  * Migration 20.0.0: Move profiles from .claude/profiles to .nori/profiles
  *
- * This migration cleans up the old .claude/profiles directory.
- * The new profiles are created by profilesLoader in .nori/profiles.
+ * This migration copies all existing profiles to the new location before
+ * removing the old directory. This preserves any custom profiles or
+ * user modifications to built-in profiles.
  */
 const migration_20_0_0: Migration = {
   version: "20.0.0",
@@ -122,12 +146,42 @@ const migration_20_0_0: Migration = {
     const { config, installDir } = args;
     const result = { ...config };
 
-    // Remove old .claude/profiles directory if it exists
     const oldProfilesDir = path.join(installDir, ".claude", "profiles");
+    const newProfilesDir = path.join(installDir, ".nori", "profiles");
+
+    // Check if old profiles directory exists
+    try {
+      await fs.access(oldProfilesDir);
+    } catch {
+      // Old directory doesn't exist, nothing to migrate
+      result.version = "20.0.0";
+      return result;
+    }
+
+    // Copy all profiles from old location to new location
+    try {
+      const profiles = await fs.readdir(oldProfilesDir, {
+        withFileTypes: true,
+      });
+
+      for (const profile of profiles) {
+        if (profile.isDirectory()) {
+          const srcProfile = path.join(oldProfilesDir, profile.name);
+          const destProfile = path.join(newProfilesDir, profile.name);
+
+          // Copy profile to new location (will be overwritten by loader if built-in)
+          await copyDir({ src: srcProfile, dest: destProfile });
+        }
+      }
+    } catch {
+      // Ignore copy errors - proceed with cleanup
+    }
+
+    // Remove old .claude/profiles directory
     try {
       await fs.rm(oldProfilesDir, { recursive: true, force: true });
     } catch {
-      // Ignore errors - directory might not exist
+      // Ignore errors
     }
 
     // Update version

@@ -514,6 +514,75 @@ describe("migration 20.0.0 - move profiles to .nori directory", () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
+  it("should copy profiles to .nori/profiles before removing old directory", async () => {
+    // Create old profiles directory with custom profile content
+    const customProfileDir = path.join(oldProfilesDir, "my-custom-profile");
+    await fs.mkdir(customProfileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(customProfileDir, "CLAUDE.md"),
+      "# My custom profile",
+    );
+    await fs.writeFile(
+      path.join(customProfileDir, "profile.json"),
+      '{"name": "my-custom-profile"}',
+    );
+
+    // Create a subdirectory in the custom profile (e.g., skills)
+    const skillsDir = path.join(customProfileDir, "skills", "my-skill");
+    await fs.mkdir(skillsDir, { recursive: true });
+    await fs.writeFile(path.join(skillsDir, "SKILL.md"), "# My skill");
+
+    const config = {
+      installDir: tempDir,
+      agents: {
+        "claude-code": { profile: { baseProfile: "my-custom-profile" } },
+      },
+    };
+
+    await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    // Old profiles directory should be removed
+    const oldProfilesDirExists = await fs
+      .access(oldProfilesDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(oldProfilesDirExists).toBe(false);
+
+    // New profiles directory should contain the copied profile
+    const newProfilesDir = path.join(tempDir, ".nori", "profiles");
+    const newProfileDir = path.join(newProfilesDir, "my-custom-profile");
+
+    const newProfileExists = await fs
+      .access(newProfileDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(newProfileExists).toBe(true);
+
+    // Verify files were copied
+    const claudeMd = await fs.readFile(
+      path.join(newProfileDir, "CLAUDE.md"),
+      "utf-8",
+    );
+    expect(claudeMd).toBe("# My custom profile");
+
+    const profileJson = await fs.readFile(
+      path.join(newProfileDir, "profile.json"),
+      "utf-8",
+    );
+    expect(profileJson).toBe('{"name": "my-custom-profile"}');
+
+    // Verify nested directories were copied
+    const skillMd = await fs.readFile(
+      path.join(newProfileDir, "skills", "my-skill", "SKILL.md"),
+      "utf-8",
+    );
+    expect(skillMd).toBe("# My skill");
+  });
+
   it("should remove old .claude/profiles directory when it exists", async () => {
     // Create old profiles directory with content
     const profileDir = path.join(oldProfilesDir, "senior-swe");

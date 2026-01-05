@@ -12,7 +12,7 @@ This `claude-code/` subdirectory implements the Agent interface defined in @/src
 - `name`: "claude-code"
 - `displayName`: "Claude Code"
 - `getLoaderRegistry()`: Returns the LoaderRegistry singleton with all Claude Code loaders
-- `listProfiles({ installDir })`: Scans installed `.claude/profiles/` for directories containing `CLAUDE.md`
+- `listProfiles({ installDir })`: Scans installed `.nori/profiles/` for directories containing `CLAUDE.md`
 - `listSourceProfiles()`: Scans package's `profiles/config/` for directories with `profile.json`, returns `SourceProfile[]` with name and description
 - `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, updates config with new profile, logs success message
 - `getGlobalFeatureNames()`: Returns `["hooks", "statusline", "global slash commands"]` - human-readable names used by the uninstall command to generate agent-specific prompts
@@ -40,9 +40,9 @@ The LoaderRegistry provides two methods for retrieving loaders: getAll() returns
 
 ### Things to Know
 
-**Path Helpers (paths.ts):** All Claude-specific path functions live in @/src/cli/features/claude-code/paths.ts to keep the agent self-contained. There are two categories:
+**Path Helpers (paths.ts):** All Claude-specific path functions live in @/src/cli/features/claude-code/paths.ts to keep the agent self-contained. There are three categories:
 
-**Project-relative paths** (take `installDir` param) - for profile-specific features:
+**Claude project-relative paths** (take `installDir` param) - for Claude Code artifacts:
 
 | Function | Returns |
 |----------|---------|
@@ -52,9 +52,17 @@ The LoaderRegistry provides two methods for retrieving loaders: getAll() returns
 | `getClaudeCommandsDir({ installDir })` | `{installDir}/.claude/commands` |
 | `getClaudeMdFile({ installDir })` | `{installDir}/.claude/CLAUDE.md` |
 | `getClaudeSkillsDir({ installDir })` | `{installDir}/.claude/skills` |
-| `getClaudeProfilesDir({ installDir })` | `{installDir}/.claude/profiles` |
+| `getClaudeProfilesDir({ installDir })` | `{installDir}/.claude/profiles` (legacy, for backward compatibility) |
 
-**Home-based paths** (no params, always use `os.homedir()`) - for global features that must be accessible from any project:
+**Nori project-relative paths** (take `installDir` param) - for Nori's internal profile repository:
+
+| Function | Returns |
+|----------|---------|
+| `getNoriDir({ installDir })` | `{installDir}/.nori` |
+| `getNoriProfilesDir({ installDir })` | `{installDir}/.nori/profiles` |
+| `getNoriConfigFile({ installDir })` | `{installDir}/.nori/config.json` |
+
+**Claude home-based paths** (no params, always use `os.homedir()`) - for global features that must be accessible from any project:
 
 | Function | Returns |
 |----------|---------|
@@ -63,5 +71,7 @@ The LoaderRegistry provides two methods for retrieving loaders: getAll() returns
 | `getClaudeHomeCommandsDir()` | `~/.claude/commands` |
 
 Global features (hooks, statusline, global slash commands) use home-based paths because Claude Code reads these from the user's home directory regardless of the current working directory. All loaders within the claude-code directory import directly from `@/cli/features/claude-code/paths.js`. For backward compatibility, @/src/cli/env.ts re-exports some of these functions.
+
+**Directory Separation Architecture:** Profiles are stored in `~/.nori/profiles/` instead of `~/.claude/profiles/`. This creates a clear separation between Nori's internal profile repository and Claude Code's native artifacts. The active profile's artifacts (skills, subagents, slash commands, CLAUDE.md) are still copied to `~/.claude/` at the top level during installation. This architecture avoids conflicts between Nori's managed data and Claude Code's configuration files.
 
 Profile structure is now directory-based rather than JSON-based. Each profile directory (senior-swe, amol, nontechnical) contains CLAUDE.md, skills/, subagents/, slashcommands/, and optionally PROFILE.md. The major change in #197 removed preference-based CLAUDE.md customization (base-instructions.md with CUSTOMIZABLE markers) in favor of complete per-profile CLAUDE.md files. Skills list generation happens at install time, not at profile creation time. Paid skills use a 'paid-' prefix in the profile's skills/ directory but are installed without the prefix (e.g., paid-recall/ becomes the skills directory's recall/). The switch-nori-profile command updates nori-config.json and re-runs installation to apply the new profile. The managed block pattern allows users to add custom instructions outside the block without losing them during reinstalls. Default profile is 'senior-swe'. Running install multiple times is idempotent and regenerates all installed files from the selected profile. Most changes require Claude Code restart except CLAUDE.md which applies to new conversations immediately. Source markdown files use template placeholders (`{{skills_dir}}`, `{{profiles_dir}}`, `{{commands_dir}}`, `{{install_dir}}`) that are substituted during installation via @/src/cli/features/claude-code/template.ts. The substituteTemplatePaths function replaces these placeholders with absolute paths based on the installation directory.

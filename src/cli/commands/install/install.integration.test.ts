@@ -60,6 +60,7 @@ vi.mock("child_process", async (importOriginal) => {
 // Mock paths module to use test directory
 vi.mock("@/cli/features/claude-code/paths.js", () => {
   const testClaudeDir = "/tmp/install-integration-test-claude";
+  const testNoriDir = "/tmp/install-integration-test-nori";
   return {
     getClaudeDir: (_args: { installDir: string }) => testClaudeDir,
     getClaudeSettingsFile: (_args: { installDir: string }) =>
@@ -77,6 +78,11 @@ vi.mock("@/cli/features/claude-code/paths.js", () => {
       `${testClaudeDir}/skills`,
     getClaudeProfilesDir: (_args: { installDir: string }) =>
       `${testClaudeDir}/profiles`,
+    getNoriDir: (_args: { installDir: string }) => testNoriDir,
+    getNoriProfilesDir: (_args: { installDir: string }) =>
+      `${testNoriDir}/profiles`,
+    getNoriConfigFile: (_args: { installDir: string }) =>
+      `${testNoriDir}/config.json`,
   };
 });
 
@@ -123,6 +129,7 @@ describe("install integration test", () => {
   let MARKER_FILE_PATH: string;
 
   const TEST_CLAUDE_DIR = "/tmp/install-integration-test-claude";
+  const TEST_NORI_DIR = "/tmp/install-integration-test-nori";
 
   beforeEach(async () => {
     // Create temp directory
@@ -150,6 +157,11 @@ describe("install integration test", () => {
     if (!fs.existsSync(TEST_CLAUDE_DIR)) {
       fs.mkdirSync(TEST_CLAUDE_DIR, { recursive: true });
     }
+
+    // Create test nori directory
+    if (!fs.existsSync(TEST_NORI_DIR)) {
+      fs.mkdirSync(TEST_NORI_DIR, { recursive: true });
+    }
   });
 
   afterEach(async () => {
@@ -164,6 +176,9 @@ describe("install integration test", () => {
     // Clean up test directories
     try {
       fs.rmSync(TEST_CLAUDE_DIR, { recursive: true, force: true });
+    } catch {}
+    try {
+      fs.rmSync(TEST_NORI_DIR, { recursive: true, force: true });
     } catch {}
   });
 
@@ -235,7 +250,8 @@ describe("install integration test", () => {
 
     // STEP 3: Verify paid features are installed
     // Check that paid skills exist in the profile (WITH 'paid-' prefix from mixin)
-    const profileDir = path.join(TEST_CLAUDE_DIR, "profiles", "senior-swe");
+    // Profiles now go to .nori/profiles, not .claude/profiles
+    const profileDir = path.join(TEST_NORI_DIR, "profiles", "senior-swe");
     const skillsDir = path.join(profileDir, "skills");
 
     // Paid skills are copied from mixin with their original names (paid- prefix)
@@ -428,10 +444,13 @@ describe("install integration test", () => {
     expect(postInstallClaudeSnapshot.some((f) => f.includes("commands"))).toBe(
       true,
     );
-    expect(postInstallClaudeSnapshot.some((f) => f.includes("profiles"))).toBe(
+    expect(postInstallClaudeSnapshot.some((f) => f.includes("skills"))).toBe(
       true,
     );
-    expect(postInstallClaudeSnapshot.some((f) => f.includes("skills"))).toBe(
+
+    // Verify profiles are installed in .nori (not .claude)
+    const postInstallNoriSnapshot = getDirectorySnapshot(TEST_NORI_DIR);
+    expect(postInstallNoriSnapshot.some((f) => f.includes("profiles"))).toBe(
       true,
     );
 

@@ -45,7 +45,7 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 - `name`: `AgentName` - canonical identifier used as the registry key (e.g., "claude-code")
 - `displayName`: Human-readable name (e.g., "Claude Code")
 - `getLoaderRegistry()`: Returns an object implementing the `LoaderRegistry` interface
-- `listProfiles({ installDir })`: Returns array of installed profile names from `~/.{agent}/profiles/`
+- `listProfiles({ installDir })`: Returns array of installed profile names (Claude Code uses `~/.nori/profiles/`)
 - `listSourceProfiles()`: Returns array of `SourceProfile` objects from the package's source directory (for install UI profile selection)
 - `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, and updates config
 - `getGlobalFeatureNames()`: Returns human-readable names of features installed to the user's home directory for display in prompts (e.g., `["hooks", "statusline", "global slash commands"]` for claude-code)
@@ -75,6 +75,7 @@ The `--agent` global CLI option (default: "claude-code") determines which agent 
 - The `migrate()` function throws if `previousVersion` is null/empty/invalid - configs without a version field require manual intervention
 - Current migrations:
   - **v19.0.0 (consolidate-auth-and-profile-structure)**: Two transformations: (1) Flat auth fields (username/password/refreshToken/organizationUrl at root) → nested `auth: {...}` structure, removing flat fields regardless of outcome. (2) Legacy `profile` field → `agents["claude-code"].profile`, preserving existing agents config if present. Both transformations are idempotent.
+  - **v20.0.0 (move-profiles-to-nori-directory)**: Removes the old `~/.claude/profiles/` directory to clean up after the migration to `~/.nori/profiles/`. The new profiles directory is created by the profiles loader.
 
 ### Things to Know
 

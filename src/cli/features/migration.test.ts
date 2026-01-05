@@ -73,24 +73,24 @@ describe("migrate", () => {
 
   describe("migration ordering", () => {
     it("should skip migrations for versions <= previousVersion", async () => {
-      // If user is at 19.0.0, they should skip the 19.0.0 migration
+      // If user is at 20.0.0, they should skip the 19.0.0 and 20.0.0 migrations
       const config = {
         installDir: tempDir,
-        version: "19.0.0",
+        version: "20.0.0",
       };
 
       const result = await migrate({
-        previousVersion: "19.0.0",
+        previousVersion: "20.0.0",
         config,
         installDir: tempDir,
       });
 
       // Should return config unchanged (no migrations applied)
-      expect(result.version).toBe("19.0.0");
+      expect(result.version).toBe("20.0.0");
     });
 
     it("should apply migrations for versions > previousVersion", async () => {
-      // If user is at 18.0.0, they should get the 19.0.0 migration
+      // If user is at 18.0.0, they should get both 19.0.0 and 20.0.0 migrations
       const config = {
         installDir: tempDir,
         // Old flat auth format
@@ -106,7 +106,7 @@ describe("migrate", () => {
       });
 
       // Version should be updated to latest migration version
-      expect(result.version).toBe("19.0.0");
+      expect(result.version).toBe("20.0.0");
     });
 
     it("should apply migrations in semver order", async () => {
@@ -231,7 +231,7 @@ describe("migration 19.0.0 - consolidate auth structure", () => {
     });
   });
 
-  it("should set config.version to 19.0.0", async () => {
+  it("should update config version through all applicable migrations", async () => {
     const config = {
       installDir: tempDir,
       username: "test@example.com",
@@ -245,7 +245,8 @@ describe("migration 19.0.0 - consolidate auth structure", () => {
       installDir: tempDir,
     });
 
-    expect(result.version).toBe("19.0.0");
+    // Should be at the latest migration version (20.0.0)
+    expect(result.version).toBe("20.0.0");
   });
 
   it("should be idempotent - handle config already in new format", async () => {
@@ -337,7 +338,8 @@ describe("migration 19.0.0 - consolidate auth structure", () => {
     expect(result.agents).toEqual({
       "claude-code": { profile: { baseProfile: "senior-swe" } },
     });
-    expect(result.version).toBe("19.0.0");
+    // Should be at the latest migration version (20.0.0)
+    expect(result.version).toBe("20.0.0");
   });
 
   it("should handle partial auth fields gracefully", async () => {
@@ -494,5 +496,261 @@ describe("migration 19.0.0 - consolidate auth structure", () => {
       expect(result.agents).toBeUndefined();
       expect((result as any).profile).toBeUndefined();
     });
+  });
+});
+
+describe("migration 20.0.0 - move profiles to .nori directory", () => {
+  let tempDir: string;
+  let claudeDir: string;
+  let oldProfilesDir: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "migration-20-test-"));
+    claudeDir = path.join(tempDir, ".claude");
+    oldProfilesDir = path.join(claudeDir, "profiles");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should copy profiles to .nori/profiles before removing old directory", async () => {
+    // Create old profiles directory with custom profile content
+    const customProfileDir = path.join(oldProfilesDir, "my-custom-profile");
+    await fs.mkdir(customProfileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(customProfileDir, "CLAUDE.md"),
+      "# My custom profile",
+    );
+    await fs.writeFile(
+      path.join(customProfileDir, "profile.json"),
+      '{"name": "my-custom-profile"}',
+    );
+
+    // Create a subdirectory in the custom profile (e.g., skills)
+    const skillsDir = path.join(customProfileDir, "skills", "my-skill");
+    await fs.mkdir(skillsDir, { recursive: true });
+    await fs.writeFile(path.join(skillsDir, "SKILL.md"), "# My skill");
+
+    const config = {
+      installDir: tempDir,
+      agents: {
+        "claude-code": { profile: { baseProfile: "my-custom-profile" } },
+      },
+    };
+
+    await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    // Old profiles directory should be removed
+    const oldProfilesDirExists = await fs
+      .access(oldProfilesDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(oldProfilesDirExists).toBe(false);
+
+    // New profiles directory should contain the copied profile
+    const newProfilesDir = path.join(tempDir, ".nori", "profiles");
+    const newProfileDir = path.join(newProfilesDir, "my-custom-profile");
+
+    const newProfileExists = await fs
+      .access(newProfileDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(newProfileExists).toBe(true);
+
+    // Verify files were copied
+    const claudeMd = await fs.readFile(
+      path.join(newProfileDir, "CLAUDE.md"),
+      "utf-8",
+    );
+    expect(claudeMd).toBe("# My custom profile");
+
+    const profileJson = await fs.readFile(
+      path.join(newProfileDir, "profile.json"),
+      "utf-8",
+    );
+    expect(profileJson).toBe('{"name": "my-custom-profile"}');
+
+    // Verify nested directories were copied
+    const skillMd = await fs.readFile(
+      path.join(newProfileDir, "skills", "my-skill", "SKILL.md"),
+      "utf-8",
+    );
+    expect(skillMd).toBe("# My skill");
+  });
+
+  it("should remove old .claude/profiles directory when it exists", async () => {
+    // Create old profiles directory with content
+    const profileDir = path.join(oldProfilesDir, "senior-swe");
+    await fs.mkdir(profileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(profileDir, "CLAUDE.md"),
+      "# old profile content",
+    );
+
+    const config = {
+      installDir: tempDir,
+      agents: {
+        "claude-code": { profile: { baseProfile: "senior-swe" } },
+      },
+    };
+
+    await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    // Old profiles directory should be removed
+    const oldProfilesDirExists = await fs
+      .access(oldProfilesDir)
+      .then(() => true)
+      .catch(() => false);
+
+    expect(oldProfilesDirExists).toBe(false);
+  });
+
+  it("should not throw when old .claude/profiles directory does not exist", async () => {
+    // Don't create the old profiles directory
+
+    const config = {
+      installDir: tempDir,
+      agents: {
+        "claude-code": { profile: { baseProfile: "senior-swe" } },
+      },
+    };
+
+    await expect(
+      migrate({
+        previousVersion: "19.0.0",
+        config,
+        installDir: tempDir,
+      }),
+    ).resolves.not.toThrow();
+  });
+
+  it("should update version to 20.0.0", async () => {
+    const config = {
+      installDir: tempDir,
+      version: "19.0.0",
+    };
+
+    const result = await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    expect(result.version).toBe("20.0.0");
+  });
+
+  it("should preserve other config fields during migration", async () => {
+    const config = {
+      installDir: tempDir,
+      auth: {
+        username: "test@example.com",
+        password: "testpass",
+        organizationUrl: "https://example.com",
+        refreshToken: null,
+      },
+      agents: {
+        "claude-code": { profile: { baseProfile: "senior-swe" } },
+      },
+      sendSessionTranscript: "enabled",
+    };
+
+    const result = await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    expect(result.auth).toEqual({
+      username: "test@example.com",
+      password: "testpass",
+      organizationUrl: "https://example.com",
+      refreshToken: null,
+    });
+    expect(result.agents).toEqual({
+      "claude-code": { profile: { baseProfile: "senior-swe" } },
+    });
+    expect(result.sendSessionTranscript).toBe("enabled");
+  });
+
+  it("should remove .claude/profiles from additionalDirectories in settings.json", async () => {
+    // Create old profiles directory
+    await fs.mkdir(oldProfilesDir, { recursive: true });
+
+    // Create settings.json with old .claude/profiles in additionalDirectories
+    const settingsPath = path.join(claudeDir, "settings.json");
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify({
+        permissions: {
+          additionalDirectories: [
+            "/Users/test/.claude/profiles",
+            "/Users/test/.nori/profiles",
+            "/Users/test/.claude/skills",
+          ],
+        },
+      }),
+    );
+
+    const config = {
+      installDir: tempDir,
+      version: "19.0.0",
+    };
+
+    await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    // Read updated settings.json
+    const updatedSettings = JSON.parse(
+      await fs.readFile(settingsPath, "utf-8"),
+    );
+
+    // .claude/profiles should be removed, others preserved
+    expect(updatedSettings.permissions.additionalDirectories).not.toContain(
+      "/Users/test/.claude/profiles",
+    );
+    expect(updatedSettings.permissions.additionalDirectories).toContain(
+      "/Users/test/.nori/profiles",
+    );
+    expect(updatedSettings.permissions.additionalDirectories).toContain(
+      "/Users/test/.claude/skills",
+    );
+    expect(updatedSettings.permissions.additionalDirectories.length).toBe(2);
+  });
+
+  it("should be idempotent - run safely when profiles already cleaned up", async () => {
+    // Create .claude directory but no profiles subdirectory
+    await fs.mkdir(claudeDir, { recursive: true });
+
+    const config = {
+      installDir: tempDir,
+      version: "19.0.0",
+    };
+
+    // Run migration twice
+    await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    const result = await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    expect(result.version).toBe("20.0.0");
   });
 });

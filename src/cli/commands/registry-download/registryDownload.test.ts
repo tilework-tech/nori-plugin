@@ -64,7 +64,8 @@ describe("registry-download", () => {
       path.join(tmpdir(), "nori-registry-download-test-"),
     );
     configPath = path.join(testDir, ".nori-config.json");
-    profilesDir = path.join(testDir, ".claude", "profiles");
+    // Profiles are stored in .nori/profiles, not .claude/profiles
+    profilesDir = path.join(testDir, ".nori", "profiles");
 
     // Create initial config
     await fs.writeFile(
@@ -275,9 +276,10 @@ describe("registry-download", () => {
       const customInstallDir = await fs.mkdtemp(
         path.join(tmpdir(), "nori-custom-install-"),
       );
+      // Profiles are stored in .nori/profiles, not .claude/profiles
       const customProfilesDir = path.join(
         customInstallDir,
-        ".claude",
+        ".nori",
         "profiles",
       );
       await fs.mkdir(customProfilesDir, { recursive: true });

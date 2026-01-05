@@ -681,6 +681,54 @@ describe("migration 20.0.0 - move profiles to .nori directory", () => {
     expect(result.sendSessionTranscript).toBe("enabled");
   });
 
+  it("should remove .claude/profiles from additionalDirectories in settings.json", async () => {
+    // Create old profiles directory
+    await fs.mkdir(oldProfilesDir, { recursive: true });
+
+    // Create settings.json with old .claude/profiles in additionalDirectories
+    const settingsPath = path.join(claudeDir, "settings.json");
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify({
+        permissions: {
+          additionalDirectories: [
+            "/Users/test/.claude/profiles",
+            "/Users/test/.nori/profiles",
+            "/Users/test/.claude/skills",
+          ],
+        },
+      }),
+    );
+
+    const config = {
+      installDir: tempDir,
+      version: "19.0.0",
+    };
+
+    await migrate({
+      previousVersion: "19.0.0",
+      config,
+      installDir: tempDir,
+    });
+
+    // Read updated settings.json
+    const updatedSettings = JSON.parse(
+      await fs.readFile(settingsPath, "utf-8"),
+    );
+
+    // .claude/profiles should be removed, others preserved
+    expect(updatedSettings.permissions.additionalDirectories).not.toContain(
+      "/Users/test/.claude/profiles",
+    );
+    expect(updatedSettings.permissions.additionalDirectories).toContain(
+      "/Users/test/.nori/profiles",
+    );
+    expect(updatedSettings.permissions.additionalDirectories).toContain(
+      "/Users/test/.claude/skills",
+    );
+    expect(updatedSettings.permissions.additionalDirectories.length).toBe(2);
+  });
+
   it("should be idempotent - run safely when profiles already cleaned up", async () => {
     // Create .claude directory but no profiles subdirectory
     await fs.mkdir(claudeDir, { recursive: true });

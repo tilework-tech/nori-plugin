@@ -184,6 +184,35 @@ const migration_20_0_0: Migration = {
       // Ignore errors
     }
 
+    // Clean up additionalDirectories in settings.json to remove old .claude/profiles path
+    const settingsPath = path.join(installDir, ".claude", "settings.json");
+    try {
+      const settingsContent = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(settingsContent);
+
+      if (settings.permissions?.additionalDirectories) {
+        // Remove any paths containing .claude/profiles
+        settings.permissions.additionalDirectories =
+          settings.permissions.additionalDirectories.filter(
+            (dir: string) => !dir.includes(".claude/profiles"),
+          );
+
+        // Clean up empty additionalDirectories array
+        if (settings.permissions.additionalDirectories.length === 0) {
+          delete settings.permissions.additionalDirectories;
+        }
+
+        // Clean up empty permissions object
+        if (Object.keys(settings.permissions).length === 0) {
+          delete settings.permissions;
+        }
+
+        await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+      }
+    } catch {
+      // Ignore errors - settings.json might not exist
+    }
+
     // Update version
     result.version = "20.0.0";
 

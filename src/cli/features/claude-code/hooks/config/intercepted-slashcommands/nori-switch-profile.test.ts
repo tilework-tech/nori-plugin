@@ -34,6 +34,10 @@ vi.mock("@/cli/features/claude-code/paths.js", async (importOriginal) => {
     getClaudeHomeDir: () => mockClaudeHomeDir,
     getClaudeHomeSettingsFile: () => mockClaudeHomeSettingsFile,
     getClaudeHomeCommandsDir: () => path.join(mockClaudeHomeDir, "commands"),
+    getNoriDir: (args: { installDir: string }) =>
+      path.join(args.installDir, ".nori"),
+    getNoriProfilesDir: (args: { installDir: string }) =>
+      path.join(args.installDir, ".nori", "profiles"),
   };
 });
 
@@ -58,7 +62,8 @@ describe("nori-switch-profile", () => {
       path.join(tmpdir(), "nori-switch-profile-test-"),
     );
     const claudeDir = path.join(testDir, ".claude");
-    profilesDir = path.join(claudeDir, "profiles");
+    const noriDir = path.join(testDir, ".nori");
+    profilesDir = path.join(noriDir, "profiles");
     configPath = path.join(testDir, ".nori-config.json");
 
     // Set up mock paths to redirect hooks installation to temp directory

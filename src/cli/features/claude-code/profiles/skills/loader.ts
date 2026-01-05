@@ -9,9 +9,9 @@ import { fileURLToPath } from "url";
 
 import { isPaidInstall, getAgentProfile, type Config } from "@/cli/config.js";
 import {
-  getClaudeDir,
   getClaudeSkillsDir,
   getClaudeSettingsFile,
+  getNoriDir,
 } from "@/cli/features/claude-code/paths.js";
 import { substituteTemplatePaths } from "@/cli/features/claude-code/template.js";
 import { success, info, warn } from "@/cli/logger.js";
@@ -79,8 +79,8 @@ const getConfigDir = (args: {
   installDir: string;
 }): string => {
   const { profileName, installDir } = args;
-  const claudeDir = getClaudeDir({ installDir });
-  return path.join(claudeDir, "profiles", profileName, "skills");
+  const noriDir = getNoriDir({ installDir });
+  return path.join(noriDir, "profiles", profileName, "skills");
 };
 
 /**

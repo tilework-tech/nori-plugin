@@ -8,6 +8,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
+import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { setSilentMode } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -54,7 +55,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   const profiles = await agent.listProfiles({ installDir });
 
   if (profiles.length === 0) {
-    const profilesDir = path.join(installDir, ".claude", "profiles");
+    const profilesDir = getNoriProfilesDir({ installDir });
     return {
       decision: "block",
       reason: formatError({
@@ -107,7 +108,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     // Read profile description if available
     let profileDescription = "";
     try {
-      const profilesDir = path.join(installDir, ".claude", "profiles");
+      const profilesDir = getNoriProfilesDir({ installDir });
       const profileJsonPath = path.join(
         profilesDir,
         profileName,

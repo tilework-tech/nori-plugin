@@ -16,6 +16,7 @@ import type { Config } from "@/cli/config.js";
 // Mock the env module to use temp directories
 let mockClaudeDir: string;
 let mockClaudeSkillsDir: string;
+let mockNoriDir: string;
 
 vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getClaudeDir: () => mockClaudeDir,
@@ -25,6 +26,9 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => mockClaudeSkillsDir,
   getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
+  getNoriDir: () => mockNoriDir,
+  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getNoriConfigFile: () => path.join(mockNoriDir, "config.json"),
 }));
 
 // Import loaders after mocking env
@@ -44,12 +48,14 @@ describe("skillsLoader", () => {
     // Set mock paths
     mockClaudeDir = claudeDir;
     mockClaudeSkillsDir = skillsDir;
+    mockNoriDir = path.join(tempDir, ".nori");
 
     // Create directories
     await fs.mkdir(claudeDir, { recursive: true });
+    await fs.mkdir(mockNoriDir, { recursive: true });
 
-    // Run profiles loader to populate ~/.claude/profiles/ directory with composed profiles
-    // This is required since feature loaders now read from ~/.claude/profiles/
+    // Run profiles loader to populate ~/.nori/profiles/ directory with composed profiles
+    // This is required since feature loaders now read from ~/.nori/profiles/
     const config: Config = {
       installDir: tempDir,
       agents: {

@@ -13,6 +13,7 @@ import { getAgentProfile, type Config } from "@/cli/config.js";
 import {
   getClaudeDir,
   getClaudeMdFile,
+  getNoriDir,
 } from "@/cli/features/claude-code/paths.js";
 import { substituteTemplatePaths } from "@/cli/features/claude-code/template.js";
 import { success, info } from "@/cli/logger.js";
@@ -38,8 +39,8 @@ const getProfileClaudeMd = (args: {
   installDir: string;
 }): string => {
   const { profileName, installDir } = args;
-  const claudeDir = getClaudeDir({ installDir });
-  return path.join(claudeDir, "profiles", profileName, "CLAUDE.md");
+  const noriDir = getNoriDir({ installDir });
+  return path.join(noriDir, "profiles", profileName, "CLAUDE.md");
 };
 
 /**
@@ -192,9 +193,9 @@ const generateSkillsList = async (args: {
   const { profileName, installDir } = args;
 
   try {
-    // Get skills directory for the profile from installed profiles
-    const claudeDir = getClaudeDir({ installDir });
-    const skillsDir = path.join(claudeDir, "profiles", profileName, "skills");
+    // Get skills directory for the profile from installed profiles in .nori
+    const noriDir = getNoriDir({ installDir });
+    const skillsDir = path.join(noriDir, "profiles", profileName, "skills");
 
     // Find all skill files
     const skillFiles = await findSkillFiles({ dir: skillsDir });
@@ -203,7 +204,8 @@ const generateSkillsList = async (args: {
       return "";
     }
 
-    // Format all skills
+    // Format all skills - use the installed skills directory path
+    const claudeDir = getClaudeDir({ installDir });
     const formattedSkills: Array<string> = [];
     for (const file of skillFiles) {
       const formatted = await formatSkillInfo({

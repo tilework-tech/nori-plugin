@@ -32,6 +32,13 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
     path.join(args.installDir, ".claude", "skills"),
   getClaudeProfilesDir: (args: { installDir: string }) =>
     path.join(args.installDir, ".claude", "profiles"),
+  // Nori-specific paths (profiles are stored in .nori/)
+  getNoriDir: (args: { installDir: string }) =>
+    path.join(args.installDir, ".nori"),
+  getNoriProfilesDir: (args: { installDir: string }) =>
+    path.join(args.installDir, ".nori", "profiles"),
+  getNoriConfigFile: (args: { installDir: string }) =>
+    path.join(args.installDir, ".nori", "config.json"),
   // Home-based paths (used by global slash commands loader after fix)
   getClaudeHomeDir: () => mockClaudeHomeDir,
   getClaudeHomeSettingsFile: () =>

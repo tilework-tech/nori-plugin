@@ -212,7 +212,7 @@ describe("AgentRegistry", () => {
     });
 
     test("returns empty array when profiles directory is empty", async () => {
-      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profilesDir = path.join(testInstallDir, ".nori", "profiles");
       await fs.mkdir(profilesDir, { recursive: true });
 
       const registry = AgentRegistry.getInstance();
@@ -224,7 +224,7 @@ describe("AgentRegistry", () => {
     });
 
     test("returns profile names for directories containing CLAUDE.md", async () => {
-      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profilesDir = path.join(testInstallDir, ".nori", "profiles");
 
       // Create valid profiles (with CLAUDE.md)
       for (const name of ["amol", "senior-swe"]) {
@@ -349,7 +349,7 @@ describe("AgentRegistry", () => {
 
     test("updates config with new profile", async () => {
       // Create profiles directory with test profile
-      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profilesDir = path.join(testInstallDir, ".nori", "profiles");
       const profileDir = path.join(profilesDir, "test-profile");
       await fs.mkdir(profileDir, { recursive: true });
       await fs.writeFile(path.join(profileDir, "CLAUDE.md"), "# Test Profile");
@@ -378,7 +378,7 @@ describe("AgentRegistry", () => {
 
     test("preserves existing config fields when switching", async () => {
       // Create profiles directory with test profile
-      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profilesDir = path.join(testInstallDir, ".nori", "profiles");
       const profileDir = path.join(profilesDir, "new-profile");
       await fs.mkdir(profileDir, { recursive: true });
       await fs.writeFile(path.join(profileDir, "CLAUDE.md"), "# New Profile");
@@ -433,7 +433,7 @@ describe("AgentRegistry", () => {
 
     test("throws error for non-existent profile", async () => {
       // Create profiles directory but no profiles
-      const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+      const profilesDir = path.join(testInstallDir, ".nori", "profiles");
       await fs.mkdir(profilesDir, { recursive: true });
 
       const registry = AgentRegistry.getInstance();

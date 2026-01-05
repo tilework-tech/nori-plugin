@@ -34,13 +34,14 @@ describe("substituteTemplatePaths", () => {
   });
 
   describe("profiles_dir placeholder", () => {
-    it("should replace {{profiles_dir}} with absolute path", () => {
+    it("should replace {{profiles_dir}} with absolute path to .nori/profiles", () => {
       const content = "Check `{{profiles_dir}}/amol/AGENTS.md`";
       const result = substituteTemplatePaths({
         content,
         installDir: "/project/.cursor",
       });
-      expect(result).toBe("Check `/project/.cursor/profiles/amol/AGENTS.md`");
+      // Profiles are now stored in .nori/profiles, not .cursor/profiles
+      expect(result).toBe("Check `/project/.nori/profiles/amol/AGENTS.md`");
     });
   });
 
@@ -93,7 +94,8 @@ Install root: {{install_dir}}
         installDir: "/project/.cursor",
       });
       expect(result).toContain("/project/.cursor/rules/foo/RULE.md");
-      expect(result).toContain("/project/.cursor/profiles/bar");
+      // Profiles are in .nori/profiles, not .cursor/profiles
+      expect(result).toContain("/project/.nori/profiles/bar");
       expect(result).toContain("/project/.cursor/commands");
       expect(result).toContain("/project/.cursor/subagents");
       expect(result).toContain("Install root: /project");

@@ -336,6 +336,31 @@ const onboardingWizardWelcomeHook: HookInterface = {
 };
 
 /**
+ * Worktree cleanup hook - warns about excessive git worktree disk usage
+ */
+const worktreeCleanupHook: HookInterface = {
+  name: "worktree-cleanup",
+  description: "Warn about excessive git worktree disk usage",
+  install: async () => {
+    const scriptPath = path.join(HOOKS_CONFIG_DIR, "worktree-cleanup.js");
+    return [
+      {
+        event: "SessionStart",
+        matcher: "startup",
+        hooks: [
+          {
+            type: "command",
+            command: `node ${scriptPath}`,
+            description:
+              "Warn about excessive git worktree disk usage on session start",
+          },
+        ],
+      },
+    ];
+  },
+};
+
+/**
  * Configure hooks for automatic conversation memorization (paid version)
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -376,6 +401,7 @@ const configurePaidHooks = async (args: { config: Config }): Promise<void> => {
     autoupdateHook,
     nestedInstallWarningHook,
     contextUsageWarningHook,
+    worktreeCleanupHook,
     onboardingWizardWelcomeHook,
     notifyHook,
     slashCommandInterceptHook,
@@ -455,6 +481,7 @@ const configureFreeHooks = async (args: { config: Config }): Promise<void> => {
     autoupdateHook,
     nestedInstallWarningHook,
     contextUsageWarningHook,
+    worktreeCleanupHook,
     onboardingWizardWelcomeHook,
     notifyHook,
     slashCommandInterceptHook,

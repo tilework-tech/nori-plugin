@@ -315,25 +315,26 @@ export const main = async (args?: {
       return;
     }
 
-    // Build warning message
-    let message = "⚠️ **Git Worktree Disk Usage Warning**\n\n";
+    // Build instructions for Claude
+    let message =
+      "⚠️ **Git Worktree Disk Usage Warning** - You MUST ask the user about this before proceeding with their request.\n\n";
 
     if (worktreeSizeExceeded) {
-      message += `Your git worktrees are using **${formatBytes({ bytes: totalWorktreeSize })}** of disk space (threshold: ${WORKTREE_SIZE_THRESHOLD_GB} GB).\n\n`;
+      message += `The user's git worktrees are using **${formatBytes({ bytes: totalWorktreeSize })}** of disk space (threshold: ${WORKTREE_SIZE_THRESHOLD_GB} GB).\n\n`;
     }
 
     if (diskSpaceLow) {
-      message += `Your disk space is running low: **${freePercent}%** remaining (${formatBytes({ bytes: availableBytes })} available).\n\n`;
+      message += `The user's disk space is running low: **${freePercent}%** remaining (${formatBytes({ bytes: availableBytes })} available).\n\n`;
     }
 
-    message += "**Worktrees found:**\n";
+    message += "**Worktrees detected:**\n";
     for (const worktree of worktrees) {
       const branchInfo = worktree.branch ? ` (${worktree.branch})` : "";
       message += `- ${worktree.path}${branchInfo}: ${formatBytes({ bytes: worktree.sizeBytes })}\n`;
     }
 
     message +=
-      "\n**Would you like me to help remove some of these worktrees to free up disk space?**";
+      "\n**ACTION REQUIRED:** Before proceeding with any other task, ask the user if they would like you to help clean up some of these worktrees to free up disk space. Use `git worktree remove <path>` to remove worktrees after confirming with the user.";
 
     // Output to Claude session
     logToClaudeSession({ message });

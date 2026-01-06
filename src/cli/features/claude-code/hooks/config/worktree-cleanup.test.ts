@@ -319,12 +319,12 @@ describe("worktree-cleanup hook", () => {
       },
     });
 
-    // Verify warning asks user about cleanup
+    // Verify instructions tell Claude to ask user about cleanup
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
-    // Should ask user - look for question-like phrasing
+    // Should instruct Claude to ask user about cleanup
     expect(output.hookSpecificOutput.additionalContext).toMatch(
-      /remove|clean\s*up|delete|should.*help|would.*like/i,
+      /ask the user|ACTION REQUIRED/i,
     );
 
     // Cleanup worktree

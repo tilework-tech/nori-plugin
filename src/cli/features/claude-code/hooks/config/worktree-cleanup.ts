@@ -29,15 +29,19 @@ type TestOverrides = {
 };
 
 /**
- * Output hook result with systemMessage
+ * Output hook result with additionalContext for SessionStart hooks
+ * This injects context into the Claude session that the model can see
  * @param args - Configuration arguments
- * @param args.message - Message to output to Claude session
+ * @param args.message - Message to add to Claude session context
  */
 const logToClaudeSession = (args: { message: string }): void => {
   const { message } = args;
 
   const output = {
-    systemMessage: message,
+    hookSpecificOutput: {
+      hookEventName: "SessionStart",
+      additionalContext: message,
+    },
   };
 
   console.log(JSON.stringify(output));

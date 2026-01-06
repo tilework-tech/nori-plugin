@@ -166,10 +166,13 @@ describe("worktree-cleanup hook", () => {
     // Verify warning output
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
-    expect(output).toHaveProperty("systemMessage");
-    expect(output.systemMessage).toContain("⚠️");
-    expect(output.systemMessage).toContain("worktree");
-    expect(output.systemMessage).toMatch(/50\s*GB|55\s*GB/i); // Should mention threshold or actual size
+    expect(output).toHaveProperty("hookSpecificOutput");
+    expect(output.hookSpecificOutput).toHaveProperty("additionalContext");
+    expect(output.hookSpecificOutput.additionalContext).toContain("⚠️");
+    expect(output.hookSpecificOutput.additionalContext).toContain("worktree");
+    expect(output.hookSpecificOutput.additionalContext).toMatch(
+      /50\s*GB|55\s*GB/i,
+    ); // Should mention threshold or actual size
 
     // Cleanup worktree
     execSync(`git worktree remove "${worktreeDir}"`, {
@@ -214,9 +217,12 @@ describe("worktree-cleanup hook", () => {
     // Verify warning output
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
-    expect(output).toHaveProperty("systemMessage");
-    expect(output.systemMessage).toContain("⚠️");
-    expect(output.systemMessage).toMatch(/disk\s*space/i);
+    expect(output).toHaveProperty("hookSpecificOutput");
+    expect(output.hookSpecificOutput).toHaveProperty("additionalContext");
+    expect(output.hookSpecificOutput.additionalContext).toContain("⚠️");
+    expect(output.hookSpecificOutput.additionalContext).toMatch(
+      /disk\s*space/i,
+    );
 
     // Cleanup worktree
     execSync(`git worktree remove "${worktreeDir}"`, {
@@ -266,8 +272,8 @@ describe("worktree-cleanup hook", () => {
     // Verify warning includes worktree paths
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
-    expect(output.systemMessage).toContain(worktree1);
-    expect(output.systemMessage).toContain(worktree2);
+    expect(output.hookSpecificOutput.additionalContext).toContain(worktree1);
+    expect(output.hookSpecificOutput.additionalContext).toContain(worktree2);
 
     // Cleanup worktrees
     execSync(`git worktree remove "${worktree1}"`, {
@@ -317,7 +323,7 @@ describe("worktree-cleanup hook", () => {
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
     // Should ask user - look for question-like phrasing
-    expect(output.systemMessage).toMatch(
+    expect(output.hookSpecificOutput.additionalContext).toMatch(
       /remove|clean\s*up|delete|should.*help|would.*like/i,
     );
 
@@ -377,9 +383,11 @@ describe("worktree-cleanup hook", () => {
     expect(consoleOutput).toHaveLength(1);
     const output = JSON.parse(consoleOutput[0]);
     // Should mention available disk space
-    expect(output.systemMessage).toMatch(/available|remaining|free/i);
+    expect(output.hookSpecificOutput.additionalContext).toMatch(
+      /available|remaining|free/i,
+    );
     // Should include a size measurement
-    expect(output.systemMessage).toMatch(/GB/i);
+    expect(output.hookSpecificOutput.additionalContext).toMatch(/GB/i);
 
     // Cleanup worktree
     execSync(`git worktree remove "${worktreeDir}"`, {

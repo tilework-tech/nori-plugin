@@ -183,7 +183,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
   }
 
   const installDir = allInstallations[0];
-  const profilesDir = path.join(installDir, ".claude", "profiles");
+  const profilesDir = path.join(installDir, ".nori", "profiles");
   const profileDir = path.join(profilesDir, profileName);
 
   // Check if profile is installed

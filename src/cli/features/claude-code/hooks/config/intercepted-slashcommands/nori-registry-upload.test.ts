@@ -48,7 +48,8 @@ describe("nori-registry-upload", () => {
       path.join(tmpdir(), "nori-registry-upload-test-"),
     );
     configPath = path.join(testDir, ".nori-config.json");
-    profilesDir = path.join(testDir, ".claude", "profiles");
+    // Profiles are stored in .nori/profiles, not .claude/profiles
+    profilesDir = path.join(testDir, ".nori", "profiles");
 
     // Create profiles directory
     await fs.mkdir(profilesDir, { recursive: true });

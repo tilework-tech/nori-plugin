@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock modules - initialize with temp values
 let mockClaudeDir = "/tmp/test-claude";
+let mockNoriDir = "/tmp/test-nori";
 let mockConfigPath = "/tmp/test-config.json";
 
 vi.mock("@/cli/features/claude-code/paths.js", () => ({
@@ -23,6 +24,9 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
   getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
+  getNoriDir: () => mockNoriDir,
+  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getNoriConfigFile: () => path.join(mockNoriDir, "config.json"),
 }));
 
 let mockLoadedConfig: any = null;
@@ -58,9 +62,10 @@ import { runUninstall } from "./uninstall.js";
 describe("uninstall cleanup", () => {
   let tempDir: string;
   let claudeDir: string;
+  let noriDir: string;
   let agentsDir: string;
   let commandsDir: string;
-  let profilesDir: string;
+  let noriProfilesDir: string;
   let configPath: string;
   let originalCwd: () => string;
 
@@ -73,9 +78,10 @@ describe("uninstall cleanup", () => {
       path.join(os.tmpdir(), "uninstall-cleanup-test-"),
     );
     claudeDir = path.join(tempDir, ".claude");
+    noriDir = path.join(tempDir, ".nori");
     agentsDir = path.join(claudeDir, "agents");
     commandsDir = path.join(claudeDir, "commands");
-    profilesDir = path.join(claudeDir, "profiles");
+    noriProfilesDir = path.join(noriDir, "profiles");
     configPath = path.join(tempDir, ".nori-config.json");
 
     // CRITICAL: Mock cwd to point to temp directory
@@ -83,6 +89,7 @@ describe("uninstall cleanup", () => {
 
     // Set mock paths
     mockClaudeDir = claudeDir;
+    mockNoriDir = noriDir;
     mockConfigPath = configPath;
 
     // Set mock config with agents field for loaders
@@ -93,8 +100,9 @@ describe("uninstall cleanup", () => {
       },
     };
 
-    // Create base claude directory
+    // Create base directories
     await fs.mkdir(claudeDir, { recursive: true });
+    await fs.mkdir(noriDir, { recursive: true });
   });
 
   afterEach(async () => {
@@ -213,8 +221,8 @@ describe("uninstall cleanup", () => {
         },
       },
       {
-        dir: "profiles",
-        dirPath: "profilesDir",
+        dir: "noriProfiles",
+        dirPath: "noriProfilesDir",
         installFn: async (config: any) => {
           await profilesLoader.run({ config });
         },
@@ -233,7 +241,7 @@ describe("uninstall cleanup", () => {
             ? agentsDir
             : dirPath === "commandsDir"
               ? commandsDir
-              : profilesDir;
+              : noriProfilesDir;
 
         // Install
         await installFn(config);

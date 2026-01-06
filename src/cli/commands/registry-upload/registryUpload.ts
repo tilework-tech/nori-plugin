@@ -16,8 +16,10 @@ import {
   showCursorAgentNotSupportedError,
 } from "@/cli/commands/registryAgentCheck.js";
 import { getRegistryAuth } from "@/cli/config.js";
+import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
+import { extractOrgId, buildRegistryUrl } from "@/utils/url.js";
 
 import type { RegistryAuth } from "@/cli/config.js";
 import type { Command } from "commander";
@@ -241,7 +243,7 @@ export const registryUploadMain = async (args: {
   // Use config from agentCheck (already loaded during support check)
   const config = agentCheck.config;
 
-  const profilesDir = path.join(targetInstallDir, ".claude", "profiles");
+  const profilesDir = getNoriProfilesDir({ installDir: targetInstallDir });
   const profileDir = path.join(profilesDir, profileName);
 
   // Check if profile exists
@@ -254,13 +256,39 @@ export const registryUploadMain = async (args: {
     return;
   }
 
-  // Get available registries
-  const availableRegistries =
-    config?.registryAuths != null ? config.registryAuths : [];
+  // Get available registries - include both legacy registryAuths and org-based auth
+  const availableRegistries: Array<RegistryAuth> = [];
+
+  // Add registry derived from org-based auth (config.auth)
+  if (config?.auth != null && config.auth.organizationUrl != null) {
+    const orgId = extractOrgId({ url: config.auth.organizationUrl });
+    if (orgId != null) {
+      const derivedRegistryUrl = buildRegistryUrl({ orgId });
+      availableRegistries.push({
+        registryUrl: derivedRegistryUrl,
+        username: config.auth.username,
+        password: config.auth.password ?? null,
+        refreshToken: config.auth.refreshToken ?? null,
+      });
+    }
+  }
+
+  // Add legacy registryAuths entries
+  if (config?.registryAuths != null) {
+    for (const auth of config.registryAuths) {
+      // Avoid duplicates if the same registry URL already exists from org-based auth
+      const alreadyExists = availableRegistries.some(
+        (existing) => existing.registryUrl === auth.registryUrl,
+      );
+      if (!alreadyExists) {
+        availableRegistries.push(auth);
+      }
+    }
+  }
 
   if (availableRegistries.length === 0) {
     error({
-      message: `No registry authentication configured.\n\nAdd registry credentials to .nori-config.json:\n{\n  "registryAuths": [{\n    "username": "your-email@example.com",\n    "password": "your-password",\n    "registryUrl": "https://registry.example.com"\n  }]\n}`,
+      message: `No registry authentication configured.\n\nEither log in with 'nori-ai install' or add registry credentials to .nori-config.json:\n{\n  "registryAuths": [{\n    "username": "your-email@example.com",\n    "password": "your-password",\n    "registryUrl": "https://registry.example.com"\n  }]\n}`,
     });
     return;
   }

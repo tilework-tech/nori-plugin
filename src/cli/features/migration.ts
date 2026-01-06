@@ -5,6 +5,9 @@
  * Migrations are applied in semver order during installation.
  */
 
+import * as fs from "fs/promises";
+import * as path from "path";
+
 import semver from "semver";
 
 import type { Config } from "@/cli/config.js";
@@ -104,10 +107,127 @@ const migration_19_0_0: Migration = {
 };
 
 /**
+ * Recursively copy a directory
+ * @param args - Copy arguments
+ * @param args.src - Source directory path
+ * @param args.dest - Destination directory path
+ */
+const copyDir = async (args: { src: string; dest: string }): Promise<void> => {
+  const { src, dest } = args;
+  await fs.mkdir(dest, { recursive: true });
+  const entries = await fs.readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDir({ src: srcPath, dest: destPath });
+    } else {
+      await fs.copyFile(srcPath, destPath);
+    }
+  }
+};
+
+/**
+ * Migration 20.0.0: Move profiles from .claude/profiles to .nori/profiles
+ *
+ * This migration copies all existing profiles to the new location before
+ * removing the old directory. This preserves any custom profiles or
+ * user modifications to built-in profiles.
+ */
+const migration_20_0_0: Migration = {
+  version: "20.0.0",
+  name: "move-profiles-to-nori-directory",
+  migrate: async (args: {
+    config: Record<string, unknown>;
+    installDir: string;
+  }): Promise<Record<string, unknown>> => {
+    const { config, installDir } = args;
+    const result = { ...config };
+
+    const oldProfilesDir = path.join(installDir, ".claude", "profiles");
+    const newProfilesDir = path.join(installDir, ".nori", "profiles");
+
+    // Check if old profiles directory exists
+    try {
+      await fs.access(oldProfilesDir);
+    } catch {
+      // Old directory doesn't exist, nothing to migrate
+      result.version = "20.0.0";
+      return result;
+    }
+
+    // Copy all profiles from old location to new location
+    try {
+      const profiles = await fs.readdir(oldProfilesDir, {
+        withFileTypes: true,
+      });
+
+      for (const profile of profiles) {
+        if (profile.isDirectory()) {
+          const srcProfile = path.join(oldProfilesDir, profile.name);
+          const destProfile = path.join(newProfilesDir, profile.name);
+
+          // Copy profile to new location (will be overwritten by loader if built-in)
+          await copyDir({ src: srcProfile, dest: destProfile });
+        }
+      }
+    } catch {
+      // Ignore copy errors - proceed with cleanup
+    }
+
+    // Remove old .claude/profiles directory
+    try {
+      await fs.rm(oldProfilesDir, { recursive: true, force: true });
+    } catch {
+      // Ignore errors
+    }
+
+    // Clean up additionalDirectories in settings.json to remove old .claude/profiles path
+    const settingsPath = path.join(installDir, ".claude", "settings.json");
+    try {
+      const settingsContent = await fs.readFile(settingsPath, "utf-8");
+      const settings = JSON.parse(settingsContent);
+
+      if (settings.permissions?.additionalDirectories) {
+        // Remove any paths containing .claude/profiles
+        settings.permissions.additionalDirectories =
+          settings.permissions.additionalDirectories.filter(
+            (dir: string) => !dir.includes(".claude/profiles"),
+          );
+
+        // Clean up empty additionalDirectories array
+        if (settings.permissions.additionalDirectories.length === 0) {
+          delete settings.permissions.additionalDirectories;
+        }
+
+        // Clean up empty permissions object
+        if (Object.keys(settings.permissions).length === 0) {
+          delete settings.permissions;
+        }
+
+        await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+      }
+    } catch {
+      // Ignore errors - settings.json might not exist
+    }
+
+    // Update version
+    result.version = "20.0.0";
+
+    return result;
+  },
+};
+
+/**
  * Ordered list of migrations
  * Each migration transforms config from the previous version to its version
  */
-export const migrations: Array<Migration> = [migration_19_0_0];
+export const migrations: Array<Migration> = [
+  migration_19_0_0,
+  migration_20_0_0,
+];
 
 /**
  * Apply all applicable migrations to a config

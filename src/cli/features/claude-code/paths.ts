@@ -116,3 +116,44 @@ export const getClaudeHomeSettingsFile = (): string => {
 export const getClaudeHomeCommandsDir = (): string => {
   return path.join(getClaudeHomeDir(), "commands");
 };
+
+/**
+ * Get the Nori directory path
+ * For project-level installs, returns {installDir}/.nori
+ * For home directory installs, returns ~/.nori
+ *
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to the .nori directory
+ */
+export const getNoriDir = (args: { installDir: string }): string => {
+  const { installDir } = args;
+  return path.join(installDir, ".nori");
+};
+
+/**
+ * Get the Nori profiles directory path
+ * This is where all profile templates are stored
+ *
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to the profiles directory
+ */
+export const getNoriProfilesDir = (args: { installDir: string }): string => {
+  return path.join(getNoriDir(args), "profiles");
+};
+
+/**
+ * Get the Nori config file path
+ * This is where Nori configuration is stored
+ *
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory
+ *
+ * @returns Absolute path to config.json
+ */
+export const getNoriConfigFile = (args: { installDir: string }): string => {
+  return path.join(getNoriDir(args), "config.json");
+};

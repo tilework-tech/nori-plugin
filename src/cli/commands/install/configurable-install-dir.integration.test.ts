@@ -19,10 +19,10 @@ import { claudeMdLoader } from "@/cli/features/claude-code/profiles/claudemd/loa
 import { profilesLoader } from "@/cli/features/claude-code/profiles/loader.js";
 import { skillsLoader } from "@/cli/features/claude-code/profiles/skills/loader.js";
 
-// Mock env module to use test directories
+// Mock paths module to use test directories
 let mockInstallDir: string;
 
-vi.mock("@/cli/env.js", async (importOriginal) => {
+vi.mock("@/cli/features/claude-code/paths.js", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
@@ -53,6 +53,18 @@ vi.mock("@/cli/env.js", async (importOriginal) => {
     getClaudeMdFile: (args?: { installDir?: string | null }) => {
       const installDir = args?.installDir || mockInstallDir;
       return path.join(installDir, ".claude", "CLAUDE.md");
+    },
+    getNoriDir: (args?: { installDir?: string | null }) => {
+      const installDir = args?.installDir || mockInstallDir;
+      return path.join(installDir, ".nori");
+    },
+    getNoriProfilesDir: (args?: { installDir?: string | null }) => {
+      const installDir = args?.installDir || mockInstallDir;
+      return path.join(installDir, ".nori", "profiles");
+    },
+    getNoriConfigFile: (args?: { installDir?: string | null }) => {
+      const installDir = args?.installDir || mockInstallDir;
+      return path.join(installDir, ".nori", "config.json");
     },
   };
 });
@@ -104,7 +116,8 @@ describe("configurable install directory integration", () => {
       await claudeMdLoader.install({ config });
 
       // Verify all features installed to custom location
-      const profilesDir = path.join(customInstallDir, ".claude", "profiles");
+      // Profiles now go to .nori/profiles, not .claude/profiles
+      const noriProfilesDir = path.join(customInstallDir, ".nori", "profiles");
       const skillsDir = path.join(customInstallDir, ".claude", "skills");
       const claudeMdPath = path.join(customInstallDir, ".claude", "CLAUDE.md");
       const settingsPath = path.join(
@@ -116,7 +129,7 @@ describe("configurable install directory integration", () => {
       // Check all exist
       expect(
         await fs
-          .access(profilesDir)
+          .access(noriProfilesDir)
           .then(() => true)
           .catch(() => false),
       ).toBe(true);
@@ -140,7 +153,7 @@ describe("configurable install directory integration", () => {
       ).toBe(true);
 
       // Verify content
-      const profiles = await fs.readdir(profilesDir);
+      const profiles = await fs.readdir(noriProfilesDir);
       const skills = await fs.readdir(skillsDir);
       expect(profiles.length).toBeGreaterThan(0);
       expect(skills.length).toBeGreaterThan(0);

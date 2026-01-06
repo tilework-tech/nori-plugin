@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 
 import { loadConfig, saveConfig } from "@/cli/config.js";
 import { LoaderRegistry } from "@/cli/features/claude-code/loaderRegistry.js";
+import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { success, info } from "@/cli/logger.js";
 
 import type { Agent, SourceProfile } from "@/cli/features/agentRegistry.js";
@@ -28,11 +29,10 @@ const INSTRUCTIONS_FILE = "CLAUDE.md";
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
  *
- * @returns Path to the profiles directory
+ * @returns Path to the profiles directory (in .nori/profiles/)
  */
 const getProfilesDir = (args: { installDir: string }): string => {
-  const { installDir } = args;
-  return path.join(installDir, ".claude", "profiles");
+  return getNoriProfilesDir(args);
 };
 
 /**

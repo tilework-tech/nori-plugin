@@ -10,15 +10,19 @@ import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
 import { warn } from "@/cli/logger.js";
-import { normalizeUrl } from "@/utils/url.js";
+import { normalizeUrl, extractOrgId, buildRegistryUrl } from "@/utils/url.js";
 
 /**
  * Registry authentication credentials
+ * Supports both legacy password auth and new refresh token auth
  */
 export type RegistryAuth = {
   username: string;
-  password: string;
   registryUrl: string;
+  // Legacy password-based auth
+  password?: string | null;
+  // Token-based auth (preferred)
+  refreshToken?: string | null;
 };
 
 /**
@@ -139,6 +143,9 @@ export const isLegacyPasswordConfig = (args: { config: Config }): boolean => {
 
 /**
  * Get registry authentication for a specific registry URL
+ * Uses unified Nori auth (config.auth) to derive registry credentials
+ * Falls back to legacy registryAuths for backwards compatibility
+ *
  * @param args - Configuration arguments
  * @param args.config - The config to search
  * @param args.registryUrl - The registry URL to find auth for
@@ -150,16 +157,54 @@ export const getRegistryAuth = (args: {
   registryUrl: string;
 }): RegistryAuth | null => {
   const { config, registryUrl } = args;
-  if (config.registryAuths == null) {
-    return null;
-  }
   const normalizedSearchUrl = normalizeUrl({ baseUrl: registryUrl });
-  return (
-    config.registryAuths.find(
-      (auth) =>
-        normalizeUrl({ baseUrl: auth.registryUrl }) === normalizedSearchUrl,
-    ) ?? null
-  );
+
+  // Use unified Nori auth if available
+  if (config.auth != null && config.auth.organizationUrl != null) {
+    const orgId = extractOrgId({ url: config.auth.organizationUrl });
+
+    if (orgId != null) {
+      // Derive registry URL from org ID
+      const derivedRegistryUrl = buildRegistryUrl({ orgId });
+
+      // Check if requested URL matches derived registry URL
+      if (
+        normalizeUrl({ baseUrl: derivedRegistryUrl }) === normalizedSearchUrl
+      ) {
+        return {
+          registryUrl: derivedRegistryUrl,
+          username: config.auth.username,
+          password: config.auth.password ?? null,
+          refreshToken: config.auth.refreshToken ?? null,
+        };
+      }
+    }
+
+    // For local dev URLs (localhost), check if auth URL is also local dev
+    // If organizationUrl is localhost, use those credentials for any registry request
+    const authOrgId = extractOrgId({ url: config.auth.organizationUrl });
+    if (authOrgId == null) {
+      // Auth URL is local dev (e.g., localhost) - use these credentials
+      return {
+        registryUrl: normalizedSearchUrl,
+        username: config.auth.username,
+        password: config.auth.password ?? null,
+        refreshToken: config.auth.refreshToken ?? null,
+      };
+    }
+  }
+
+  // Fall back to legacy registryAuths for backwards compatibility
+  if (config.registryAuths != null) {
+    return (
+      config.registryAuths.find(
+        (auth) =>
+          normalizeUrl({ baseUrl: auth.registryUrl }) === normalizedSearchUrl,
+      ) ?? null
+    );
+  }
+
+  return null;
 };
 
 /**

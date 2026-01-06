@@ -13,6 +13,7 @@ import type { Config } from "@/cli/config.js";
 
 // Mock the env module to use temp directories
 let mockClaudeDir = "";
+let mockNoriDir = "";
 
 vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getClaudeDir: () => mockClaudeDir,
@@ -22,6 +23,10 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getClaudeMdFile: () => path.join(mockClaudeDir, "CLAUDE.md"),
   getClaudeSkillsDir: () => path.join(mockClaudeDir, "skills"),
   getClaudeProfilesDir: () => path.join(mockClaudeDir, "profiles"),
+  // New Nori paths
+  getNoriDir: () => mockNoriDir,
+  getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
+  getNoriConfigFile: () => path.join(mockNoriDir, "config.json"),
 }));
 
 // Import loader after mocking env
@@ -30,19 +35,23 @@ import { profilesLoader, _testing } from "./loader.js";
 describe("profilesLoader", () => {
   let tempDir: string;
   let claudeDir: string;
+  let noriDir: string;
   let profilesDir: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "profiles-test-"));
     claudeDir = path.join(tempDir, ".claude");
-    profilesDir = path.join(claudeDir, "profiles");
+    noriDir = path.join(tempDir, ".nori");
+    profilesDir = path.join(noriDir, "profiles");
 
     // Set mock paths
     mockClaudeDir = claudeDir;
+    mockNoriDir = noriDir;
 
     // Create directories
     await fs.mkdir(claudeDir, { recursive: true });
+    await fs.mkdir(noriDir, { recursive: true });
   });
 
   afterEach(async () => {
@@ -79,7 +88,44 @@ describe("profilesLoader", () => {
       expect(files).toContain("amol");
       expect(files).toContain("product-manager");
       expect(files).toContain("none");
+      expect(files).toContain("onboarding-wizard-questionnaire");
       expect(files).not.toContain("_base"); // _base is never installed
+    });
+
+    it("should install onboarding-wizard-questionnaire profile with correct structure", async () => {
+      const config: Config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
+
+      await profilesLoader.run({ config });
+
+      // Verify onboarding-wizard-questionnaire profile exists
+      const wizardPath = path.join(
+        profilesDir,
+        "onboarding-wizard-questionnaire",
+      );
+      const wizardExists = await fs
+        .access(wizardPath)
+        .then(() => true)
+        .catch(() => false);
+      expect(wizardExists).toBe(true);
+
+      // Verify profile.json exists and has correct metadata
+      const profileJsonPath = path.join(wizardPath, "profile.json");
+      const profileJson = JSON.parse(
+        await fs.readFile(profileJsonPath, "utf-8"),
+      );
+      expect(profileJson.name).toBe("onboarding-wizard-questionnaire");
+      expect(profileJson.builtin).toBe(true);
+      expect(profileJson.description).toContain("questionnaire");
+
+      // Verify CLAUDE.md exists and contains wizard instructions
+      const claudeMdPath = path.join(wizardPath, "CLAUDE.md");
+      const claudeMdContent = await fs.readFile(claudeMdPath, "utf-8");
+      expect(claudeMdContent).toContain("Onboarding Wizard (Questionnaire)");
     });
 
     it("should install none profile with only base mixin and empty CLAUDE.md", async () => {

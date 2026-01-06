@@ -19,7 +19,6 @@ import {
   displaySeaweedBed,
 } from "@/cli/commands/install/asciiArt.js";
 import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
-import { promptRegistryAuths } from "@/cli/commands/install/registryAuthPrompt.js";
 import {
   loadConfig,
   getDefaultProfile,
@@ -50,6 +49,12 @@ import {
   supportsAgentFlag,
 } from "@/cli/version.js";
 import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
+import {
+  isValidOrgId,
+  buildWatchtowerUrl,
+  normalizeUrl,
+  isValidUrl,
+} from "@/utils/url.js";
 
 import type { Command } from "commander";
 
@@ -211,14 +216,22 @@ export const generatePromptConfig = async (args: {
 
   // Prompt for credentials
   info({
+    message: "If you have access to Nori Web, enter your email address below.",
+  });
+  newline();
+  info({
     message: wrapText({
-      text: "Nori Watchtower is our backend service that enables shared knowledge features - search and recall past solutions across your team, save learnings for future sessions, and server-side documentation with versioning. If you have Watchtower credentials (you should have received them from Josh or Amol), enter your email to enable these features. Otherwise, press enter to continue with local-only features.",
+      text: "Nori Web provides a context engine for enhancing your coding agent with additional knowledge and enables sharing custom profiles across your team.",
     }),
+  });
+  newline();
+  info({
+    message: "Learn more at usenori.ai",
   });
   newline();
 
   const username = await promptUser({
-    prompt: "Email address (Watchtower) or hit enter to skip: ",
+    prompt: "Email address or hit enter to skip: ",
   });
 
   let auth: {
@@ -233,15 +246,37 @@ export const generatePromptConfig = async (args: {
       hidden: true,
     });
 
-    const orgUrl = await promptUser({
-      prompt:
-        "Enter your organization URL (e.g., http://localhost:3000 for local dev): ",
-    });
+    // Prompt for org ID or URL with validation
+    let organizationUrl: string | null = null;
+    while (organizationUrl == null) {
+      const orgInput = await promptUser({
+        prompt:
+          "Organization ID (the prefix to your URL, e.g., 'mycompany' for https://mycompany.tilework.tech): ",
+      });
 
-    if (!password || !orgUrl) {
+      if (!orgInput) {
+        error({
+          message: "Organization ID is required for backend installation",
+        });
+        continue;
+      }
+
+      // Check if it's a valid URL (fallback for local dev)
+      if (isValidUrl({ input: orgInput })) {
+        organizationUrl = normalizeUrl({ baseUrl: orgInput });
+      } else if (isValidOrgId({ orgId: orgInput })) {
+        // Not a URL, check if it's a valid org ID
+        organizationUrl = buildWatchtowerUrl({ orgId: orgInput });
+      } else {
+        error({
+          message: `Invalid input: "${orgInput}". Enter a lowercase org ID (letters, numbers, hyphens) or a full URL.`,
+        });
+      }
+    }
+
+    if (!password) {
       error({
-        message:
-          "Password and organization URL are required for backend installation",
+        message: "Password is required for backend installation",
       });
       process.exit(1);
     }
@@ -249,13 +284,70 @@ export const generatePromptConfig = async (args: {
     auth = {
       username: username.trim(),
       password: password.trim(),
-      organizationUrl: orgUrl.trim(),
+      organizationUrl,
     };
 
     info({ message: "Installing with backend support..." });
     newline();
   } else {
     info({ message: "Great. Let's move on to selecting your profile." });
+    newline();
+  }
+
+  // First-time install: Ask if user wants pre-built profile or wizard
+  const isFirstTimeInstall = existingConfig == null;
+  if (isFirstTimeInstall) {
+    info({
+      message: "Would you like to:",
+    });
+    newline();
+
+    const number1 = brightCyan({ text: "1." });
+    const option1Name = boldWhite({ text: "Use a pre-built profile" });
+    const option1Desc = gray({
+      text: "Choose from senior-swe, amol, product-manager, and more",
+    });
+    raw({ message: `${number1} ${option1Name}` });
+    raw({ message: `   ${option1Desc}` });
+    newline();
+
+    const number2 = brightCyan({ text: "2." });
+    const option2Name = boldWhite({
+      text: "Create a personalized profile with our setup wizard",
+    });
+    const option2Desc = gray({
+      text: "Answer questions about your workflow to generate a custom profile",
+    });
+    raw({ message: `${number2} ${option2Name}` });
+    raw({ message: `   ${option2Desc}` });
+    newline();
+
+    const wizardChoice = await promptUser({
+      prompt: "Select an option (1-2): ",
+    });
+
+    if (wizardChoice === "2") {
+      info({ message: 'Loading "onboarding-wizard-questionnaire" profile...' });
+      newline();
+      info({
+        message: wrapText({
+          text: "After restarting Claude Code, the wizard will guide you through creating a personalized profile based on your workflow preferences.",
+        }),
+      });
+      newline();
+
+      const profile = { baseProfile: "onboarding-wizard-questionnaire" };
+      return {
+        auth: auth ?? null,
+        agents: {
+          [agent.name]: { profile },
+        },
+        installDir,
+        registryAuths: null,
+      };
+    }
+
+    // User chose pre-built, continue to profile selection
     newline();
   }
 
@@ -267,23 +359,76 @@ export const generatePromptConfig = async (args: {
     process.exit(1);
   }
 
-  // Display profiles
+  // Display profiles with categorization
   info({
     message: wrapText({
-      text: "Please select a profile. Each profile contains a complete configuration with skills, subagents, and commands tailored for different use cases.",
+      text: "Nori profiles contain a complete configuration for customizing your coding agent, including a CLAUDE/AGENT.md, skills, subagents, and commands. We recommend starting with:",
     }),
   });
   newline();
 
-  profiles.forEach((p, i) => {
-    const number = brightCyan({ text: `${i + 1}.` });
-    const name = boldWhite({ text: p.name });
-    const description = gray({ text: p.description });
+  // Categorize profiles
+  const knownProfiles = ["senior-swe", "amol", "product-manager"];
+  const recommendedProfile = profiles.find((p) => p.name === "senior-swe");
+  const additionalProfiles = profiles.filter(
+    (p) => p.name === "amol" || p.name === "product-manager",
+  );
+  const customProfiles = profiles.filter(
+    (p) => !knownProfiles.includes(p.name),
+  );
 
+  let profileIndex = 1;
+
+  // Display recommended profile (senior-swe)
+  if (recommendedProfile) {
+    const number = brightCyan({ text: `${profileIndex}.` });
+    const name = boldWhite({ text: recommendedProfile.name });
+    const description = gray({ text: recommendedProfile.description });
     raw({ message: `${number} ${name}` });
     raw({ message: `   ${description}` });
     newline();
+    profileIndex++;
+  }
+
+  // Display additional profiles (amol, product-manager)
+  if (additionalProfiles.length > 0) {
+    info({ message: "Two additional profiles are:" });
+    newline();
+    additionalProfiles.forEach((p) => {
+      const number = brightCyan({ text: `${profileIndex}.` });
+      const name = boldWhite({ text: p.name });
+      const description = gray({ text: p.description });
+      raw({ message: `${number} ${name}` });
+      raw({ message: `   ${description}` });
+      newline();
+      profileIndex++;
+    });
+  }
+
+  // Display custom profiles
+  if (customProfiles.length > 0) {
+    info({
+      message:
+        "The following profiles were found in your existing Nori profiles folder:",
+    });
+    newline();
+    customProfiles.forEach((p) => {
+      const number = brightCyan({ text: `${profileIndex}.` });
+      const name = boldWhite({ text: p.name });
+      const description = gray({ text: p.description });
+      raw({ message: `${number} ${name}` });
+      raw({ message: `   ${description}` });
+      newline();
+      profileIndex++;
+    });
+  }
+
+  info({
+    message: wrapText({
+      text: "If you would like to customize a profile, you can prompt your coding agent to do so in session or use the slash command /nori-create-profile.",
+    }),
   });
+  newline();
 
   // Loop until valid selection
   let selectedProfileName: string;
@@ -307,13 +452,9 @@ export const generatePromptConfig = async (args: {
     newline();
   }
 
-  // Prompt for private registry authentication
-  newline();
-  const registryAuths = await promptRegistryAuths({
-    existingRegistryAuths: existingConfig?.registryAuths ?? null,
-  });
-
   // Build config directly
+  // Registry auth is now unified with Watchtower auth - no separate prompt needed
+  // Keep existing registryAuths for backwards compatibility with legacy configs
   const profile = { baseProfile: selectedProfileName };
   return {
     auth: auth ?? null,
@@ -322,7 +463,7 @@ export const generatePromptConfig = async (args: {
       [agent.name]: { profile },
     },
     installDir,
-    registryAuths: registryAuths ?? null,
+    registryAuths: existingConfig?.registryAuths ?? null,
   };
 };
 

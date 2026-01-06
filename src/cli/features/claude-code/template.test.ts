@@ -34,13 +34,14 @@ describe("substituteTemplatePaths", () => {
   });
 
   describe("profiles_dir placeholder", () => {
-    it("should replace {{profiles_dir}} with absolute path", () => {
+    it("should replace {{profiles_dir}} with absolute path to .nori/profiles", () => {
       const content = "Check `{{profiles_dir}}/amol/CLAUDE.md`";
       const result = substituteTemplatePaths({
         content,
         installDir: "/project/.claude",
       });
-      expect(result).toBe("Check `/project/.claude/profiles/amol/CLAUDE.md`");
+      // Profiles are now stored in .nori/profiles, not .claude/profiles
+      expect(result).toBe("Check `/project/.nori/profiles/amol/CLAUDE.md`");
     });
   });
 
@@ -79,7 +80,8 @@ Install root: {{install_dir}}
         installDir: "/project/.claude",
       });
       expect(result).toContain("/project/.claude/skills/foo/SKILL.md");
-      expect(result).toContain("/project/.claude/profiles/bar");
+      // Profiles are in .nori/profiles, not .claude/profiles
+      expect(result).toContain("/project/.nori/profiles/bar");
       expect(result).toContain("/project/.claude/commands");
       expect(result).toContain("Install root: /project");
     });

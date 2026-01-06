@@ -4,11 +4,11 @@ Path: @/src/cli/features/claude-code/profiles
 
 ### Overview
 
-Profile system that provides complete, self-contained Nori configurations composed from modular mixins. Each profile is built by combining multiple mixins (\_base, \_docs, \_swe, \_paid) that contain skills/, subagents/, and slashcommands/ directories. Profiles are composed and copied to `~/.claude/profiles/` during installation and serve as the single source of truth for all feature loaders.
+Profile system that provides complete, self-contained Nori configurations composed from modular mixins. Each profile is built by combining multiple mixins (\_base, \_docs, \_swe, \_paid) that contain skills/, subagents/, and slashcommands/ directories. Profiles are composed and copied to `~/.nori/profiles/` during installation and serve as the single source of truth for all feature loaders. Active profile artifacts are then copied to `~/.claude/` (skills, agents, commands, CLAUDE.md) for Claude Code to consume.
 
 ### How it fits into the larger codebase
 
-The profiles loader executes FIRST in both interactive and non-interactive installation modes (see @/src/cli/commands/install/install.ts) to populate `~/.claude/profiles/` before any other loaders run. In interactive mode, @/src/cli/commands/install/install.ts prompts for profile selection by reading directories from @/src/cli/features/claude-code/profiles/config/, then saves the selection to `.nori-config.json` via @/src/cli/config.ts. All subsequent feature loaders (@/src/cli/features/claude-code/profiles/claudemd/loader.ts, @/src/cli/features/claude-code/profiles/skills/loader.ts, @/src/cli/features/claude-code/profiles/subagents/loader.ts, @/src/cli/features/claude-code/profiles/slashcommands/loader.ts) read from `~/.claude/profiles/{selectedProfile}/` to install their components. Profile switching is handled by @/src/cli/commands/switch-profile/profiles.ts which updates `.nori-config.json` while preserving auth credentials, then re-runs installation. The statusline (@/src/cli/features/claude-code/statusline) displays the active profile name. The `/nori-switch-profile` slash command enables in-conversation profile switching.
+The profiles loader executes FIRST in both interactive and non-interactive installation modes (see @/src/cli/commands/install/install.ts) to populate `~/.nori/profiles/` before any other loaders run. In interactive mode, @/src/cli/commands/install/install.ts prompts for profile selection by reading directories from @/src/cli/features/claude-code/profiles/config/, then saves the selection to `.nori-config.json` via @/src/cli/config.ts. All subsequent feature loaders (@/src/cli/features/claude-code/profiles/claudemd/loader.ts, @/src/cli/features/claude-code/profiles/skills/loader.ts, @/src/cli/features/claude-code/profiles/subagents/loader.ts, @/src/cli/features/claude-code/profiles/slashcommands/loader.ts) read from `~/.nori/profiles/{selectedProfile}/` to install their components. Profile switching is handled by @/src/cli/commands/switch-profile/profiles.ts which updates `.nori-config.json` while preserving auth credentials, then re-runs installation. The statusline (@/src/cli/features/claude-code/statusline) displays the active profile name. The `/nori-switch-profile` slash command enables in-conversation profile switching.
 
 ### Core Implementation
 
@@ -16,25 +16,49 @@ The profiles loader executes FIRST in both interactive and non-interactive insta
 
 **Built-in Profile Metadata**: All built-in profiles include `"builtin": true` in their profile.json files. This field is used by the uninstall process (@/src/cli/features/claude-code/profiles/loader.ts uninstallProfiles function) to distinguish built-in profiles from custom user profiles. During uninstall, only profiles with `"builtin": true` are removed. Profiles without this field (or with `"builtin": false`) are treated as custom and preserved.
 
-**Built-in Profiles**: Three profiles ship with the package at @/src/cli/features/claude-code/profiles/config/: `senior-swe` (co-pilot with high confirmation), `amol` (full autonomy with frequent commits), and `product-manager` (full autonomy for non-technical users). The default profile fallback `senior-swe` (from @/src/cli/config.ts getDefaultProfile()) is only used in interactive mode when an existing config has no profile field. Non-interactive installs require explicit `--profile` flag when no existing config is present.
+**Built-in Profiles**: Several profiles ship with the package at @/src/cli/features/claude-code/profiles/config/:
+- `senior-swe` - Co-pilot with high confirmation, the default profile
+- `amol` - Full autonomy with frequent commits
+- `product-manager` - Full autonomy for non-technical users
+- `none` - Minimal profile with only base mixin and empty CLAUDE.md
+- `onboarding-wizard` - Meta-profile that creates personalized profiles for first-time users
 
-**Installation Flow**: The `installProfiles()` function in @/src/cli/features/claude-code/profiles/loader.ts reads profile directories from config/, loads profile.json metadata, dynamically injects the `paid` mixin if the user has auth credentials (checked via `isPaidInstall({ config })` from @/src/cli/config.ts), then composes the profile by merging content from all mixins in alphabetical order. Mixins are located in `config/_mixins/` with names like `_base`, `_docs`, `_swe`, `_paid`. Directories are merged (union of contents) while files use last-writer-wins. Profile-specific content (CLAUDE.md) is overlaid last. Built-in profiles are always overwritten during installation to receive updates. Custom profiles are preserved.
+The default profile fallback `senior-swe` (from @/src/cli/config.ts getDefaultProfile()) is only used in interactive mode when an existing config has no profile field. Non-interactive installs require explicit `--profile` flag when no existing config is present.
+
+**Onboarding Wizard Profile**: The `onboarding-wizard` is a "meta-profile" whose purpose is to create other profiles. It operates as an Installation Wizard with special instructions that bypass normal workflow (no git worktrees, no branches). The wizard asks users about:
+1. Profile name
+2. Autonomy level (high/moderate/pair programming)
+3. Git workflow (worktrees/branches/ask each time)
+4. Testing philosophy (strict TDD/preferred/minimal)
+5. Documentation preferences (always/on request/none)
+6. Communication tone (direct/balanced/supportive)
+
+After collecting preferences, it generates a customized profile in `~/.claude/profiles/<profile-name>/` with a tailored CLAUDE.md based on the user's answers. Uses the same mixins as `senior-swe` (base, docs, swe). After creating a custom profile, users switch to it using `/nori-switch-profile`.
+
+**Installation Flow**: The `installProfiles()` function in @/src/cli/features/claude-code/profiles/loader.ts reads profile directories from config/, loads profile.json metadata, dynamically injects the `paid` mixin if the user has auth credentials (checked via `isPaidInstall({ config })` from @/src/cli/config.ts), then composes the profile by merging content from all mixins in alphabetical order. Mixins are located in `config/_mixins/` with names like `_base`, `_docs`, `_swe`, `_paid`. Directories are merged (union of contents) while files use last-writer-wins. Profile-specific content (CLAUDE.md) is overlaid last. Built-in profiles are always overwritten during installation to receive updates. Custom profiles are preserved. The composed profiles are written to `~/.nori/profiles/`, then the profiles loader also configures permissions for this directory in `~/.claude/settings.json`.
 
 **Profile Lookup in Loaders**: All feature loaders (claudemd, skills, slashcommands, subagents) use `getAgentProfile({ config, agentName: "claude-code" })` from @/src/cli/config.ts to determine the active profile name. This function returns the agent-specific profile from `config.agents["claude-code"].profile`, falling back to the legacy `config.profile` field for backwards compatibility. Direct access to `config.profile` is prohibited - it bypasses agent-specific profiles and causes bugs during switch-profile for non-claude-code agents.
 
-**Profile Discovery**: @/src/cli/commands/switch-profile/profiles.ts `listProfiles()` scans `~/.claude/profiles/` for directories containing CLAUDE.md. `switchProfile()` validates the profile exists, loads current config from `.nori-config.json`, preserves auth credentials, updates `profile.baseProfile` field, saves back to disk, and prompts user to restart Claude Code.
+**Profile Discovery**: @/src/cli/commands/switch-profile/profiles.ts `listProfiles()` scans `~/.nori/profiles/` for directories containing CLAUDE.md. `switchProfile()` validates the profile exists, loads current config from `.nori-config.json`, preserves auth credentials, updates `profile.baseProfile` field, saves back to disk, and prompts user to restart Claude Code.
 
 **Loader Ordering**: Critical fix in commit e832083 ensures profiles loader runs before all other loaders in non-interactive mode by explicitly calling `profilesLoader.run()` first in @/src/cli/commands/install/install.ts, then filtering it from the remaining loaders array.
 
 ### Things to Know
 
-**~/.claude/profiles/ is the single source of truth**: Commit 70da534 changed the architecture so all feature loaders read from `~/.claude/profiles/` instead of the npx package location. This enables users to create custom profiles or modify built-in ones. The profiles loader must run FIRST to populate this directory before other loaders attempt to read from it.
+**~/.nori/profiles/ is the single source of truth**: All feature loaders read from `~/.nori/profiles/` instead of the npx package location. This enables users to create custom profiles or modify built-in ones. The profiles loader must run FIRST to populate this directory before other loaders attempt to read from it. The separation from `~/.claude/` ensures Nori's profile repository doesn't conflict with Claude Code's native configuration files.
 
-**Missing profile directories are valid**: Feature loaders (skills, slashcommands, subagents) treat missing profile directories as valid with zero items. When `fs.readdir()` fails on a profile's subdirectory (e.g., `~/.claude/profiles/none/skills/` doesn't exist), the install functions return early with an info message rather than throwing ENOENT. Validation returns `valid: true` with "No X configured for this profile". This allows minimal profiles (like "none") to omit any directory they don't need.
+**Directory Separation**: Profiles are stored in `~/.nori/profiles/` rather than `~/.claude/profiles/`. The `.nori/` directory contains Nori's internal data (profile repository), while `.claude/` contains only Claude Code's native artifacts (skills, agents, commands, CLAUDE.md, settings.json). This architecture:
+- Creates clear ownership of directories
+- Avoids conflicts between Nori's managed data and Claude's configuration
+- Allows Claude Code to read from `.claude/` without encountering Nori-internal files
+
+**Migration from .claude/profiles to .nori/profiles**: Migration 20.0.0 in @/src/cli/features/migration.ts automatically removes the old `~/.claude/profiles/` directory during upgrade. The profiles loader then creates the new `~/.nori/profiles/` directory structure.
+
+**Missing profile directories are valid**: Feature loaders (skills, slashcommands, subagents) treat missing profile directories as valid with zero items. When `fs.readdir()` fails on a profile's subdirectory (e.g., `~/.nori/profiles/none/skills/` doesn't exist), the install functions return early with an info message rather than throwing ENOENT. Validation returns `valid: true` with "No X configured for this profile". This allows minimal profiles (like "none") to omit any directory they don't need.
 
 **Directory-based vs JSON-based**: PR #197 replaced the JSON preference system with directory-based profiles, deleting 8,296 lines of code. PR #208 introduced profile composition with single inheritance via `extends` field. This PR replaces single inheritance with mixin composition, where profiles declare multiple mixins in profile.json and the loader composes them in alphabetical precedence order.
 
-**Custom profile preservation**: Built-in profiles are identified by the `"builtin": true` field in their profile.json files. During uninstall, the loader only removes profiles with `"builtin": true`, preserving any custom user profiles (those without the builtin field or with `"builtin": false`). This allows users to safely create custom profiles by copying built-in ones to `~/.claude/profiles/` and modifying them without losing their work during profile switches or upgrades.
+**Custom profile preservation**: Built-in profiles are identified by the `"builtin": true` field in their profile.json files. During uninstall, the loader only removes profiles with `"builtin": true`, preserving any custom user profiles (those without the builtin field or with `"builtin": false`). This allows users to safely create custom profiles by copying built-in ones to `~/.nori/profiles/` and modifying them without losing their work during profile switches or upgrades.
 
 **Skill installation testing**: Tests in @/src/cli/features/claude-code/profiles/skills/loader.test.ts verify that skills from all mixins are correctly installed. Each new skill in a mixin should have corresponding tests verifying: (1) the skill exists after installation for the appropriate tier (free/paid), (2) frontmatter is properly formatted with name and description fields, and (3) the skill is installed in the expected location. For example, the creating-skills skill has tests verifying it's installed for both free and paid tiers since it's in the _base mixin.
 
@@ -50,7 +74,7 @@ The profiles loader executes FIRST in both interactive and non-interactive insta
 - **Global commands** (@/src/cli/features/claude-code/slashcommands/): Profile-agnostic utilities installed to `~/.claude/commands/` regardless of profile selection. Examples: nori-debug, nori-switch-profile, nori-info, nori-toggle-autoupdate.
 - **Profile commands** (@/src/cli/features/claude-code/profiles/slashcommands/): Commands from profile mixins that vary by profile. Examples: nori-init-docs (from _docs mixin), nori-sync-docs (from _docs-paid mixin).
 
-**Custom skill creation workflow**: The creating-skills skill (in @/src/cli/features/claude-code/profiles/config/_mixins/_base/skills/creating-skills/SKILL.md) enables users to create custom skills that persist across sessions. Skills are written directly to `~/.claude/profiles/{profile}/skills/{skill-name}/` and become available after a profile switch using `/nori-switch-profile`. Custom skills in profiles do NOT require reinstallation - they're immediately available after switching to that profile. The skill guides users through: (1) gathering requirements (name, description, steps, guidelines, optional scripts), (2) selecting target profile from `~/.claude/profiles/`, (3) creating skill directory structure, (4) writing SKILL.md with proper YAML frontmatter (name and description fields), (5) optionally adding bundled TypeScript scripts (with caveats about manual bundling), (6) verifying creation, and (7) offering to switch profiles. The skill is available to all users (free and paid) since it's in the _base mixin.
+**Custom skill creation workflow**: The creating-skills skill (in @/src/cli/features/claude-code/profiles/config/_mixins/_base/skills/creating-skills/SKILL.md) enables users to create custom skills that persist across sessions. Skills are written directly to `~/.nori/profiles/{profile}/skills/{skill-name}/` and become available after a profile switch using `/nori-switch-profile`. Custom skills in profiles do NOT require reinstallation - they're immediately available after switching to that profile. The skill guides users through: (1) gathering requirements (name, description, steps, guidelines, optional scripts), (2) selecting target profile from `~/.nori/profiles/`, (3) creating skill directory structure, (4) writing SKILL.md with proper YAML frontmatter (name and description fields), (5) optionally adding bundled TypeScript scripts (with caveats about manual bundling), (6) verifying creation, and (7) offering to switch profiles. The skill is available to all users (free and paid) since it's in the _base mixin.
 
 **Profile name display**: The statusline shows the active profile name (commit 5da74b7), but hides it when not explicitly set (commit ae5c085).
 
@@ -112,16 +136,35 @@ npx nori-ai@latest switch-profile my-custom-profile
 
 Use `/nori-switch-profile` in Claude Code to:
 
-- List available profiles from `~/.claude/profiles/`
+- List available profiles from `~/.nori/profiles/`
 - Switch to a specific profile
 
 ## How It Works
 
 ### Architecture
 
-**Profile Source of Truth: `~/.claude/profiles/`**
+**Profile Source of Truth: `~/.nori/profiles/`**
 
-All feature loaders (claudemd, skills, slashcommands, subagents) read from `~/.claude/profiles/${profileName}/`. This is the single source of truth.
+All feature loaders (claudemd, skills, slashcommands, subagents) read from `~/.nori/profiles/${profileName}/`. This is the single source of truth. Active profile artifacts are then copied to `~/.claude/` for Claude Code to consume.
+
+```
+~/.nori/
+  profiles/
+    senior-swe/       # Composed profile (source of truth)
+      skills/
+      subagents/
+      slashcommands/
+      CLAUDE.md
+    amol/
+    ...
+
+~/.claude/
+  skills/             # Copied from active profile
+  agents/             # Copied from active profile
+  commands/           # Copied from active profile
+  CLAUDE.md           # Generated from active profile
+  settings.json       # Claude settings with Nori permissions
+```
 
 ### Install Flow
 
@@ -131,24 +174,33 @@ All feature loaders (claudemd, skills, slashcommands, subagents) read from `~/.c
    - Injects `paid` mixin dynamically if user has auth credentials
    - Composes profile by copying content from mixins in alphabetical order
    - Overlays profile-specific content (CLAUDE.md, profile.json)
-   - Copies composed profiles to `~/.claude/profiles/`
+   - Copies composed profiles to `~/.nori/profiles/`
    - Overwrites built-in profiles to ensure they're up-to-date
    - Leaves custom profiles untouched
 
-2. **User selects profile**
+2. **First-time install detection** (see @/src/cli/commands/install/install.ts generatePromptConfig)
 
-   - Reads available profiles from `~/.claude/profiles/`
+   - If no existing `.nori-config.json` exists, this is a first-time install
+   - User is offered two choices:
+     - Option 1: Select a pre-built profile (continues to standard profile selection)
+     - Option 2: Create a personalized profile via the onboarding wizard
+   - If user chooses the wizard, the `onboarding-wizard` profile is automatically selected
+   - The wizard runs on next Claude Code session, asking questions and generating a custom profile
+
+3. **User selects profile** (for existing installs or if user chose "pre-built" in step 2)
+
+   - Reads available profiles from `~/.nori/profiles/`
    - Shows both built-in and custom profiles
 
-3. **Feature loaders run**
-   - Read profile configuration from `~/.claude/profiles/${selectedProfile}/`
-   - Install CLAUDE.md, skills, slashcommands, subagents from that profile
+4. **Feature loaders run**
+   - Read profile configuration from `~/.nori/profiles/${selectedProfile}/`
+   - Install CLAUDE.md, skills, slashcommands, subagents to `~/.claude/` from that profile
 
 ### Profile Switching
 
 When you run `npx nori-ai@latest switch-profile <name>`:
 
-1. Validates profile exists in `~/.claude/profiles/`
+1. Validates profile exists in `~/.nori/profiles/`
 2. Saves profile name to `.nori-config.json` (preserves auth credentials)
 3. Runs `installMain({ nonInteractive: true, skipUninstall: true })` to apply changes
    - The `skipUninstall: true` parameter prevents the installer from running uninstall first
@@ -157,19 +209,19 @@ When you run `npx nori-ai@latest switch-profile <name>`:
 
 ### Key Files
 
-- `src/cli/features/claude-code/profiles/loader.ts` - Copies profile templates
+- `src/cli/features/claude-code/profiles/loader.ts` - Copies profile templates to `~/.nori/profiles/`
 - `src/cli/commands/switch-profile/profiles.ts` - Profile switching logic
 - `src/cli/commands/install/install.ts` - Install flow (runs profiles loader first)
-- Feature loaders - Read from `~/.claude/profiles/${profileName}/`
+- Feature loaders - Read from `~/.nori/profiles/${profileName}/`, install to `~/.claude/`
 
 ## Validation
 
 The `validate()` function checks:
 
-- `~/.claude/profiles/` directory exists
-- Required built-in profiles (`senior-swe`, `amol`, `product-manager`) are present
+- `~/.nori/profiles/` directory exists
+- Required built-in profiles (`senior-swe`, `amol`, `product-manager`, `documenter`, `none`) are present. Note: `onboarding-wizard` is a meta-profile and is not required for validation.
 - Run with `npx nori-ai@latest check`
 
 ## Uninstallation
 
-During `npx nori-ai@latest uninstall`, only built-in profiles (those with `"builtin": true` in profile.json) are removed. Custom user profiles are preserved. The `~/.claude/profiles/` directory itself is not deleted, ensuring custom profiles survive uninstall operations.
+During `npx nori-ai@latest uninstall`, only built-in profiles (those with `"builtin": true` in profile.json) are removed. Custom user profiles are preserved. The `~/.nori/profiles/` directory itself is not deleted, ensuring custom profiles survive uninstall operations.

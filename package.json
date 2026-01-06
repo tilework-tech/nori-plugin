@@ -1,6 +1,6 @@
 {
   "name": "nori-ai",
-  "version": "19.0.7",
+  "version": "19.1.1",
   "keywords": [
     "claude code",
     "claude",
@@ -16,6 +16,7 @@
   "scripts": {
     "build": "./scripts/build.sh",
     "prepare": "npm run build",
+    "prepublishOnly": "./scripts/prepublish.sh",
     "watch": "tsc --watch",
     "dev": "tsc && tsc-alias && node build/index.js",
     "inspector": "npx @modelcontextprotocol/inspector build/index.js",

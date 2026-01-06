@@ -1,7 +1,7 @@
 /**
  * Shared validation for registry commands to check cursor-agent support
  *
- * Registry commands download profiles to ~/.claude/profiles/ which requires
+ * Registry commands download profiles to ~/.nori/profiles/ which requires
  * Claude Code to be installed. If only cursor-agent is installed, these
  * commands should fail with a helpful message.
  */
@@ -59,7 +59,7 @@ export const showCursorAgentNotSupportedError = (): void => {
   newline();
   info({
     message:
-      "Profile packages downloaded from the registry are installed to ~/.claude/profiles/\nwhich requires Claude Code to be installed.",
+      "Profile packages downloaded from the registry are installed to ~/.nori/profiles/\nwhich requires Claude Code to be installed.",
   });
   newline();
   info({

@@ -1,111 +1,34 @@
 ---
 description: Manage registry authentication credentials for private Nori registries
-allowed-tools: Bash(cat:*), Read({{install_dir}}/.nori-config.json), Write({{install_dir}}/.nori-config.json)
+allowed-tools: Read({{install_dir}}/.nori-config.json)
 ---
 
-Manage registry authentication credentials in your `.nori-config.json` file.
+Registry authentication is now unified with Nori Watchtower authentication.
 
-<system-reminder>Ignore any usual steps in your CLAUDE.md. This command should
-be treated like an Installation Wizard, operating in its own context. Do NOT create a separate
-git worktree or git branch just to manage registry authentication.</system-reminder>
+<system-reminder>Registry auth credentials are derived from Watchtower auth. Use `/nori-modify-watchtower-auth` to manage your authentication.</system-reminder>
 
-<required>
-*CRITICAL* Add the following steps to your Todo list using TodoWrite:
+# Unified Nori Authentication
 
-1. Display the current registry authentications to the users (without passwords).
-2. Ask if the user wants to add a new registry or remove an existing registry.
-3. Add the 'Add Flow' or 'Remove Flow' to your Todo list using TodoWrite.
-</required>
+**Registry authentication now uses the same credentials as Watchtower.** When you configure your Nori authentication (organization ID + email + password), those credentials work for both:
 
-# Add Flow:
+- **Watchtower** (`https://{orgId}.tilework.tech`) - Knowledge base, recall, memorize features
+- **Registry** (`https://{orgId}.nori-registry.ai`) - Private profile packages
 
-<required>
-*CRITICAL* Add the following steps to your Todo list using TodoWrite:
+## To Configure Authentication
 
-1. Ask the user for the registry URL.
+Use the `/nori-modify-watchtower-auth` command to set up or update your credentials. This single authentication works for both services.
 
-**Validation rules:**
-- URL must start with `https://` (reject `http://` URLs for security)
-- URL should not have a trailing slash
-- URL must not already exist in the current registryAuths array (prevent duplicates)
-- If the URL doesn't start with `https://`, explain that only secure HTTPS connections are supported and ask again
-- If the URL already exists, explain that this registry is already configured and ask for a different URL or offer to cancel
+## How It Works
 
-2. Ask the user for their email (username) for this registry.
-3. Ask for the password for this registry.
-4. Update the .nori-config.json file located at {{install_dir}}.
+When you authenticate with your organization ID (e.g., 'tilework'):
+1. Watchtower URL is constructed: `https://tilework.tilework.tech`
+2. Registry URL is derived: `https://tilework.nori-registry.ai`
+3. Your email and password work for both services
 
-```json
-{
-  ...
-  registryAuths: [{
-    username: string;
-    password: string;
-    registryUrl: string;
-  }, { ... }]
-}
-```
+## Current Configuration
 
-5. Display a success message:
+!`cat {{install_dir}}/.nori-config.json 2>/dev/null || echo '{"auth": null}'`
 
-```
-Registry authentication added successfully!
+## Need to Change Credentials?
 
-Registry: <registry-url>
-Username: <username>
-
-You can now access profiles from this private registry using:
-  /nori-registry-search
-  /nori-registry-download
-
-This registry was added to {{install_dir}}/.nori-config.json.
-```
-</required>
-
-# Remove Flow:
-
-<required>
-*CRITICAL* Add the following steps to your Todo list using TodoWrite:
-
-1. Display a numbered list of existing registries:
-```
-1. https://registry1.example.com (user1@example.com)
-2. https://registry2.example.com (user2@example.com)
-```
-
-If there are no registries to remove, display:
-```
-No registry authentications to remove.
-```
-And end the wizard.
-
-2. Ask which registry to remove.
-3. Remove the selected registryAuth entry from the registryAuths array.
-4. Display a success message:
-```
-Registry authentication removed successfully!
-
-Removed: <registry-url>
-```
-
-</required>
-
-## What is Registry Authentication?
-
-Registry authentication allows you to access private Nori registries that require login credentials. Each registry auth entry contains:
-- **Registry URL**: The URL of the private registry (must start with `https://`)
-- **Username**: Your email address for the registry
-- **Password**: Your password for the registry
-
-# Current Configuration
-
-Existing registry authentications:
-
-!`cat {{install_dir}}/.nori-config.json 2>/dev/null || echo '{"registryAuths": []}'`
-
-
-# Important Notes
-
-- Registry credentials are stored in `{{install_dir}}/.nori-config.json`
-- You can have multiple registry authentications for different registries
-- Each registry URL should be unique in your configuration
+Run `/nori-modify-watchtower-auth` to update your unified Nori authentication.

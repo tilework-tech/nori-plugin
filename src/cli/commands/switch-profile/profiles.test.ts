@@ -32,7 +32,9 @@ describe("agent.listProfiles", () => {
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(path.join(tmpdir(), "profiles-test-"));
     const testClaudeDir = path.join(testInstallDir, ".claude");
+    const testNoriDir = path.join(testInstallDir, ".nori");
     await fs.mkdir(testClaudeDir, { recursive: true });
+    await fs.mkdir(testNoriDir, { recursive: true });
     AgentRegistry.resetInstance();
   });
 
@@ -44,7 +46,7 @@ describe("agent.listProfiles", () => {
   });
 
   it("should list all installed profiles", async () => {
-    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+    const profilesDir = path.join(testInstallDir, ".nori", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     // Create user-facing profiles
@@ -72,7 +74,9 @@ describe("agent.switchProfile", () => {
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(path.join(tmpdir(), "switch-test-"));
     const testClaudeDir = path.join(testInstallDir, ".claude");
+    const testNoriDir = path.join(testInstallDir, ".nori");
     await fs.mkdir(testClaudeDir, { recursive: true });
+    await fs.mkdir(testNoriDir, { recursive: true });
     AgentRegistry.resetInstance();
   });
 
@@ -85,7 +89,7 @@ describe("agent.switchProfile", () => {
 
   it("should preserve registryAuths when switching profiles", async () => {
     // Create profiles directory with test profiles
-    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+    const profilesDir = path.join(testInstallDir, ".nori", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     for (const name of ["profile-a", "profile-b"]) {
@@ -132,7 +136,7 @@ describe("agent.switchProfile", () => {
 
   it("should preserve version when switching profiles for claude-code", async () => {
     // Create profiles directory with test profiles
-    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+    const profilesDir = path.join(testInstallDir, ".nori", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     for (const name of ["profile-a", "profile-b"]) {
@@ -204,7 +208,7 @@ describe("agent.switchProfile", () => {
 
   it("should preserve refreshToken when switching profiles for claude-code", async () => {
     // Create profiles directory with test profiles
-    const profilesDir = path.join(testInstallDir, ".claude", "profiles");
+    const profilesDir = path.join(testInstallDir, ".nori", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
 
     for (const name of ["profile-a", "profile-b"]) {
@@ -291,10 +295,12 @@ describe("registerSwitchProfileCommand", () => {
       path.join(tmpdir(), "switch-profile-cmd-test-"),
     );
     const testClaudeDir = path.join(testInstallDir, ".claude");
+    const testNoriDir = path.join(testInstallDir, ".nori");
     await fs.mkdir(testClaudeDir, { recursive: true });
+    await fs.mkdir(testNoriDir, { recursive: true });
 
     // Create profiles directory with test profiles
-    const profilesDir = path.join(testClaudeDir, "profiles");
+    const profilesDir = path.join(testNoriDir, "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
     for (const name of ["senior-swe", "product-manager"]) {
       const dir = path.join(profilesDir, name);
@@ -692,10 +698,12 @@ describe("switch-profile confirmation", () => {
       path.join(tmpdir(), "switch-profile-confirm-test-"),
     );
     const testClaudeDir = path.join(testInstallDir, ".claude");
+    const testNoriDir = path.join(testInstallDir, ".nori");
     await fs.mkdir(testClaudeDir, { recursive: true });
+    await fs.mkdir(testNoriDir, { recursive: true });
 
     // Create profiles directory with test profiles
-    const profilesDir = path.join(testClaudeDir, "profiles");
+    const profilesDir = path.join(testNoriDir, "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
     for (const name of ["senior-swe", "product-manager"]) {
       const dir = path.join(profilesDir, name);
@@ -963,13 +971,14 @@ describe("switch-profile getInstallDirs auto-detection", () => {
 
   beforeEach(async () => {
     originalCwd = process.cwd();
-    testInstallDir = await fs.mkdtemp(
-      path.join(tmpdir(), "switch-profile-autodetect-test-"),
+    // Use realpath to resolve symlinks (macOS /var -> /private/var)
+    testInstallDir = await fs.realpath(
+      await fs.mkdtemp(path.join(tmpdir(), "switch-profile-autodetect-test-")),
     );
 
     // Create profiles directory with test profiles
-    const claudeDir = path.join(testInstallDir, ".claude");
-    const profilesDir = path.join(claudeDir, "profiles");
+    const noriDir = path.join(testInstallDir, ".nori");
+    const profilesDir = path.join(noriDir, "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
     for (const name of ["senior-swe", "product-manager"]) {
       const dir = path.join(profilesDir, name);

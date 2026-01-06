@@ -19,6 +19,7 @@ import {
   showCursorAgentNotSupportedError,
 } from "@/cli/commands/registryAgentCheck.js";
 import { getRegistryAuth } from "@/cli/config.js";
+import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -167,7 +168,7 @@ export const registryUpdateMain = async (args: {
   // Use config from agentCheck (already loaded during support check)
   const config = agentCheck.config;
 
-  const profilesDir = path.join(targetInstallDir, ".claude", "profiles");
+  const profilesDir = getNoriProfilesDir({ installDir: targetInstallDir });
   const profileDir = path.join(profilesDir, profileName);
 
   // Check if profile is installed

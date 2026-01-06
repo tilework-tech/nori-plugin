@@ -6,29 +6,38 @@ description: Step-by-step instructions for updating release-notes.txt before npm
 <required>
 *CRITICAL* Follow these steps exactly in order:
 
-1. Find the last version commit using git log.
+1. Find the last published version from npm.
 
-Run the following command to find the most recent version commit:
+Run the following command to get the currently published version:
 ```bash
-git log --oneline --grep="^v[0-9]" -1 --format="%H %s"
+npm view nori-ai version
 ```
 
-This finds commits with messages starting with "v" followed by a number (e.g., "v19.1.1").
+This returns the version string (e.g., "19.1.1").
 
-2. Get all commits since the last version.
+2. Find the commit where that version was set.
 
-Using the commit hash from step 1, run:
+Using the version from step 1, find when it was added to package.json:
+```bash
+git log -S '"version": "<version>"' --oneline -1 --format="%H" -- package.json
+```
+
+The `-S` flag (pickaxe search) finds the commit where this exact version string was added to package.json.
+
+3. Get all commits since the last version.
+
+Using the commit hash from step 2, run:
 ```bash
 git log --oneline <commit_hash>..HEAD
 ```
 
-If there are no commits since the last version (empty output), skip to step 6.
+If there are no commits since the last version (empty output), skip to step 7.
 
-3. Read the current release-notes.txt file.
+4. Read the current release-notes.txt file.
 
 Read the existing release notes to understand the format and append new notes.
 
-4. Categorize the commits and draft release notes.
+5. Categorize the commits and draft release notes.
 
 Group commits into categories:
 - **Features**: Commits starting with "feat:" or containing "Add", "Implement"
@@ -53,11 +62,11 @@ Format the new release notes section as:
 Use the version from package.json for the version number.
 Use today's date for the release date.
 
-5. Update release-notes.txt with the new section.
+6. Update release-notes.txt with the new section.
 
 Prepend the new release notes section to the top of release-notes.txt, below the header.
 
-6. Stage the updated release-notes.txt file.
+7. Stage the updated release-notes.txt file.
 
 Run:
 ```bash
@@ -72,11 +81,7 @@ This ensures the release notes are included in the publish commit.
 
 ## Version Detection
 
-The version pattern in this repository is `vX.X.X (#NNN)` in commit messages, where:
-- `X.X.X` is the semantic version
-- `#NNN` is the PR number
-
-Example: `v19.1.1 (#203)`
+The last published version is retrieved from the npm registry using `npm view nori-ai version`. The commit where that version was set is found using git's pickaxe search (`-S` flag), which locates when the exact version string was added to package.json.
 
 ## Empty Releases
 

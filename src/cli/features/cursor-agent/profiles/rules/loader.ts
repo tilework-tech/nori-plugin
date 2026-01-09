@@ -37,7 +37,31 @@ const getConfigDir = (args: {
 };
 
 /**
+ * Get list of rule directory names from profile config
+ * Used to identify Nori-managed rules (vs user-created rules)
+ *
+ * @param args - Configuration arguments
+ * @param args.configDir - Path to the profile's rules config directory
+ *
+ * @returns Array of rule directory names from the profile config
+ */
+const getProfileRuleNames = async (args: {
+  configDir: string;
+}): Promise<Array<string>> => {
+  const { configDir } = args;
+  try {
+    const entries = await fs.readdir(configDir, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch {
+    // Config directory doesn't exist - no rules to manage
+    return [];
+  }
+};
+
+/**
  * Install rules from profile
+ * Preserves user-created rules by only removing/updating Nori-managed rules
+ *
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
  */
@@ -54,10 +78,16 @@ const installRules = async (args: { config: Config }): Promise<void> => {
   });
   const cursorRulesDir = getCursorRulesDir({ installDir: config.installDir });
 
-  // Remove existing rules directory if it exists
-  await fs.rm(cursorRulesDir, { recursive: true, force: true });
+  // Get list of Nori-managed rules from profile config
+  const profileRuleNames = await getProfileRuleNames({ configDir });
 
-  // Create rules directory
+  // Only remove Nori-managed rules (preserve user-created rules)
+  for (const ruleName of profileRuleNames) {
+    const ruleDir = path.join(cursorRulesDir, ruleName);
+    await fs.rm(ruleDir, { recursive: true, force: true });
+  }
+
+  // Create rules directory if it doesn't exist
   await fs.mkdir(cursorRulesDir, { recursive: true });
 
   // Copy all rules from config directory with template substitution
@@ -76,6 +106,7 @@ const installRules = async (args: { config: Config }): Promise<void> => {
 
 /**
  * Uninstall rules
+ * Preserves user-created rules by only removing Nori-managed rules
  *
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -84,16 +115,47 @@ const uninstallRules = async (args: { config: Config }): Promise<void> => {
   const { config } = args;
   info({ message: "Removing Cursor rules..." });
 
+  // Get profile name from config (default to amol for cursor-agent)
+  const agentProfile = getAgentProfile({ config, agentName: "cursor-agent" });
+  const profileName = agentProfile?.baseProfile || "amol";
+  const configDir = getConfigDir({
+    profileName,
+    installDir: config.installDir,
+  });
   const cursorRulesDir = getCursorRulesDir({ installDir: config.installDir });
 
+  // Get list of Nori-managed rules from profile config
+  const profileRuleNames = await getProfileRuleNames({ configDir });
+
+  let removedCount = 0;
+
+  // Only remove Nori-managed rules (preserve user-created rules)
+  for (const ruleName of profileRuleNames) {
+    const ruleDir = path.join(cursorRulesDir, ruleName);
+    try {
+      await fs.access(ruleDir);
+      await fs.rm(ruleDir, { recursive: true, force: true });
+      removedCount++;
+    } catch {
+      // Rule not found, which is fine
+    }
+  }
+
+  if (removedCount > 0) {
+    success({ message: `✓ Removed ${removedCount} Nori rule(s)` });
+  } else {
+    info({ message: "No Nori rules found to remove" });
+  }
+
+  // Remove rules directory only if it's empty
   try {
-    await fs.access(cursorRulesDir);
-    await fs.rm(cursorRulesDir, { recursive: true, force: true });
-    success({ message: "✓ Removed rules directory" });
+    const files = await fs.readdir(cursorRulesDir);
+    if (files.length === 0) {
+      await fs.rmdir(cursorRulesDir);
+      success({ message: `✓ Removed empty rules directory` });
+    }
   } catch {
-    info({
-      message: "Rules directory not found (may not have been installed)",
-    });
+    // Directory doesn't exist or couldn't be removed, which is fine
   }
 };
 

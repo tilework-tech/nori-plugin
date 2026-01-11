@@ -74,6 +74,8 @@ profilesLoader (loader.ts)
 - **subagentsLoader** - Uses `copyDirWithTemplateSubstitution()` when copying to `~/.cursor/subagents/`
 - **agentsMdLoader** - Uses `substituteTemplatePaths()` on AGENTS.md content, then generates and appends the "# Nori Rules System" section before writing to project root
 
+**User content preservation**: The rulesLoader preserves user-created rules (rules not defined in the profile config). The `getProfileRuleNames()` helper reads rule directory names from `~/.cursor/profiles/{profile}/rules/` to identify Nori-managed rules. During install, only Nori-managed rule directories are removed before copying fresh versions. During uninstall, only Nori-managed rules are removed. The rules directory itself is only deleted if it becomes empty after uninstall. This follows the same pattern as the slashCommandsLoader and other loaders that preserve user content.
+
 The key architectural insight: substitution happens at the final copy stage, not during intermediate staging to `~/.cursor/profiles/`. This ensures source files in profiles remain portable with placeholders intact.
 
 **Dynamic rules list generation**: The agentsMdLoader scans `~/.cursor/rules/` for `RULE.md` files, extracts the `description` field from each file's YAML frontmatter, and generates a formatted "# Nori Rules System" section listing all available rules. This mirrors claude-code's `generateSkillsList()` functionality in the claudeMdLoader, providing parity between the two systems.

@@ -56,7 +56,7 @@ The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alo
 
 **CursorProfileLoaderRegistry** (profiles/profileLoaderRegistry.ts): Singleton registry for profile-dependent sub-loaders. Registration order matters: rules, subagents, then agentsmd (AGENTS.md references both rules and subagents).
 
-**rulesLoader** (profiles/rules/loader.ts): Copies rule files from the selected profile's `rules/` directory to `~/.cursor/rules/`. Each rule is a directory containing `RULE.md`.
+**rulesLoader** (profiles/rules/loader.ts): Copies rule files from the selected profile's `rules/` directory to `~/.cursor/rules/`. Each rule is a directory containing `RULE.md`. The loader preserves user-created rules by only managing Nori rules (identified by reading rule directory names from the profile config). During install, only existing Nori-managed rules are removed before copying fresh versions. During uninstall, only Nori-managed rules are removed, and the rules directory is only deleted if empty.
 
 **subagentsLoader** (profiles/subagents/loader.ts): Copies subagent prompt files from the selected profile's `subagents/` directory to `~/.cursor/subagents/`. Each subagent is a `.md` file defining a specialized AI assistant that can be invoked via the `cursor-agent` CLI in headless mode. Subagents provide Task tool-like functionality for Cursor, enabling focused research, analysis, or parallel work.
 

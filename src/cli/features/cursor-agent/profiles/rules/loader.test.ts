@@ -142,8 +142,99 @@ describe("cursor-agent rules loader", () => {
     });
   });
 
+  describe("user rules preservation", () => {
+    test("preserves user-created rules during install", async () => {
+      const config = createConfig();
+      const rulesDir = path.join(testInstallDir, ".cursor", "rules");
+
+      // Create a user rule before install
+      const userRuleDir = path.join(rulesDir, "my-custom-rule");
+      await fs.mkdir(userRuleDir, { recursive: true });
+      await fs.writeFile(
+        path.join(userRuleDir, "RULE.md"),
+        "# My Custom Rule\n\nThis is my custom rule content.",
+      );
+
+      // Install Nori rules
+      await rulesLoader.install({ config });
+
+      // Verify user rule still exists with original content
+      const userRulePath = path.join(userRuleDir, "RULE.md");
+      const userRuleContent = await fs.readFile(userRulePath, "utf-8");
+      expect(userRuleContent).toContain("My Custom Rule");
+      expect(userRuleContent).toContain("my custom rule content");
+
+      // Verify Nori rule was also installed
+      const noriRulePath = path.join(
+        rulesDir,
+        "using-git-worktrees",
+        "RULE.md",
+      );
+      await expect(fs.access(noriRulePath)).resolves.toBeUndefined();
+    });
+
+    test("preserves user-created rules during uninstall", async () => {
+      const config = createConfig();
+      const rulesDir = path.join(testInstallDir, ".cursor", "rules");
+
+      // Install Nori rules first
+      await rulesLoader.install({ config });
+
+      // Create a user rule after install
+      const userRuleDir = path.join(rulesDir, "my-custom-rule");
+      await fs.mkdir(userRuleDir, { recursive: true });
+      await fs.writeFile(
+        path.join(userRuleDir, "RULE.md"),
+        "# My Custom Rule\n\nThis is my custom rule content.",
+      );
+
+      // Uninstall Nori rules
+      await rulesLoader.uninstall({ config });
+
+      // Verify user rule still exists
+      const userRulePath = path.join(userRuleDir, "RULE.md");
+      const userRuleContent = await fs.readFile(userRulePath, "utf-8");
+      expect(userRuleContent).toContain("My Custom Rule");
+
+      // Verify Nori rule was removed
+      const noriRulePath = path.join(
+        rulesDir,
+        "using-git-worktrees",
+        "RULE.md",
+      );
+      await expect(fs.access(noriRulePath)).rejects.toThrow();
+    });
+
+    test("updates existing Nori rules during reinstall", async () => {
+      const config = createConfig();
+      const rulesDir = path.join(testInstallDir, ".cursor", "rules");
+
+      // Install rules
+      await rulesLoader.install({ config });
+
+      // Modify an installed Nori rule
+      const noriRulePath = path.join(
+        rulesDir,
+        "using-git-worktrees",
+        "RULE.md",
+      );
+      await fs.writeFile(
+        noriRulePath,
+        "# Modified by user\n\nThis was changed.",
+      );
+
+      // Reinstall
+      await rulesLoader.install({ config });
+
+      // Verify the Nori rule was replaced with fresh content
+      const content = await fs.readFile(noriRulePath, "utf-8");
+      expect(content).toContain("Using Git Worktrees");
+      expect(content).not.toContain("Modified by user");
+    });
+  });
+
   describe("uninstall", () => {
-    test("removes installed rules", async () => {
+    test("removes installed Nori rules", async () => {
       const config = createConfig();
 
       // First install
@@ -152,8 +243,46 @@ describe("cursor-agent rules loader", () => {
       // Then uninstall
       await rulesLoader.uninstall({ config });
 
+      // Verify Nori rule was removed
+      const noriRuleDir = path.join(
+        testInstallDir,
+        ".cursor",
+        "rules",
+        "using-git-worktrees",
+      );
+      await expect(fs.access(noriRuleDir)).rejects.toThrow();
+    });
+
+    test("removes empty rules directory after uninstall", async () => {
+      const config = createConfig();
+
+      // Install and uninstall with no user rules
+      await rulesLoader.install({ config });
+      await rulesLoader.uninstall({ config });
+
+      // Rules directory should be removed since it's empty
       const rulesDir = path.join(testInstallDir, ".cursor", "rules");
       await expect(fs.access(rulesDir)).rejects.toThrow();
+    });
+
+    test("preserves rules directory when user rules exist", async () => {
+      const config = createConfig();
+      const rulesDir = path.join(testInstallDir, ".cursor", "rules");
+
+      // Install Nori rules
+      await rulesLoader.install({ config });
+
+      // Add user rule
+      const userRuleDir = path.join(rulesDir, "my-custom-rule");
+      await fs.mkdir(userRuleDir, { recursive: true });
+      await fs.writeFile(path.join(userRuleDir, "RULE.md"), "# My Custom Rule");
+
+      // Uninstall
+      await rulesLoader.uninstall({ config });
+
+      // Directory should still exist because user rule is there
+      const stat = await fs.stat(rulesDir);
+      expect(stat.isDirectory()).toBe(true);
     });
   });
 

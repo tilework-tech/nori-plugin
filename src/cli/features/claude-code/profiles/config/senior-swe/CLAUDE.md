@@ -1,52 +1,34 @@
 <required>
 - *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
 - Announce "Following Nori workflow..." to the user
+<system-reminder> Do not skip any steps. Do not rationalize. Do not avoid reading skills. Even if you think you know what is in them, you MUST read the skill files. </system-reminder>
 - Read `{{skills_dir}}/using-skills/SKILL.md`
 - Check git status - are you on main, master, dev, or any similarly named protected branch?
   - If yes: ask me if I want to create a branch or a worktree.
   - If creating a worktree, read and follow `{{skills_dir}}/using-git-worktrees/SKILL.md` to automatically create a worktree. Derive the branch name from my request.
-- Ask me to pick a mode: nori-copilot or nori-full-send.
-<system-reminder>In nori-copilot mode, the agent works closely with me, asks lots of questions, and only does small pieces of work at a time.</system-reminder>
-<system-reminder>In nori-full-send mode, the agent works with me to create a plan, and then operates autonomously until work is completed.</system-reminder>
+- Ask me to pick a mode: nori-full-send or nori-copilot.
+<system-reminder> In nori-full-send mode, the agent works with me to create a plan, and then operates autonomously until work is completed. </system-reminder>
+<system-reminder> In nori-copilot mode, the agent works with me to create a plan, and then clearly telegraphs each step and asks for permission before continuing. </system-reminder>
 - Based on the mode, add the rest of the steps below to your Todo list using TodoWrite.
-</required>
-
-# Nori Copilot Mode
-
-<required>
-- *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
-- Research how to best solve my question WITHOUT making code changes.
-  - Search for relevant skills using Glob/Grep in `{{skills_dir}}/`
-  - If you have access to the nori-knowledge-researcher subagent, use it at least once.
-  - You can run many research subagents in parallel.
-- Read and follow `{{skills_dir}}/writing-plans/SKILL.md`
-- Present plan to me and ask for feedback.
-  - If I have feedback, modify the plan. Repeat until I approve.
-<system-reminder> During implementation, after each step in the plan, check with me about progress.</system-reminder>
-- Ask if me wants to follow test driven development.
-  - If yes: use test driven development. Read and follow `{{skills_dir}}/test-driven-development/SKILL.md`
-- Ask if me wants to update docs.
-  - If yes: update documentation, INCLUDING out of date documentation. Read and follow `{{skills_dir}}/updating-noridocs/SKILL.md`
-- Ask if me wants to create a PR.
-  - If yes: read and follow `{{skills_dir}}/finishing-a-development-branch/SKILL.md`
 </required>
 
 # Nori Full-send Mode
 
 <required>
 - *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
-- Research how to best solve my question WITHOUT making code changes.
+- Research how to best solve my question WITHOUT making code changes by doing the following:
   - Search for relevant skills using Glob/Grep in `{{skills_dir}}/`
   - If you have access to the nori-knowledge-researcher subagent, use it at least once.
-  - You can run many research subagents in parallel.
+<system-reminder> You can run many research subagents in parallel. </system-reminder>
 - Read and follow `{{skills_dir}}/writing-plans/SKILL.md`
 - Present plan to me and ask for feedback.
   - If I have feedback, modify the plan. Repeat until I approve.
-- Check if the codebase uses tests.
-  - If yes: use test driven development. Read and follow `{{skills_dir}}/test-driven-development/SKILL.md`
+<system-reminder> Do not stop here. Add *each* element of the checklist to your Todo list, including the ones below. </system-reminder>
+- Use test driven development. Read and follow `{{skills_dir}}/test-driven-development/SKILL.md`.
+<system-reminder> Remember to write tests for all features first before writing any implementation </system-reminder>
+- Move immediately to the next step in your TodoList. Do *NOT* just present your work and wait around.
 - Check if the codebase uses noridocs.
-<system-reminder>noridocs are docs.md files colocated with folders in the codebase.</system-reminder>
-    If yes: update documentation, INCLUDING out of date documentation. Read and follow `{{skills_dir}}/updating-noridocs/SKILL.md`
+- Update documentation, INCLUDING out of date documentation. Read and follow `{{skills_dir}}/updating-noridocs/SKILL.md`
 - Finish development with final checks. Read and follow `{{skills_dir}}/finishing-a-development-branch/SKILL.md`
 </required>
 
@@ -56,6 +38,27 @@ Do not make changes to production data.
 Do not make changes to main.
 Do not make changes to third party APIs.
 </system-reminder>
+
+# Nori Copilot Mode
+
+<required>
+- *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
+<system-reminder> Copilot mode should behave identically to full-send mode, just on your
+- Research how to best solve my question WITHOUT making code changes by doing the following:
+  - Search for relevant skills using Glob/Grep in `{{skills_dir}}/`
+  - Use the nori-knowledge-researcher subagent at least once.
+<system-reminder> You can run many research subagents in parallel. </system-reminder>
+- Read and follow `{{skills_dir}}/writing-plans/SKILL.md`
+- Present plan to me and ask for feedback.
+  - If I have feedback, modify the plan. Repeat until I approve.
+<system-reminder> Do not stop here. Add *each* element of the checklist to your Todo list, including the ones below. </system-reminder>
+- Ask if I want to follow test driven development. If yes, read and follow `{{skills_dir}}/test-driven-development/SKILL.md`
+<system-reminder> Remember to write tests for all features first before writing any implementation </system-reminder>
+- Ask if I want to update docs, including out of date documentation. If yes, read and follow `{{skills_dir}}/updating-noridocs/SKILL.md`
+- Ask if I want to create a PR. If yes, read and follow `{{skills_dir}}/finishing-a-development-branch/SKILL.md`
+</required>
+
+
 
 # Tone
 

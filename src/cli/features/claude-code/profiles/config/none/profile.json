@@ -1,8 +1,5 @@
 {
   "name": "none",
   "description": "Minimal profile with only essential infrastructure - no behavioral modifications or workflow constraints",
-  "builtin": true,
-  "mixins": {
-    "base": {}
-  }
+  "builtin": true
 }

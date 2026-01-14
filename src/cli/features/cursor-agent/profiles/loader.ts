@@ -8,10 +8,6 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 
 import { getCursorProfilesDir } from "@/cli/features/cursor-agent/paths.js";
-import {
-  readProfileMetadata,
-  type ProfileMetadata,
-} from "@/cli/features/cursor-agent/profiles/metadata.js";
 import { CursorProfileLoaderRegistry } from "@/cli/features/cursor-agent/profiles/profileLoaderRegistry.js";
 import { success, info, warn } from "@/cli/logger.js";
 
@@ -25,29 +21,9 @@ const __dirname = path.dirname(__filename);
 // Profile templates config directory (relative to this loader)
 const PROFILE_TEMPLATES_DIR = path.join(__dirname, "config");
 
-// Mixins directory (contains reusable profile components)
-const MIXINS_DIR = path.join(PROFILE_TEMPLATES_DIR, "_mixins");
-
-/**
- * Get mixin paths in precedence order (alphabetical)
- * @param args - Function arguments
- * @param args.metadata - Profile metadata with mixins
- *
- * @returns Array of mixin directory paths in alphabetical order
- */
-const getMixinPaths = (args: { metadata: ProfileMetadata }): Array<string> => {
-  const { metadata } = args;
-
-  // Sort mixin names alphabetically for deterministic precedence
-  const mixinNames = Object.keys(metadata.mixins).sort();
-
-  // Map to full paths, prepending _ prefix
-  return mixinNames.map((name) => path.join(MIXINS_DIR, `_${name}`));
-};
-
 /**
  * Install profile templates to ~/.cursor/profiles/
- * Handles profile composition by resolving mixins
+ * Each profile is self-contained with all content inlined directly
  *
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -72,11 +48,11 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
     withFileTypes: true,
   });
 
-  // Install user-facing profiles with composition
-  // Internal profiles (like _mixins) are NEVER installed
+  // Install user-facing profiles
+  // Internal directories (starting with _) are NEVER installed
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith("_")) {
-      continue; // Skip non-directories and internal profiles
+      continue; // Skip non-directories and internal directories
     }
 
     const profileSrcDir = path.join(PROFILE_TEMPLATES_DIR, entry.name);
@@ -90,73 +66,11 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
       // Remove existing profile directory if it exists
       await fs.rm(profileDestDir, { recursive: true, force: true });
 
-      // Read profile metadata
-      const profileJsonPath = path.join(profileSrcDir, "profile.json");
-      let metadata: ProfileMetadata | null = null;
-
-      try {
-        await fs.access(profileJsonPath);
-        metadata = await readProfileMetadata({
-          profileDir: profileSrcDir,
-        });
-      } catch {
-        // No profile.json - skip composition
-      }
-
       // Create destination directory
       await fs.mkdir(profileDestDir, { recursive: true });
 
-      // Compose mixins in alphabetical precedence order
-      if (metadata?.mixins != null) {
-        const mixinPaths = getMixinPaths({ metadata });
-        const mixinNames = Object.keys(metadata.mixins).sort();
-
-        info({
-          message: `  Composing from mixins: ${mixinNames.join(", ")}`,
-        });
-
-        // Copy content from each mixin in order
-        for (const mixinPath of mixinPaths) {
-          try {
-            await fs.access(mixinPath);
-
-            const mixinEntries = await fs.readdir(mixinPath, {
-              withFileTypes: true,
-            });
-
-            for (const mixinEntry of mixinEntries) {
-              const srcPath = path.join(mixinPath, mixinEntry.name);
-              const destPath = path.join(profileDestDir, mixinEntry.name);
-
-              if (mixinEntry.isDirectory()) {
-                // Directories: merge contents (union)
-                await fs.cp(srcPath, destPath, { recursive: true });
-              } else {
-                // Files: last writer wins
-                await fs.copyFile(srcPath, destPath);
-              }
-            }
-          } catch {
-            // Mixin not found - skip silently (not all mixins need to exist)
-          }
-        }
-      }
-
-      // Copy/overlay profile-specific content (AGENTS.md, profile.json, etc.)
-      const profileEntries = await fs.readdir(profileSrcDir, {
-        withFileTypes: true,
-      });
-
-      for (const profileEntry of profileEntries) {
-        const srcPath = path.join(profileSrcDir, profileEntry.name);
-        const destPath = path.join(profileDestDir, profileEntry.name);
-
-        if (profileEntry.isDirectory()) {
-          await fs.cp(srcPath, destPath, { recursive: true });
-        } else {
-          await fs.copyFile(srcPath, destPath);
-        }
-      }
+      // Copy all profile content directly (no mixin composition)
+      await fs.cp(profileSrcDir, profileDestDir, { recursive: true });
 
       success({
         message: `✓ ${entry.name} profile installed`,
@@ -354,7 +268,8 @@ export const profilesLoader: Loader = {
 
 /**
  * Export internal functions for testing
+ * Note: Mixin composition has been removed - all content is now inlined in profiles
  */
 export const _testing = {
-  getMixinPaths,
+  getMixinPaths: undefined,
 };

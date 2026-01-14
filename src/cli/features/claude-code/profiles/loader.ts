@@ -7,15 +7,11 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-import { isPaidInstall, type Config } from "@/cli/config.js";
+import { type Config } from "@/cli/config.js";
 import {
   getNoriProfilesDir,
   getClaudeSettingsFile,
 } from "@/cli/features/claude-code/paths.js";
-import {
-  readProfileMetadata,
-  type ProfileMetadata,
-} from "@/cli/features/claude-code/profiles/metadata.js";
 import { ProfileLoaderRegistry } from "@/cli/features/claude-code/profiles/profileLoaderRegistry.js";
 import { success, info, warn } from "@/cli/logger.js";
 
@@ -28,100 +24,14 @@ const __dirname = path.dirname(__filename);
 // Profile templates config directory (relative to this loader)
 const PROFILE_TEMPLATES_DIR = path.join(__dirname, "config");
 
-// Mixins directory (contains reusable profile components)
-const MIXINS_DIR = path.join(PROFILE_TEMPLATES_DIR, "_mixins");
-
-/**
- * Check if user is a paid tier user
- * @param args - Configuration arguments
- * @param args.config - Runtime configuration
- *
- * @returns True if user has auth credentials (paid install)
- */
-const isPaidUser = (args: { config: Config }): boolean => {
-  return isPaidInstall(args);
-};
-
-/**
- * Inject conditional mixins dynamically based on config and profile metadata
- *
- * This handles multi-criteria mixin injection:
- * 1. Cross-category paid mixin (_paid) - added for all paid users
- * 2. Category-specific tier mixins (_docs-paid, _swe-paid) - added when:
- *    - User is paid AND
- *    - Profile contains that category mixin
- *
- * @param args - Function arguments
- * @param args.metadata - Profile metadata
- * @param args.config - Runtime configuration
- *
- * @returns Metadata with conditional mixins added if applicable
- */
-const injectConditionalMixins = (args: {
-  metadata: ProfileMetadata;
-  config: Config;
-}): ProfileMetadata => {
-  const { metadata, config } = args;
-
-  // Check if user is paid
-  const isPaid = isPaidUser({ config });
-
-  if (!isPaid) {
-    return metadata;
-  }
-
-  const newMixins = { ...metadata.mixins };
-
-  // Inject cross-category paid mixin if not already present
-  if (!("paid" in newMixins)) {
-    newMixins.paid = {};
-  }
-
-  // Inject category-specific paid mixins based on categories in profile
-  // Only inject if both:
-  // 1. The base category mixin is present (e.g., 'docs')
-  // 2. The corresponding tier-specific mixin is not already present (e.g., 'docs-paid')
-
-  const categories = Object.keys(metadata.mixins).filter(
-    (name) => !name.endsWith("-paid") && name !== "base" && name !== "paid",
-  );
-
-  for (const category of categories) {
-    const tierMixinName = `${category}-paid`;
-    if (!(tierMixinName in newMixins)) {
-      newMixins[tierMixinName] = {};
-    }
-  }
-
-  return {
-    ...metadata,
-    mixins: newMixins,
-  };
-};
-
-/**
- * Get mixin paths in precedence order (alphabetical)
- * @param args - Function arguments
- * @param args.metadata - Profile metadata with mixins
- *
- * @returns Array of mixin directory paths in alphabetical order
- */
-const getMixinPaths = (args: { metadata: ProfileMetadata }): Array<string> => {
-  const { metadata } = args;
-
-  // Sort mixin names alphabetically for deterministic precedence
-  const mixinNames = Object.keys(metadata.mixins).sort();
-
-  // Map to full paths, prepending _ prefix
-  return mixinNames.map((name) => path.join(MIXINS_DIR, `_${name}`));
-};
-
 /**
  * Install profile templates to ~/.nori/profiles/
- * Handles profile composition by resolving inheritance from base profiles
  *
  * This function copies built-in profiles from the nori-ai package to ~/.nori/profiles/.
- * Built-in profiles are ALWAYS overwritten to ensure they stay up-to-date.
+ * Each profile directory contains all its content directly (skills, subagents, etc.)
+ * without any mixin composition - profiles are self-contained.
+ *
+ * Built-in profiles are NEVER overwritten to preserve user customizations.
  * Custom profiles (those that don't exist in the nori-ai package) are never touched.
  *
  * @param args - Configuration arguments
@@ -147,11 +57,11 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
     withFileTypes: true,
   });
 
-  // Install user-facing profiles with composition
-  // Internal profiles (like _base) are NEVER installed - they only exist for composition
+  // Install user-facing profiles directly (no mixin composition needed)
+  // Internal directories (starting with _) are skipped
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith("_")) {
-      continue; // Skip non-directories and internal profiles
+      continue; // Skip non-directories and internal directories
     }
 
     const profileSrcDir = path.join(PROFILE_TEMPLATES_DIR, entry.name);
@@ -175,66 +85,10 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
         // Profile doesn't exist, proceed with installation
       }
 
-      // Read profile metadata and inject paid mixin if applicable
-      const profileJsonPath = path.join(profileSrcDir, "profile.json");
-      let metadata: ProfileMetadata | null = null;
-
-      try {
-        await fs.access(profileJsonPath);
-        metadata = await readProfileMetadata({
-          profileDir: profileSrcDir,
-        });
-
-        // Inject conditional mixins if user is paid
-        metadata = injectConditionalMixins({ metadata, config });
-      } catch {
-        // No profile.json - skip composition
-      }
-
       // Create destination directory
       await fs.mkdir(profileDestDir, { recursive: true });
 
-      // Compose mixins in alphabetical precedence order
-      if (metadata?.mixins != null) {
-        const mixinPaths = getMixinPaths({ metadata });
-        const mixinNames = Object.keys(metadata.mixins).sort();
-
-        info({
-          message: `  Composing from mixins: ${mixinNames.join(", ")}`,
-        });
-
-        // Copy content from each mixin in order
-        for (const mixinPath of mixinPaths) {
-          try {
-            await fs.access(mixinPath);
-
-            const mixinEntries = await fs.readdir(mixinPath, {
-              withFileTypes: true,
-            });
-
-            for (const mixinEntry of mixinEntries) {
-              const srcPath = path.join(mixinPath, mixinEntry.name);
-              const destPath = path.join(profileDestDir, mixinEntry.name);
-
-              if (mixinEntry.isDirectory()) {
-                // Directories: merge contents (union)
-                await fs.cp(srcPath, destPath, { recursive: true });
-              } else {
-                // Files: last writer wins
-                await fs.copyFile(srcPath, destPath);
-              }
-            }
-          } catch {
-            warn({
-              message: `  Mixin ${path.basename(
-                mixinPath,
-              )} not found, skipping`,
-            });
-          }
-        }
-      }
-
-      // Copy/overlay profile-specific content (CLAUDE.md, profile.json, etc.)
+      // Copy all profile content directly (profiles are self-contained)
       const profileEntries = await fs.readdir(profileSrcDir, {
         withFileTypes: true,
       });
@@ -439,8 +293,6 @@ const validate = async (args: {
   }
 
   // Check if required profile directories are present
-  // Note: _base is NOT checked here because it's never installed to ~/.nori/profiles/
-  // It only exists in source templates for composition
   const requiredProfiles = [
     "senior-swe",
     "amol",
@@ -475,7 +327,7 @@ const validate = async (args: {
   if (errors.length > 0) {
     return {
       valid: false,
-      message: "Some required profiles or base components are not installed",
+      message: "Some required profiles are not installed",
       errors,
     };
   }
@@ -548,9 +400,9 @@ export const profilesLoader: Loader = {
 
 /**
  * Export internal functions for testing
+ * Note: injectConditionalMixins and getMixinPaths removed - profiles are now self-contained
  */
 export const _testing = {
-  isPaidUser,
-  injectConditionalMixins,
-  getMixinPaths,
+  injectConditionalMixins: undefined,
+  getMixinPaths: undefined,
 };

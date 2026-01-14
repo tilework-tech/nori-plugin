@@ -4,7 +4,7 @@ Path: @/src/cli/features/claude-code
 
 ### Overview
 
-Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile contains complete configurations for CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: config, profiles, hooks, statusline, global slashcommands, and announcements. Claude-specific path helpers are encapsulated in paths.ts within this directory.
+Claude Code agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Anthropic's Claude Code CLI tool. Uses a directory-based profile system where each profile is self-contained with CLAUDE.md, skills, subagents, and slash commands. Contains loaders for: config, profiles, hooks, statusline, global slashcommands, and announcements. Claude-specific path helpers are encapsulated in paths.ts within this directory.
 
 ### How it fits into the larger codebase
 
@@ -15,33 +15,33 @@ This `claude-code/` subdirectory implements the Agent interface defined in @/src
 - `listProfiles({ installDir })`: Scans installed `.nori/profiles/` for directories containing `CLAUDE.md`
 - `listSourceProfiles()`: Scans package's `profiles/config/` for directories with `profile.json`, returns `SourceProfile[]` with name and description
 - `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, updates config with new profile, logs success message
-- `getGlobalLoaders()`: Returns `[{ name: "hooks", humanReadableName: "hooks" }, { name: "statusline", humanReadableName: "statusline" }, { name: "slashcommands", humanReadableName: "global slash commands" }, { name: "announcements", humanReadableName: "announcements" }]` - loaders that write to `~/.claude/` global config. The uninstall command uses this to skip global loaders when `removeGlobalSettings` is false, and to generate human-readable prompts about preserving global settings.
+- `getGlobalLoaders()`: Returns loaders that write to `~/.claude/` global config (hooks, statusline, slashcommands, announcements)
 
-The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent and provides lookup by name. CLI commands use `AgentRegistry.getInstance().get({ name: "claude-code" })` to obtain the agent implementation and access its loaders.
+The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent and provides lookup by name. CLI commands use `AgentRegistry.getInstance().get({ name: "claude-code" })` to obtain the agent implementation.
 
-This architecture enables future support for additional AI agents (e.g., Cursor IDE) by creating new agent implementations in sibling directories that satisfy the same Agent interface.
+The `LoaderRegistry` class (@/src/cli/features/claude-code/loaderRegistry.ts) implements the shared `LoaderRegistry` interface. Loaders execute in order: config, profiles, hooks, statusline, slashcommands, announcements. During uninstall, the order is reversed.
 
-The `LoaderRegistry` class (@/src/cli/features/claude-code/loaderRegistry.ts) implements the shared `LoaderRegistry` interface from @/src/cli/features/agentRegistry.ts. It manages all Claude Code feature loaders and executes them sequentially during installation. Loaders execute in order: config, profiles, hooks, statusline, slashcommands, announcements. During uninstall, the order is reversed. The config loader handles both `.nori-config.json` and version tracking (version is stored as a field in the config file).
+Each loader implements the `Loader` interface with `run()`, `uninstall()`, and optional `validate()` methods. The shared `configLoader` (@/src/cli/features/config/loader.ts) serves as the single point of config persistence during installation.
 
-Each loader implements the `Loader` interface (from @/src/cli/features/agentRegistry.ts) with `run()`, `uninstall()`, and optional `validate()` methods. The shared `configLoader` (@/src/cli/features/config/loader.ts) is included in the registry and serves as the single point of config persistence during installation - it saves the Config to `.nori-config.json` including auth credentials, profile selection, and user preferences.
-
-**Global settings** (hooks, statusline, slashcommands, announcements) install to `~/.claude/` and are shared across all Nori installations. During uninstall, these can be preserved or removed as a group via the `removeGlobalSettings` flag. Profile-dependent features (claudemd, skills, profile-specific slashcommands, subagents) are handled by sub-loaders within the profiles feature at @/src/cli/features/claude-code/profiles/.
-
-The global slashcommands loader (@/src/cli/features/claude-code/slashcommands/loader.ts) installs profile-agnostic commands (nori-debug, nori-switch-profile, nori-info, etc.) directly to `~/.claude/commands/`. Profile-specific slash commands (nori-init-docs, nori-sync-docs) remain in profile mixins and are handled by @/src/cli/features/claude-code/profiles/slashcommands/loader.ts.
+**Global settings** (hooks, statusline, slashcommands, announcements) install to `~/.claude/` and are shared across all Nori installations. Profile-dependent features (claudemd, skills, profile-specific slashcommands, subagents) are handled by sub-loaders within the profiles feature at @/src/cli/features/claude-code/profiles/.
 
 ### Core Implementation
 
-Each loader implements run(config) to install, uninstall(config) to remove, and validate(config) to check installation state. The profiles loader (@/src/cli/features/claude-code/profiles/loader.ts) orchestrates profile-dependent features through a ProfileLoaderRegistry that manages sub-loaders for claudemd, skills, slashcommands, and subagents within each profile. Profile switching is handled by the /nori-switch-profile slash command (or npx nori-ai switch-profile CLI command) which updates nori-config.json and re-runs installation to apply the new profile.
+Each loader implements run(config) to install, uninstall(config) to remove, and validate(config) to check installation state. The profiles loader (@/src/cli/features/claude-code/profiles/loader.ts) orchestrates profile-dependent features through a ProfileLoaderRegistry that manages sub-loaders for claudemd, skills, slashcommands, and subagents within each profile.
 
-**Config Loader Token-Based Auth:** The configLoader in config/loader.ts handles credential persistence with automatic token conversion. During installation, if the config contains a password but no refreshToken, the loader authenticates via the Firebase SDK's `signInWithEmailAndPassword()` to obtain a Firebase refresh token from `userCredential.user.refreshToken`. The refresh token is then saved to `.nori-config.json` instead of the password - passwords are never stored on disk. This is a hard cutover: all new installs use token-based auth. The loader preserves existing user preferences (autoupdate, registryAuths) from any previous config during re-installation.
+**Self-contained profiles**: Each profile in @/src/cli/features/claude-code/profiles/config/ is a complete, standalone directory containing all content directly (CLAUDE.md, skills/, subagents/, slashcommands/). No mixin composition or inheritance is used - profiles are copied as-is to `~/.nori/profiles/`.
 
-The LoaderRegistry provides two methods for retrieving loaders: getAll() returns loaders in registration order, and getAllReversed() returns loaders in reverse order. The install process uses getAll() because profiles must run first to create profile directories that other loaders read from. The uninstall process uses getAllReversed() so profile-dependent loaders can still read from profile directories before the profiles loader deletes them.
+**Paid Skills/Subagents**: Skills and subagents with a `paid-` prefix are tier-gated. For paid users, the prefix is stripped when copying. For free users, `paid-` prefixed items are skipped.
+
+**Config Loader Token-Based Auth:** The configLoader handles credential persistence with automatic token conversion. During installation, if the config contains a password but no refreshToken, the loader authenticates via Firebase SDK to obtain a refresh token. The refresh token is then saved to `.nori-config.json` instead of the password.
+
+The LoaderRegistry provides getAll() for install order and getAllReversed() for uninstall order. The profiles loader must run first because other loaders read from the profile directories it creates.
 
 ### Things to Know
 
-**Path Helpers (paths.ts):** All Claude-specific path functions live in @/src/cli/features/claude-code/paths.ts to keep the agent self-contained. There are three categories:
+**Path Helpers (paths.ts):** All Claude-specific path functions live in @/src/cli/features/claude-code/paths.ts. There are three categories:
 
-**Claude project-relative paths** (take `installDir` param) - for Claude Code artifacts:
+**Claude project-relative paths** (take `installDir` param):
 
 | Function | Returns |
 |----------|---------|
@@ -51,9 +51,8 @@ The LoaderRegistry provides two methods for retrieving loaders: getAll() returns
 | `getClaudeCommandsDir({ installDir })` | `{installDir}/.claude/commands` |
 | `getClaudeMdFile({ installDir })` | `{installDir}/.claude/CLAUDE.md` |
 | `getClaudeSkillsDir({ installDir })` | `{installDir}/.claude/skills` |
-| `getClaudeProfilesDir({ installDir })` | `{installDir}/.claude/profiles` (legacy, for backward compatibility) |
 
-**Nori project-relative paths** (take `installDir` param) - for Nori's internal profile repository:
+**Nori project-relative paths** (take `installDir` param):
 
 | Function | Returns |
 |----------|---------|
@@ -61,7 +60,7 @@ The LoaderRegistry provides two methods for retrieving loaders: getAll() returns
 | `getNoriProfilesDir({ installDir })` | `{installDir}/.nori/profiles` |
 | `getNoriConfigFile({ installDir })` | `{installDir}/.nori/config.json` |
 
-**Claude home-based paths** (no params, always use `os.homedir()`) - for global features that must be accessible from any project:
+**Claude home-based paths** (no params):
 
 | Function | Returns |
 |----------|---------|
@@ -69,8 +68,18 @@ The LoaderRegistry provides two methods for retrieving loaders: getAll() returns
 | `getClaudeHomeSettingsFile()` | `~/.claude/settings.json` |
 | `getClaudeHomeCommandsDir()` | `~/.claude/commands` |
 
-Global features (hooks, statusline, global slash commands) use home-based paths because Claude Code reads these from the user's home directory regardless of the current working directory. All loaders within the claude-code directory import directly from `@/cli/features/claude-code/paths.js`. For backward compatibility, @/src/cli/env.ts re-exports some of these functions.
+Global features (hooks, statusline, global slash commands) use home-based paths because Claude Code reads these from the user's home directory.
 
-**Directory Separation Architecture:** Profiles are stored in `~/.nori/profiles/` instead of `~/.claude/profiles/`. This creates a clear separation between Nori's internal profile repository and Claude Code's native artifacts. The active profile's artifacts (skills, subagents, slash commands, CLAUDE.md) are still copied to `~/.claude/` at the top level during installation. This architecture avoids conflicts between Nori's managed data and Claude Code's configuration files.
+**Directory Separation Architecture:** Profiles are stored in `~/.nori/profiles/` instead of `~/.claude/profiles/`. This creates a clear separation between Nori's internal profile repository and Claude Code's native artifacts.
 
-Profile structure is now directory-based rather than JSON-based. Each profile directory (senior-swe, amol, nontechnical) contains CLAUDE.md, skills/, subagents/, slashcommands/, and optionally PROFILE.md. The major change in #197 removed preference-based CLAUDE.md customization (base-instructions.md with CUSTOMIZABLE markers) in favor of complete per-profile CLAUDE.md files. Skills list generation happens at install time, not at profile creation time. Paid skills use a 'paid-' prefix in the profile's skills/ directory but are installed without the prefix (e.g., paid-recall/ becomes the skills directory's recall/). The switch-nori-profile command updates nori-config.json and re-runs installation to apply the new profile. The managed block pattern allows users to add custom instructions outside the block without losing them during reinstalls. Default profile is 'senior-swe'. Running install multiple times is idempotent and regenerates all installed files from the selected profile. Most changes require Claude Code restart except CLAUDE.md which applies to new conversations immediately. Source markdown files use template placeholders (`{{skills_dir}}`, `{{profiles_dir}}`, `{{commands_dir}}`, `{{install_dir}}`) that are substituted during installation via @/src/cli/features/claude-code/template.ts. The substituteTemplatePaths function replaces these placeholders with absolute paths based on the installation directory.
+**Profile structure**: Each profile directory contains CLAUDE.md, skills/, subagents/, slashcommands/, and profile.json. All content is self-contained - no mixin composition or inheritance.
+
+**Template placeholders**: Source markdown files use placeholders (`{{skills_dir}}`, `{{profiles_dir}}`, `{{commands_dir}}`, `{{install_dir}}`) that are substituted during installation via @/src/cli/features/claude-code/template.ts.
+
+**Switch profile**: The switch-nori-profile command updates nori-config.json and re-runs installation to apply the new profile. Most changes require Claude Code restart except CLAUDE.md which applies to new conversations immediately.
+
+**Managed block pattern**: CLAUDE.md uses a managed block pattern allowing users to add custom instructions outside the block without losing them during reinstalls.
+
+**Default profile**: Falls back to 'senior-swe' if no profile is configured.
+
+Created and maintained by Nori.

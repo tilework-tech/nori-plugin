@@ -265,10 +265,12 @@ describe("install integration test", () => {
       true,
     );
 
-    // Check that paid subagents exist (as .md files)
+    // Check that paid subagents exist in the source profile (with paid- prefix)
     const subagentsDir = path.join(profileDir, "subagents");
     expect(
-      fs.existsSync(path.join(subagentsDir, "nori-knowledge-researcher.md")),
+      fs.existsSync(
+        path.join(subagentsDir, "paid-nori-knowledge-researcher.md"),
+      ),
     ).toBe(true);
 
     // STEP 4: Verify sendSessionTranscript is enabled for paid users

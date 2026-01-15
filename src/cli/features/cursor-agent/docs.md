@@ -4,7 +4,7 @@ Path: @/src/cli/features/cursor-agent
 
 ### Overview
 
-Cursor agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Cursor IDE. Uses a directory-based profile system where each profile contains AGENTS.md and rules. Uses AGENTS.md (instead of CLAUDE.md) and rules/ with RULE.md files (instead of skills/ with SKILL.md). Cursor-specific path helpers are encapsulated in paths.ts within this directory.
+Cursor agent implementation that satisfies the Agent interface from @/src/cli/features/agentRegistry.ts. Contains feature loaders and configurations for installing Nori components into Cursor IDE. Uses a directory-based profile system where each profile is self-contained with AGENTS.md and rules. Uses AGENTS.md (instead of CLAUDE.md) and rules/ with RULE.md files (instead of skills/ with SKILL.md). Cursor-specific path helpers are encapsulated in paths.ts within this directory.
 
 ### How it fits into the larger codebase
 
@@ -37,44 +37,34 @@ The cursor-agent follows the same architectural pattern as claude-code. The `cur
 - `listProfiles({ installDir })`: Scans installed `.cursor/profiles/` for directories containing `AGENTS.md`
 - `listSourceProfiles()`: Scans package's `profiles/config/` for directories with `profile.json`, returns `SourceProfile[]` with name and description
 - `switchProfile({ installDir, profileName })`: Validates profile exists, filters out config entries for uninstalled agents, updates config's `agents["cursor-agent"]` field, logs success message
-- `getGlobalFeatureNames()`: Returns `["hooks", "slash commands"]` - human-readable names for prompts (note: cursor-agent has no statusline feature unlike claude-code)
-- `getGlobalLoaderNames()`: Returns `["hooks", "slashcommands"]` - loader names used by uninstall to skip global loaders when `removeGlobalSettings` is false
+- `getGlobalFeatureNames()`: Returns `["hooks", "slash commands"]` - human-readable names for prompts
+- `getGlobalLoaderNames()`: Returns `["hooks", "slashcommands"]` - loader names used by uninstall to skip global loaders
 
 The AgentRegistry (@/src/cli/features/agentRegistry.ts) registers this agent alongside claude-code. CLI commands use `--agent cursor-agent` to target Cursor installation.
 
 ### Core Implementation
 
-**CursorLoaderRegistry** (loaderRegistry.ts): Singleton registry implementing the shared `LoaderRegistry` interface from @/src/cli/features/agentRegistry.ts. Registers the shared `configLoader` (from @/src/cli/features/config/loader.ts), `profilesLoader`, `hooksLoader`, and `slashCommandsLoader`. Provides `getAll()` and `getAllReversed()` for install/uninstall ordering. The config loader must be included to manage the shared `.nori-config.json` file.
+**CursorLoaderRegistry** (loaderRegistry.ts): Singleton registry implementing the shared `LoaderRegistry` interface from @/src/cli/features/agentRegistry.ts. Registers the shared `configLoader`, `profilesLoader`, `hooksLoader`, and `slashCommandsLoader`. Provides `getAll()` and `getAllReversed()` for install/uninstall ordering.
 
-**profilesLoader** (profiles/loader.ts): Orchestrates profile installation with mixin composition:
-1. Reading profile.json metadata to get mixins configuration
-2. Injecting conditional mixins for paid users (`paid`, `{category}-paid`)
-3. Composing profile by merging mixin content in alphabetical order (directories merge, files use last-writer-wins)
-4. Overlaying profile-specific content (AGENTS.md, profile.json)
-5. Copying composed profiles to `~/.cursor/profiles/`
-6. Invoking sub-loaders via CursorProfileLoaderRegistry in order: rules, subagents, agentsmd
+**profilesLoader** (profiles/loader.ts): Copies self-contained profile directories directly from config/ to `~/.cursor/profiles/`. Each profile contains all its content (rules/, subagents/, AGENTS.md) without any composition needed. Invokes sub-loaders via CursorProfileLoaderRegistry in order: rules, subagents, agentsmd.
 
 **CursorProfileLoaderRegistry** (profiles/profileLoaderRegistry.ts): Singleton registry for profile-dependent sub-loaders. Registration order matters: rules, subagents, then agentsmd (AGENTS.md references both rules and subagents).
 
-**rulesLoader** (profiles/rules/loader.ts): Copies rule files from the selected profile's `rules/` directory to `~/.cursor/rules/`. Each rule is a directory containing `RULE.md`. The loader preserves user-created rules by only managing Nori rules (identified by reading rule directory names from the profile config). During install, only existing Nori-managed rules are removed before copying fresh versions. During uninstall, only Nori-managed rules are removed, and the rules directory is only deleted if empty.
+**rulesLoader** (profiles/rules/loader.ts): Copies rule files from the selected profile's `rules/` directory to `~/.cursor/rules/`. Each rule is a directory containing `RULE.md`. The loader preserves user-created rules by only managing Nori rules.
 
-**subagentsLoader** (profiles/subagents/loader.ts): Copies subagent prompt files from the selected profile's `subagents/` directory to `~/.cursor/subagents/`. Each subagent is a `.md` file defining a specialized AI assistant that can be invoked via the `cursor-agent` CLI in headless mode. Subagents provide Task tool-like functionality for Cursor, enabling focused research, analysis, or parallel work.
+**subagentsLoader** (profiles/subagents/loader.ts): Copies subagent prompt files from the selected profile's `subagents/` directory to `~/.cursor/subagents/`. Each subagent is a `.md` file defining a specialized AI assistant.
 
-**agentsMdLoader** (profiles/agentsmd/loader.ts): Manages the `AGENTS.md` file at project root using a managed block pattern (BEGIN/END NORI-AI MANAGED BLOCK). Reads AGENTS.md content from the selected profile and inserts/updates it within the managed block, preserving any user content outside the block.
+**agentsMdLoader** (profiles/agentsmd/loader.ts): Manages the `AGENTS.md` file at project root using a managed block pattern (BEGIN/END NORI-AI MANAGED BLOCK).
 
-**hooksLoader** (hooks/loader.ts): Configures Cursor IDE hooks for desktop notifications and slash command interception. Manages `~/.cursor/hooks.json` using Cursor's hooks schema (`{ version: 1, hooks: { [event]: [...] } }`). Configures two hook events:
-- `stop`: notify-hook.sh script for desktop notifications when agent completes
-- `beforeSubmitPrompt`: slash-command-intercept.js for intercepting slash commands before LLM inference
+**hooksLoader** (hooks/loader.ts): Configures Cursor IDE hooks for desktop notifications and slash command interception. Manages `~/.cursor/hooks.json`.
 
-The loader handles idempotent installation (avoids duplicate hooks), clean uninstallation (removes only Nori hooks), and validation for both hook types.
-
-**slashCommandsLoader** (slashcommands/loader.ts): Installs Nori slash commands to `~/.cursor/commands/`. Reads `.md` files from the `slashcommands/config/` directory, applies template substitution via @/src/cli/features/cursor-agent/template.ts, and writes them to the target directory. Uninstall removes installed commands and cleans up the commands directory if empty.
+**slashCommandsLoader** (slashcommands/loader.ts): Installs Nori slash commands to `~/.cursor/commands/`.
 
 ### Things to Know
 
 **Path Helpers (paths.ts):** All Cursor-specific path functions live in @/src/cli/features/cursor-agent/paths.ts. There are two categories:
 
-**Project-relative paths** (take `installDir` param) - for profile-specific features:
+**Project-relative paths** (take `installDir` param):
 
 | Function | Returns |
 |----------|---------|
@@ -86,7 +76,7 @@ The loader handles idempotent installation (avoids duplicate hooks), clean unins
 | `getCursorCommandsDir({ installDir })` | `{installDir}/.cursor/commands` |
 | `getCursorSubagentsDir({ installDir })` | `{installDir}/.cursor/subagents` |
 
-**Home-based paths** (no params, always use `os.homedir()`) - for global features that must be accessible from any project:
+**Home-based paths** (no params):
 
 | Function | Returns |
 |----------|---------|
@@ -94,74 +84,41 @@ The loader handles idempotent installation (avoids duplicate hooks), clean unins
 | `getCursorHomeHooksFile()` | `~/.cursor/hooks.json` |
 | `getCursorHomeCommandsDir()` | `~/.cursor/commands` |
 
-Global features (hooks, global slash commands) use home-based paths because Cursor looks for these in the user's home directory regardless of the current working directory.
-
 **Key differences from claude-code:**
 - Uses AGENTS.md instead of CLAUDE.md for instructions
 - Uses rules/ directory with RULE.md files instead of skills/ with SKILL.md
-- Rules use Cursor's YAML frontmatter format with `description` and `alwaysApply: false` (no globs - uses "Apply Intelligently" mode)
+- Rules use Cursor's YAML frontmatter format with `description` and `alwaysApply: false`
 - Target directory is ~/.cursor instead of ~/.claude
-- Cursor hooks use a simpler event model (e.g., `stop`) compared to Claude Code's hooks (e.g., `SessionEnd`)
 
-**Hooks architecture:** The hooks/ directory contains the hooksLoader and a config/ subdirectory with hook scripts and intercepted slash commands:
+**Hooks architecture:** The hooks/ directory contains the hooksLoader and a config/ subdirectory with hook scripts and intercepted slash commands. The notify-hook.sh script is cross-platform supporting Linux, macOS, and Windows. The slash-command-intercept.ts handles slash command interception.
 
-```
-hooks/
-├── loader.ts              # Configures ~/.cursor/hooks.json
-└── config/
-    ├── notify-hook.sh     # Desktop notifications (stop event)
-    ├── slash-command-intercept.ts  # Slash command interception (beforeSubmitPrompt event)
-    └── intercepted-slashcommands/  # Command implementations
-        ├── types.ts       # CursorHookInput/Output, HookInput/Output, InterceptedSlashCommand
-        ├── format.ts      # Plain text formatting with Unicode symbols (✓/✗)
-        ├── registry.ts    # Array of InterceptedSlashCommand (first match wins)
-        └── nori-switch-profile.ts  # Profile switching implementation
-```
+**format.ts uses plain text (not ANSI codes):** Unlike claude-code which runs in a terminal, cursor-agent's hook output is displayed in Cursor IDE's web-based chat UI. Therefore, cursor-agent's format.ts uses Unicode symbols (for success/error) instead of ANSI colors.
 
-**format.ts uses plain text (not ANSI codes):** Unlike claude-code which runs in a terminal and can use ANSI escape codes for colored output, cursor-agent's hook output is displayed in Cursor IDE's web-based chat UI which renders ANSI codes as raw escape sequences (e.g., `\u001b[0;32m`). Therefore, cursor-agent's format.ts uses Unicode symbols (✓ for success, ✗ for error) as visual prefixes instead of colors.
+**Intercepted slash commands:** Slash commands registered in `intercepted-slashcommands/registry.ts` are executed directly without LLM inference overhead.
 
-The notify-hook.sh script is a cross-platform bash script supporting Linux (notify-send), macOS (osascript/terminal-notifier), and Windows (PowerShell). The slash-command-intercept.ts is a Node.js script that reads Cursor's hook input from stdin, matches against registered commands, and outputs Cursor's expected response format. Cursor's hooks.json format is `{ version: 1, hooks: { [event]: [{ command: "..." }] } }`. The loader identifies Nori hooks by checking if the command path contains "notify-hook.sh" or "slash-command-intercept.js".
+**Self-contained profiles**: Each profile contains all content it needs directly. There is no mixin composition, inheritance, or conditional injection. Profiles are copied as-is to `~/.cursor/profiles/`.
 
-**Intercepted slash commands:** Slash commands registered in `intercepted-slashcommands/registry.ts` are executed directly without LLM inference overhead. This enables instant operations like profile switching. The architecture translates between Cursor's hook format (`CursorHookInput`/`CursorHookOutput`) and an internal format (`HookInput`/`HookOutput`):
-
-| Cursor Format | Internal Format | Translation |
-|---------------|-----------------|-------------|
-| `{ continue: boolean, user_message?: string }` | `{ decision?: "block", reason?: string }` | `decision: "block"` maps to `continue: false` |
-| `prompt`, `workspace_roots[0]` | `prompt`, `cwd` | First workspace_root becomes cwd |
-
-Commands use regex matchers in `InterceptedSlashCommand.matchers`. The `/nori-switch-profile` command lists available profiles or switches to a specified profile, running `nori-ai install` via subprocess (`execSync`) to apply changes. The subprocess approach is required because hook scripts are bundled by esbuild - when bundled, `__dirname` resolves to the bundled script location instead of the original loader locations, breaking path resolution if dynamic import were used. **Console output suppression uses two mechanisms:** (1) `setSilentMode({ silent: true })` wraps the `agent.switchProfile()` call to suppress logger output (success/info messages) from the parent process, (2) the install subprocess uses `--silent` flag and `stdio: ["ignore", "ignore", "ignore"]` to suppress child process output. Both are necessary because Cursor IDE hooks must output only valid JSON to stdout - any extraneous output causes the hook to fail and fall through to the LLM. The `setSilentMode()` is restored in a `finally` block to ensure logging resumes even on error.
-
-**Mixin composition system**: Profiles specify mixins in profile.json as `{"mixins": {"base": {}, "swe": {}}}`. The loader processes mixins in alphabetical order for deterministic precedence. When multiple mixins provide the same file, last writer wins. When multiple mixins provide the same directory, contents are merged. Conditional mixins are automatically injected based on user tier (see @/src/cli/features/cursor-agent/profiles/loader.ts).
-
-**Template substitution (template.ts):** Cursor-specific placeholders for content files. Replaces `{{rules_dir}}`, `{{profiles_dir}}`, `{{commands_dir}}`, `{{subagents_dir}}`, and `{{install_dir}}` with absolute paths. This is distinct from claude-code's template.ts which uses `{{skills_dir}}` instead of `{{rules_dir}}`. Template substitution is applied during the final copy stage by these loaders:
-- **agentsMdLoader** - Substitutes placeholders in AGENTS.md content before writing to project root
-- **rulesLoader** - Uses `copyDirWithTemplateSubstitution()` to apply substitution when copying rule .md files to `~/.cursor/rules/`
-- **subagentsLoader** - Uses `copyDirWithTemplateSubstitution()` to apply substitution when copying subagent .md files to `~/.cursor/subagents/`
-- **slashCommandsLoader** - Applies substitution when copying slash command .md files to `~/.cursor/commands/`
+**Template substitution (template.ts):** Cursor-specific placeholders for content files. Replaces `{{rules_dir}}`, `{{profiles_dir}}`, `{{commands_dir}}`, `{{subagents_dir}}`, and `{{install_dir}}` with absolute paths.
 
 **Profile structure:** Each profile directory in `profiles/config/` contains:
 - `AGENTS.md`: Instructions file (required for profile to be listed)
-- `profile.json`: Profile metadata with `mixins` field specifying which mixins to compose
-- `rules/`: Directory containing rule subdirectories, each with a RULE.md (typically inherited from mixins)
+- `profile.json`: Profile metadata with name, description, builtin flag
+- `rules/`: Directory containing rule subdirectories
+- `subagents/`: Directory containing subagent .md files
 
-**Available profiles:** cursor-agent provides four profiles:
+**Available profiles:**
 
-| Profile | Mixins | Description |
-|---------|--------|-------------|
-| amol | base, docs, swe | Opinionated workflow with TDD, structured planning, rule-based guidance |
-| senior-swe | base, docs, swe | Dual-mode: "copilot" (interactive) or "full-send" (autonomous) |
-| product-manager | base, docs, swe | High technical autonomy, product-focused questions, auto-creates PRs |
-| none | base | Minimal infrastructure only, no behavioral modifications |
+| Profile | Description |
+|---------|-------------|
+| amol | Opinionated workflow with TDD, structured planning, rule-based guidance |
+| senior-swe | Dual-mode: "copilot" (interactive) or "full-send" (autonomous) |
+| product-manager | High technical autonomy, product-focused questions, auto-creates PRs |
+| none | Minimal infrastructure only, no behavioral modifications |
 
-**Mixin content:**
-- `_base` mixin: Contains `using-rules` rule for rule usage guidance, `using-subagents` rule for subagent invocation, and the `subagents/` directory with subagent prompt files (e.g., `nori-web-search-researcher`)
-- `_docs` mixin: Contains `updating-noridocs` rule for documentation workflow and subagents for documentation (`nori-initial-documenter` for creating initial documentation, `nori-change-documenter` for updating documentation after code changes)
-- `_swe` mixin: Contains software engineering rules mirroring claude-code skills (test-driven-development, systematic-debugging, brainstorming, etc.)
+**Subagents system:** Cursor lacks a built-in Task tool like Claude Code. Subagents provide equivalent functionality by invoking `cursor-agent` CLI in headless mode.
 
-**Subagents system:** Cursor lacks a built-in Task tool like Claude Code. Subagents provide equivalent functionality by invoking `cursor-agent` CLI in headless mode (`cursor-agent -p "prompt" --force`). Subagent definitions are `.md` files stored in `~/.cursor/subagents/`. The `using-subagents` rule documents how to invoke subagents and lists available subagents (e.g., `nori-web-search-researcher`).
+**Managed block pattern:** AGENTS.md uses the same managed block pattern as claude-code's CLAUDE.md, allowing users to add custom content outside the managed markers.
 
-**Managed block pattern:** AGENTS.md uses the same managed block pattern as claude-code's CLAUDE.md, allowing users to add custom content outside the `# BEGIN NORI-AI MANAGED BLOCK` / `# END NORI-AI MANAGED BLOCK` markers without losing it during reinstalls.
-
-**Default profile:** Falls back to "amol" if no profile is configured in nori-config.json's `agents["cursor-agent"].profile.baseProfile`.
+**Default profile:** Falls back to "amol" if no profile is configured.
 
 Created and maintained by Nori.

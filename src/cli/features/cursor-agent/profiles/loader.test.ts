@@ -102,12 +102,12 @@ describe("cursor-agent profiles loader", () => {
       expect(internalProfiles).toHaveLength(0);
     });
 
-    test("should compose profile from mixins when profile has mixins field", async () => {
+    test("should install profile with all content inlined directly", async () => {
       const config = createConfig();
 
       await profilesLoader.run({ config });
 
-      // Verify amol profile has composed content from mixins
+      // Verify amol profile has all content
       const amolPath = path.join(profilesDir, "amol");
       const amolExists = await fs
         .access(amolPath)
@@ -115,7 +115,7 @@ describe("cursor-agent profiles loader", () => {
         .catch(() => false);
       expect(amolExists).toBe(true);
 
-      // Verify it has rules directory with content from _swe mixin
+      // Verify it has rules directory with inlined content
       const rulesDir = path.join(amolPath, "rules");
       const rulesExists = await fs
         .access(rulesDir)
@@ -123,13 +123,20 @@ describe("cursor-agent profiles loader", () => {
         .catch(() => false);
       expect(rulesExists).toBe(true);
 
-      // Verify it has the using-git-worktrees rule from _swe mixin
+      // Verify it has the using-git-worktrees rule (inlined from former _swe mixin)
       const gitWorktreesRule = path.join(rulesDir, "using-git-worktrees");
       const ruleExists = await fs
         .access(gitWorktreesRule)
         .then(() => true)
         .catch(() => false);
       expect(ruleExists).toBe(true);
+
+      // Verify profile.json does NOT have a mixins field (mixin composition removed)
+      const profileJsonPath = path.join(amolPath, "profile.json");
+      const profileJson = JSON.parse(
+        await fs.readFile(profileJsonPath, "utf-8"),
+      );
+      expect(profileJson.mixins).toBeUndefined();
     });
   });
 
@@ -172,7 +179,6 @@ describe("cursor-agent profiles loader", () => {
         JSON.stringify({
           name: "my-custom-profile",
           description: "My custom profile",
-          mixins: { base: {} },
         }),
       );
       await fs.writeFile(
@@ -230,66 +236,19 @@ describe("cursor-agent profiles loader", () => {
     });
   });
 
-  describe("getMixinPaths", () => {
-    test("should return mixin paths in alphabetical order", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          swe: {},
-          base: {},
-        },
-      };
-
-      const result = _testing.getMixinPaths({ metadata });
-
-      // Should be sorted alphabetically
-      expect(result[0]).toContain("_base");
-      expect(result[1]).toContain("_swe");
-    });
-
-    test("should prepend underscore to mixin names", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-        },
-      };
-
-      const result = _testing.getMixinPaths({ metadata });
-
-      expect(result[0]).toContain("_base");
-      expect(result[0]).not.toContain("__base"); // Not double underscore
-    });
-
-    test("should include docs mixin path when docs is in mixins", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          docs: {},
-          swe: {},
-        },
-      };
-
-      const result = _testing.getMixinPaths({ metadata });
-
-      // Should be sorted alphabetically: base, docs, swe
-      expect(result[0]).toContain("_base");
-      expect(result[1]).toContain("_docs");
-      expect(result[2]).toContain("_swe");
+  describe("_testing exports", () => {
+    test("getMixinPaths should be undefined (mixin composition removed)", () => {
+      expect(_testing.getMixinPaths).toBeUndefined();
     });
   });
 
-  describe("_docs mixin", () => {
-    test("should compose profile with docs mixin subagents", async () => {
+  describe("profile content", () => {
+    test("should install amol profile with subagents", async () => {
       const config = createConfig();
 
       await profilesLoader.run({ config });
 
-      // amol profile should have docs mixin which includes subagents
+      // amol profile should have subagents directory
       const subagentsDir = path.join(profilesDir, "amol", "subagents");
       const subagentsExists = await fs
         .access(subagentsDir)
@@ -320,12 +279,12 @@ describe("cursor-agent profiles loader", () => {
       expect(changeDocumenterExists).toBe(true);
     });
 
-    test("should compose profile with docs mixin rules", async () => {
+    test("should install amol profile with updating-noridocs rule", async () => {
       const config = createConfig();
 
       await profilesLoader.run({ config });
 
-      // amol profile should have docs mixin which includes updating-noridocs rule
+      // amol profile should have updating-noridocs rule
       const updatingNoridocsRule = path.join(
         profilesDir,
         "amol",

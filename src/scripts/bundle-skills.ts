@@ -67,15 +67,14 @@ const main = async (): Promise<void> => {
   console.log("Bundling Paid Skill Scripts and Hook Scripts");
   console.log("=".repeat(60));
 
-  // Find all paid skill script files in the build output across all tier-specific mixins
+  // Find all paid skill and bundled skill script files in the build output
+  // Skills are inlined directly in profile directories (no more mixin composition)
   // Patterns:
-  // - build/src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-*/script.js
-  // - build/src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js
-  // - build/src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills/nori-sync-docs/script.js (special case: not paid- prefixed)
+  // - build/src/cli/features/claude-code/profiles/config/*/skills/paid-*/script.js (paid skills in any profile)
+  // - build/src/cli/features/claude-code/profiles/config/*/skills/nori-sync-docs/script.js (bundled but not paid)
   const skillPatterns = [
-    "build/src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-*/script.js",
-    "build/src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
-    "build/src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills/nori-sync-docs/script.js",
+    "build/src/cli/features/claude-code/profiles/config/*/skills/paid-*/script.js",
+    "build/src/cli/features/claude-code/profiles/config/*/skills/nori-sync-docs/script.js",
   ];
 
   const skillFilesArrays = await Promise.all(
@@ -110,13 +109,10 @@ const main = async (): Promise<void> => {
     console.warn("⚠ No scripts found to bundle");
     console.warn("Expected patterns:");
     console.warn(
-      "  - build/src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-*/script.js",
+      "  - build/src/cli/features/claude-code/profiles/config/*/skills/paid-*/script.js",
     );
     console.warn(
-      "  - build/src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills/paid-*/script.js",
-    );
-    console.warn(
-      "  - build/src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills/nori-sync-docs/script.js",
+      "  - build/src/cli/features/claude-code/profiles/config/*/skills/nori-sync-docs/script.js",
     );
     console.warn("  - build/src/cli/features/claude-code/hooks/config/*.js");
     return;

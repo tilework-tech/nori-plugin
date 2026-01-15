@@ -7,7 +7,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-import { getAgentProfile, type Config } from "@/cli/config.js";
+import { getAgentProfile, isPaidInstall, type Config } from "@/cli/config.js";
 import {
   getClaudeDir,
   getClaudeAgentsDir,
@@ -86,26 +86,57 @@ const registerSubagents = async (args: { config: Config }): Promise<void> => {
 
   for (const file of mdFiles) {
     const subagentSrc = path.join(configDir, file);
-    const subagentDest = path.join(claudeAgentsDir, file);
 
-    try {
-      await fs.access(subagentSrc);
-      // Read, apply template substitution, then write
-      const content = await fs.readFile(subagentSrc, "utf-8");
-      const claudeDir = getClaudeDir({ installDir: config.installDir });
-      const substituted = substituteTemplatePaths({
-        content,
-        installDir: claudeDir,
-      });
-      await fs.writeFile(subagentDest, substituted);
-      const subagentName = file.replace(/\.md$/, "");
-      success({ message: `✓ ${subagentName} subagent registered` });
-      registeredCount++;
-    } catch {
-      warn({
-        message: `Subagent definition not found at ${subagentSrc}, skipping`,
-      });
-      skippedCount++;
+    // Handle paid-prefixed subagents
+    if (file.startsWith("paid-")) {
+      if (isPaidInstall({ config })) {
+        // Strip paid- prefix when copying
+        const destFile = file.replace(/^paid-/, "");
+        const subagentDest = path.join(claudeAgentsDir, destFile);
+
+        try {
+          await fs.access(subagentSrc);
+          const content = await fs.readFile(subagentSrc, "utf-8");
+          const claudeDir = getClaudeDir({ installDir: config.installDir });
+          const substituted = substituteTemplatePaths({
+            content,
+            installDir: claudeDir,
+          });
+          await fs.writeFile(subagentDest, substituted);
+          const subagentName = destFile.replace(/\.md$/, "");
+          success({ message: `✓ ${subagentName} subagent registered` });
+          registeredCount++;
+        } catch {
+          warn({
+            message: `Subagent definition not found at ${subagentSrc}, skipping`,
+          });
+          skippedCount++;
+        }
+      }
+      // Skip if free tier
+    } else {
+      // Copy non-paid subagents for all tiers
+      const subagentDest = path.join(claudeAgentsDir, file);
+
+      try {
+        await fs.access(subagentSrc);
+        // Read, apply template substitution, then write
+        const content = await fs.readFile(subagentSrc, "utf-8");
+        const claudeDir = getClaudeDir({ installDir: config.installDir });
+        const substituted = substituteTemplatePaths({
+          content,
+          installDir: claudeDir,
+        });
+        await fs.writeFile(subagentDest, substituted);
+        const subagentName = file.replace(/\.md$/, "");
+        success({ message: `✓ ${subagentName} subagent registered` });
+        registeredCount++;
+      } catch {
+        warn({
+          message: `Subagent definition not found at ${subagentSrc}, skipping`,
+        });
+        skippedCount++;
+      }
     }
   }
 
@@ -163,16 +194,20 @@ const unregisterSubagents = async (args: { config: Config }): Promise<void> => {
     );
 
     for (const file of mdFiles) {
-      const subagentPath = path.join(claudeAgentsDir, file);
+      // Handle paid-prefixed subagents (installed without prefix)
+      const destFile = file.startsWith("paid-")
+        ? file.replace(/^paid-/, "")
+        : file;
+      const subagentPath = path.join(claudeAgentsDir, destFile);
 
       try {
         await fs.access(subagentPath);
         await fs.unlink(subagentPath);
-        const subagentName = file.replace(/\.md$/, "");
+        const subagentName = destFile.replace(/\.md$/, "");
         success({ message: `✓ ${subagentName} subagent removed` });
         removedCount++;
       } catch {
-        const subagentName = file.replace(/\.md$/, "");
+        const subagentName = destFile.replace(/\.md$/, "");
         info({
           message: `${subagentName} subagent not found (may not be installed)`,
         });
@@ -258,14 +293,29 @@ const validate = async (args: {
     const mdFiles = files.filter(
       (file) => file.endsWith(".md") && file !== "docs.md",
     );
-    expectedCount = mdFiles.length;
 
     for (const file of mdFiles) {
-      const subagentPath = path.join(claudeAgentsDir, file);
-      try {
-        await fs.access(subagentPath);
-      } catch {
-        missingSubagents.push(file.replace(/\.md$/, ""));
+      // Handle paid-prefixed subagents
+      if (file.startsWith("paid-")) {
+        if (isPaidInstall({ config })) {
+          expectedCount++;
+          const destFile = file.replace(/^paid-/, "");
+          const subagentPath = path.join(claudeAgentsDir, destFile);
+          try {
+            await fs.access(subagentPath);
+          } catch {
+            missingSubagents.push(destFile.replace(/\.md$/, ""));
+          }
+        }
+        // For free users, skip paid subagents entirely (don't count them)
+      } else {
+        expectedCount++;
+        const subagentPath = path.join(claudeAgentsDir, file);
+        try {
+          await fs.access(subagentPath);
+        } catch {
+          missingSubagents.push(file.replace(/\.md$/, ""));
+        }
       }
     }
   } catch {

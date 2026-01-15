@@ -1,6 +1,7 @@
 /**
  * Tests for cursor-agent rules content
  * Verifies that all expected rules exist with proper YAML frontmatter
+ * Note: Mixin composition has been removed - all rules are now inlined in profiles
  */
 
 import * as fs from "fs/promises";
@@ -12,8 +13,8 @@ import { describe, test, expect } from "vitest";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Path to cursor-agent mixins
-const MIXINS_DIR = path.join(__dirname, "..", "config", "_mixins");
+// Path to cursor-agent profiles config
+const PROFILES_DIR = path.join(__dirname, "..", "config");
 
 /**
  * Parse YAML frontmatter from a RULE.md file
@@ -51,127 +52,58 @@ const parseFrontmatter = (content: string): Record<string, unknown> | null => {
 };
 
 describe("cursor-agent rules content", () => {
-  describe("_base mixin rules", () => {
-    const baseMixinDir = path.join(MIXINS_DIR, "_base", "rules");
+  // Use senior-swe as the reference profile since it has all SWE rules
+  const seniorSweRulesDir = path.join(PROFILES_DIR, "senior-swe", "rules");
 
-    // _base should have using-rules rule (creating-rules is excluded)
-    const expectedBaseRules = ["using-rules"];
+  // All expected SWE rules (inlined from former _swe mixin)
+  const expectedSweRules = [
+    "test-driven-development",
+    "finishing-a-development-branch",
+    "testing-anti-patterns",
+    "brainstorming",
+    "systematic-debugging",
+    "using-git-worktrees",
+    "root-cause-tracing",
+    "handle-large-tasks",
+    "receiving-code-review",
+    "building-ui-ux",
+    "writing-plans",
+    "using-screenshots",
+    "webapp-testing",
+    "using-rules", // base rule
+  ];
 
-    test("_base mixin rules directory exists", async () => {
+  describe("senior-swe profile rules", () => {
+    test("rules directory exists", async () => {
       const exists = await fs
-        .access(baseMixinDir)
+        .access(seniorSweRulesDir)
         .then(() => true)
         .catch(() => false);
       expect(exists).toBe(true);
     });
 
-    test.each(expectedBaseRules)(
-      "_base mixin has %s rule directory",
-      async (ruleName) => {
-        const ruleDir = path.join(baseMixinDir, ruleName);
-        const exists = await fs
-          .access(ruleDir)
-          .then(() => true)
-          .catch(() => false);
-        expect(exists).toBe(true);
-      },
-    );
-
-    test.each(expectedBaseRules)(
-      "_base/%s has RULE.md file",
-      async (ruleName) => {
-        const rulePath = path.join(baseMixinDir, ruleName, "RULE.md");
-        const exists = await fs
-          .access(rulePath)
-          .then(() => true)
-          .catch(() => false);
-        expect(exists).toBe(true);
-      },
-    );
-
-    test.each(expectedBaseRules)(
-      "_base/%s has valid YAML frontmatter with description",
-      async (ruleName) => {
-        const rulePath = path.join(baseMixinDir, ruleName, "RULE.md");
-        const content = await fs.readFile(rulePath, "utf-8");
-        const frontmatter = parseFrontmatter(content);
-
-        expect(frontmatter).not.toBeNull();
-        expect(frontmatter?.description).toBeDefined();
-        expect(typeof frontmatter?.description).toBe("string");
-        expect((frontmatter?.description as string).length).toBeGreaterThan(0);
-      },
-    );
-
-    test.each(expectedBaseRules)(
-      "_base/%s has alwaysApply: false",
-      async (ruleName) => {
-        const rulePath = path.join(baseMixinDir, ruleName, "RULE.md");
-        const content = await fs.readFile(rulePath, "utf-8");
-        const frontmatter = parseFrontmatter(content);
-
-        expect(frontmatter).not.toBeNull();
-        expect(frontmatter?.alwaysApply).toBe(false);
-      },
-    );
-  });
-
-  describe("_swe mixin rules", () => {
-    const sweMixinDir = path.join(MIXINS_DIR, "_swe", "rules");
-
-    // All expected _swe rules (mapped from claude-code skills)
-    const expectedSweRules = [
-      "test-driven-development",
-      "finishing-a-development-branch",
-      "testing-anti-patterns",
-      "brainstorming",
-      "systematic-debugging",
-      "using-git-worktrees",
-      "root-cause-tracing",
-      "handle-large-tasks",
-      "receiving-code-review",
-      "building-ui-ux",
-      "writing-plans",
-      "using-screenshots",
-      "webapp-testing",
-    ];
-
-    test("_swe mixin rules directory exists", async () => {
+    test.each(expectedSweRules)("has %s rule directory", async (ruleName) => {
+      const ruleDir = path.join(seniorSweRulesDir, ruleName);
       const exists = await fs
-        .access(sweMixinDir)
+        .access(ruleDir)
+        .then(() => true)
+        .catch(() => false);
+      expect(exists).toBe(true);
+    });
+
+    test.each(expectedSweRules)("%s has RULE.md file", async (ruleName) => {
+      const rulePath = path.join(seniorSweRulesDir, ruleName, "RULE.md");
+      const exists = await fs
+        .access(rulePath)
         .then(() => true)
         .catch(() => false);
       expect(exists).toBe(true);
     });
 
     test.each(expectedSweRules)(
-      "_swe mixin has %s rule directory",
+      "%s has valid YAML frontmatter with description",
       async (ruleName) => {
-        const ruleDir = path.join(sweMixinDir, ruleName);
-        const exists = await fs
-          .access(ruleDir)
-          .then(() => true)
-          .catch(() => false);
-        expect(exists).toBe(true);
-      },
-    );
-
-    test.each(expectedSweRules)(
-      "_swe/%s has RULE.md file",
-      async (ruleName) => {
-        const rulePath = path.join(sweMixinDir, ruleName, "RULE.md");
-        const exists = await fs
-          .access(rulePath)
-          .then(() => true)
-          .catch(() => false);
-        expect(exists).toBe(true);
-      },
-    );
-
-    test.each(expectedSweRules)(
-      "_swe/%s has valid YAML frontmatter with description",
-      async (ruleName) => {
-        const rulePath = path.join(sweMixinDir, ruleName, "RULE.md");
+        const rulePath = path.join(seniorSweRulesDir, ruleName, "RULE.md");
         const content = await fs.readFile(rulePath, "utf-8");
         const frontmatter = parseFrontmatter(content);
 
@@ -183,9 +115,9 @@ describe("cursor-agent rules content", () => {
     );
 
     test.each(expectedSweRules)(
-      "_swe/%s has alwaysApply: false",
+      "%s has alwaysApply: false",
       async (ruleName) => {
-        const rulePath = path.join(sweMixinDir, ruleName, "RULE.md");
+        const rulePath = path.join(seniorSweRulesDir, ruleName, "RULE.md");
         const content = await fs.readFile(rulePath, "utf-8");
         const frontmatter = parseFrontmatter(content);
 
@@ -195,9 +127,9 @@ describe("cursor-agent rules content", () => {
     );
 
     test.each(expectedSweRules)(
-      "_swe/%s does not have globs field (uses Apply Intelligently)",
+      "%s does not have globs field (uses Apply Intelligently)",
       async (ruleName) => {
-        const rulePath = path.join(sweMixinDir, ruleName, "RULE.md");
+        const rulePath = path.join(seniorSweRulesDir, ruleName, "RULE.md");
         const content = await fs.readFile(rulePath, "utf-8");
         const frontmatter = parseFrontmatter(content);
 
@@ -208,12 +140,10 @@ describe("cursor-agent rules content", () => {
   });
 
   describe("rule content adaptations", () => {
-    const sweMixinDir = path.join(MIXINS_DIR, "_swe", "rules");
-
     test("rules use {{rules_dir}} instead of {{skills_dir}}", async () => {
       // Check a rule that references other rules
       const systematicDebuggingPath = path.join(
-        sweMixinDir,
+        seniorSweRulesDir,
         "systematic-debugging",
         "RULE.md",
       );
@@ -235,11 +165,10 @@ describe("cursor-agent rules content", () => {
     });
 
     test("rules do not reference SKILL.md files", async () => {
-      const rulesDir = sweMixinDir;
-      const ruleNames = await fs.readdir(rulesDir);
+      const ruleNames = await fs.readdir(seniorSweRulesDir);
 
       for (const ruleName of ruleNames) {
-        const rulePath = path.join(rulesDir, ruleName, "RULE.md");
+        const rulePath = path.join(seniorSweRulesDir, ruleName, "RULE.md");
         try {
           const content = await fs.readFile(rulePath, "utf-8");
           expect(content).not.toContain("SKILL.md");
@@ -252,9 +181,7 @@ describe("cursor-agent rules content", () => {
 });
 
 describe("cursor-agent profiles content", () => {
-  const PROFILES_DIR = path.join(__dirname, "..", "config");
-
-  // All expected profiles (excluding documenter which relies on docs mixin)
+  // All expected profiles
   const expectedProfiles = ["amol", "senior-swe", "product-manager", "none"];
 
   describe("profile directories", () => {
@@ -301,7 +228,7 @@ describe("cursor-agent profiles content", () => {
 
   describe("profile.json content", () => {
     test.each(expectedProfiles)(
-      "%s profile.json has required fields",
+      "%s profile.json has required fields (no mixins field)",
       async (profileName) => {
         const profileJsonPath = path.join(
           PROFILES_DIR,
@@ -316,23 +243,8 @@ describe("cursor-agent profiles content", () => {
         expect(typeof json.description).toBe("string");
         expect(json.description.length).toBeGreaterThan(0);
         expect(json.builtin).toBe(true);
-        expect(json.mixins).toBeDefined();
-        expect(typeof json.mixins).toBe("object");
-      },
-    );
-
-    test.each(expectedProfiles)(
-      "%s profile.json has base mixin",
-      async (profileName) => {
-        const profileJsonPath = path.join(
-          PROFILES_DIR,
-          profileName,
-          "profile.json",
-        );
-        const content = await fs.readFile(profileJsonPath, "utf-8");
-        const json = JSON.parse(content);
-
-        expect(json.mixins.base).toBeDefined();
+        // Mixin composition has been removed
+        expect(json.mixins).toBeUndefined();
       },
     );
   });
@@ -376,5 +288,52 @@ describe("cursor-agent profiles content", () => {
         expect(content).not.toContain("SKILL.md");
       },
     );
+  });
+
+  describe("profile rules directories", () => {
+    // Profiles with SWE rules (all except 'none')
+    const sweProfiles = ["amol", "senior-swe", "product-manager"];
+
+    test.each(sweProfiles)(
+      "%s profile has rules directory with SWE rules",
+      async (profileName) => {
+        const rulesDir = path.join(PROFILES_DIR, profileName, "rules");
+        const exists = await fs
+          .access(rulesDir)
+          .then(() => true)
+          .catch(() => false);
+        expect(exists).toBe(true);
+
+        // Should have test-driven-development rule
+        const tddRuleExists = await fs
+          .access(path.join(rulesDir, "test-driven-development"))
+          .then(() => true)
+          .catch(() => false);
+        expect(tddRuleExists).toBe(true);
+      },
+    );
+
+    test("none profile has rules directory with base rule only", async () => {
+      const rulesDir = path.join(PROFILES_DIR, "none", "rules");
+      const exists = await fs
+        .access(rulesDir)
+        .then(() => true)
+        .catch(() => false);
+      expect(exists).toBe(true);
+
+      // Should have using-rules rule
+      const usingRulesExists = await fs
+        .access(path.join(rulesDir, "using-rules"))
+        .then(() => true)
+        .catch(() => false);
+      expect(usingRulesExists).toBe(true);
+
+      // Should NOT have SWE rules like test-driven-development
+      const tddRuleExists = await fs
+        .access(path.join(rulesDir, "test-driven-development"))
+        .then(() => true)
+        .catch(() => false);
+      expect(tddRuleExists).toBe(false);
+    });
   });
 });

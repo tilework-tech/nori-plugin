@@ -128,7 +128,7 @@ describe("profilesLoader", () => {
       expect(claudeMdContent).toContain("Onboarding Wizard (Questionnaire)");
     });
 
-    it("should install none profile with only base mixin and empty CLAUDE.md", async () => {
+    it("should install none profile with only base content and empty CLAUDE.md", async () => {
       const config: Config = {
         installDir: tempDir,
         agents: {
@@ -146,27 +146,28 @@ describe("profilesLoader", () => {
         .catch(() => false);
       expect(noneExists).toBe(true);
 
-      // Verify profile.json exists and has only base mixin
+      // Verify profile.json exists and has NO mixins field (inlined content)
       const profileJsonPath = path.join(nonePath, "profile.json");
       const profileJson = JSON.parse(
         await fs.readFile(profileJsonPath, "utf-8"),
       );
       expect(profileJson.name).toBe("none");
-      expect(profileJson.mixins).toEqual({ base: {} });
+      expect(profileJson.mixins).toBeUndefined();
 
       // Verify CLAUDE.md exists and is empty or minimal
       const claudeMdPath = path.join(nonePath, "CLAUDE.md");
       const claudeMdContent = await fs.readFile(claudeMdPath, "utf-8");
       expect(claudeMdContent.trim()).toBe("");
 
-      // Verify only base mixin content is present
+      // Verify only base content is present (inlined directly in profile)
       const skillsDir = path.join(nonePath, "skills");
       const skills = await fs.readdir(skillsDir);
 
-      // Should only have using-skills from base mixin
+      // Should only have base skills (using-skills, creating-skills)
       expect(skills).toContain("using-skills");
-      expect(skills).not.toContain("test-driven-development"); // from swe mixin
-      expect(skills).not.toContain("updating-noridocs"); // from docs mixin
+      expect(skills).toContain("creating-skills");
+      expect(skills).not.toContain("test-driven-development"); // swe content
+      expect(skills).not.toContain("updating-noridocs"); // docs content
     });
 
     it("should create profiles directory and copy profile templates for paid installation", async () => {
@@ -292,6 +293,90 @@ describe("profilesLoader", () => {
       expect(files).toContain("senior-swe");
       expect(files).toContain("amol");
       expect(files).toContain("product-manager");
+    });
+
+    it("should install senior-swe profile with all skills inlined directly", async () => {
+      const config: Config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
+
+      await profilesLoader.run({ config });
+
+      const seniorSwePath = path.join(profilesDir, "senior-swe");
+
+      // Verify profile.json has NO mixins field
+      const profileJsonPath = path.join(seniorSwePath, "profile.json");
+      const profileJson = JSON.parse(
+        await fs.readFile(profileJsonPath, "utf-8"),
+      );
+      expect(profileJson.name).toBe("senior-swe");
+      expect(profileJson.mixins).toBeUndefined();
+
+      // Verify skills are present directly (not composed from mixins)
+      const skillsDir = path.join(seniorSwePath, "skills");
+      const skills = await fs.readdir(skillsDir);
+
+      // Base skills
+      expect(skills).toContain("using-skills");
+      expect(skills).toContain("creating-skills");
+
+      // Docs skills
+      expect(skills).toContain("updating-noridocs");
+
+      // SWE skills
+      expect(skills).toContain("test-driven-development");
+      expect(skills).toContain("systematic-debugging");
+      expect(skills).toContain("writing-plans");
+      expect(skills).toContain("using-git-worktrees");
+
+      // Verify subagents are present
+      const subagentsDir = path.join(seniorSwePath, "subagents");
+      const subagents = await fs.readdir(subagentsDir);
+      expect(subagents).toContain("nori-web-search-researcher.md");
+      expect(subagents).toContain("nori-codebase-locator.md");
+    });
+
+    it("should install onboarding-wizard-questionnaire with NO skills (wizard only)", async () => {
+      const config: Config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
+
+      await profilesLoader.run({ config });
+
+      const wizardPath = path.join(
+        profilesDir,
+        "onboarding-wizard-questionnaire",
+      );
+
+      // Verify profile.json has NO mixins field
+      const profileJsonPath = path.join(wizardPath, "profile.json");
+      const profileJson = JSON.parse(
+        await fs.readFile(profileJsonPath, "utf-8"),
+      );
+      expect(profileJson.name).toBe("onboarding-wizard-questionnaire");
+      expect(profileJson.mixins).toBeUndefined();
+
+      // Verify NO skills directory exists (wizard doesn't need skills)
+      const skillsDir = path.join(wizardPath, "skills");
+      const skillsExist = await fs
+        .access(skillsDir)
+        .then(() => true)
+        .catch(() => false);
+      expect(skillsExist).toBe(false);
+
+      // Verify NO subagents directory exists
+      const subagentsDir = path.join(wizardPath, "subagents");
+      const subagentsExist = await fs
+        .access(subagentsDir)
+        .then(() => true)
+        .catch(() => false);
+      expect(subagentsExist).toBe(false);
     });
 
     it("should skip existing profiles and preserve user modifications", async () => {
@@ -855,233 +940,15 @@ describe("profilesLoader", () => {
     });
   });
 
-  describe("injectConditionalMixins", () => {
-    it("should inject paid mixin for paid user", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          docs: {},
-        },
-      };
-
-      const config: Config = {
-        auth: {
-          username: "test@example.com",
-          password: "testpass",
-          organizationUrl: "https://example.com",
-        },
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      expect(result.mixins).toHaveProperty("paid");
-      expect(result.mixins).toHaveProperty("docs-paid");
+  describe("no mixin composition (inlined profiles)", () => {
+    it("should not have _testing.injectConditionalMixins export (removed)", () => {
+      // After removing mixin composition, these functions should not exist
+      expect(_testing.injectConditionalMixins).toBeUndefined();
     });
 
-    it("should inject docs-paid mixin for paid user with docs category", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          docs: {},
-        },
-      };
-
-      const config: Config = {
-        auth: {
-          username: "test@example.com",
-          password: "testpass",
-          organizationUrl: "https://example.com",
-        },
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      expect(result.mixins).toHaveProperty("paid");
-      expect(result.mixins).toHaveProperty("docs-paid");
-      expect(Object.keys(result.mixins).sort()).toEqual([
-        "base",
-        "docs",
-        "docs-paid",
-        "paid",
-      ]);
-    });
-
-    it("should inject swe-paid mixin for paid user with swe category", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          swe: {},
-        },
-      };
-
-      const config: Config = {
-        auth: {
-          username: "test@example.com",
-          password: "testpass",
-          organizationUrl: "https://example.com",
-        },
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      expect(result.mixins).toHaveProperty("paid");
-      expect(result.mixins).toHaveProperty("swe-paid");
-      expect(Object.keys(result.mixins).sort()).toEqual([
-        "base",
-        "paid",
-        "swe",
-        "swe-paid",
-      ]);
-    });
-
-    it("should inject multiple tier-specific mixins for paid user with multiple categories", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          docs: {},
-          swe: {},
-        },
-      };
-
-      const config: Config = {
-        auth: {
-          username: "test@example.com",
-          password: "testpass",
-          organizationUrl: "https://example.com",
-        },
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      expect(result.mixins).toHaveProperty("paid");
-      expect(result.mixins).toHaveProperty("docs-paid");
-      expect(result.mixins).toHaveProperty("swe-paid");
-      expect(Object.keys(result.mixins).sort()).toEqual([
-        "base",
-        "docs",
-        "docs-paid",
-        "paid",
-        "swe",
-        "swe-paid",
-      ]);
-    });
-
-    it("should not inject tier-specific mixins for free user", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          docs: {},
-          swe: {},
-        },
-      };
-
-      const config: Config = {
-        auth: null,
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      expect(result.mixins).not.toHaveProperty("paid");
-      expect(result.mixins).not.toHaveProperty("docs-paid");
-      expect(result.mixins).not.toHaveProperty("swe-paid");
-      expect(Object.keys(result.mixins).sort()).toEqual([
-        "base",
-        "docs",
-        "swe",
-      ]);
-    });
-
-    it("should not duplicate tier-specific mixin if already present", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          docs: {},
-          "docs-paid": {}, // Already present
-        },
-      };
-
-      const config: Config = {
-        auth: {
-          username: "test@example.com",
-          password: "testpass",
-          organizationUrl: "https://example.com",
-        },
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      expect(result.mixins).toHaveProperty("paid");
-      expect(result.mixins).toHaveProperty("docs-paid");
-      // Should only have one docs-paid entry
-      expect(
-        Object.keys(result.mixins).filter((k) => k === "docs-paid"),
-      ).toHaveLength(1);
-    });
-
-    it("should not inject tier mixins for base or paid categories", () => {
-      const metadata = {
-        name: "test-profile",
-        description: "Test profile",
-        mixins: {
-          base: {},
-          paid: {},
-        },
-      };
-
-      const config: Config = {
-        auth: {
-          username: "test@example.com",
-          password: "testpass",
-          organizationUrl: "https://example.com",
-        },
-        agents: {
-          "claude-code": { profile: { baseProfile: "test-profile" } },
-        },
-        installDir: tempDir,
-      };
-
-      const result = _testing.injectConditionalMixins({ metadata, config });
-
-      // Should not create base-paid or paid-paid
-      expect(result.mixins).not.toHaveProperty("base-paid");
-      expect(result.mixins).not.toHaveProperty("paid-paid");
-      expect(Object.keys(result.mixins).sort()).toEqual(["base", "paid"]);
+    it("should not have _testing.getMixinPaths export (removed)", () => {
+      // After removing mixin composition, these functions should not exist
+      expect(_testing.getMixinPaths).toBeUndefined();
     });
   });
 });

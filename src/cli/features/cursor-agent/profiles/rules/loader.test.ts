@@ -307,9 +307,10 @@ describe("cursor-agent rules loader", () => {
 });
 
 describe("using-subagents rule source files", () => {
+  // Rules are now inlined in profiles, use senior-swe as reference
   const usingSubagentsDir = path.resolve(
     __dirname,
-    "../config/_mixins/_base/rules/using-subagents",
+    "../config/senior-swe/rules/using-subagents",
   );
 
   test("subagent-prompt.txt exists", async () => {

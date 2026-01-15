@@ -54,19 +54,21 @@ This provides a working `require` function in ESM context, allowing bundled Comm
 
 1. TypeScript compiles `src/` to `build/` (with `@` aliases)
 2. `tsc-alias` converts `@` imports to relative paths
-3. **THIS SCRIPT** bundles each `paid-*/script.js` into standalone version
+3. **THIS SCRIPT** bundles each `paid-*/script.js` (found in profile directories) into standalone version
 4. Installation copies bundled scripts to `~/.claude/skills/`
 
 ## Output Structure
 
-- **Input**: `build/src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-recall/script.js`
-- **Output**: `build/src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-recall/script.js` (replaced with bundle)
+Skills are now inlined directly in profile directories (no mixin composition):
+
+- **Input**: `build/src/cli/features/claude-code/profiles/config/*/skills/paid-*/script.js`
+- **Output**: Same path (replaced with bundle)
 
 The bundled version **REPLACES** the tsc output, so the installer workflow remains unchanged.
 
 ## Maintenance Notes
 
-- **Add new paid skills**: They'll be auto-detected and bundled
+- **Add new paid skills**: They'll be auto-detected and bundled (any `paid-*/script.js` in any profile's skills/)
 - **Update dependencies**: Rebuild will include updated versions
 - **Debug bundling issues**: Run `npm run build` and check this script's output
 - **Bundle size**: Each script is approximately 50-100KB (includes all dependencies)
@@ -75,4 +77,4 @@ The bundled version **REPLACES** the tsc output, so the installer workflow remai
 
 - `package.json:build` - Build pipeline integration
 - `src/cli/features/claude-code/profiles/skills/loader.ts` - Installation process
-- `src/cli/features/claude-code/profiles/config/_mixins/_paid/skills/paid-recall/script.ts` - Example paid skill with bundling comments
+- Profile skill directories contain paid skills like `paid-recall/script.ts`, `paid-memorize/script.ts`

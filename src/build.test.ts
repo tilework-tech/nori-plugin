@@ -176,11 +176,11 @@ ${stderr || "(empty)"}`,
   describe("skill bundling", () => {
     it("should find and bundle all paid skill scripts", () => {
       // This test verifies that the bundle-skills.ts script correctly discovers
-      // all paid skill script.js files in tier-specific mixin directories.
+      // all paid skill script.js files in profile directories.
       //
-      // Expected: 5 total paid-* prefixed script files across tier-specific mixins
-      // - paid-recall, paid-memorize (in _paid)
-      // - paid-read-noridoc, paid-write-noridoc, paid-list-noridocs (in _docs-paid)
+      // Expected: At least 5 paid-* prefixed script files (may be duplicated across profiles)
+      // - paid-recall, paid-memorize
+      // - paid-read-noridoc, paid-write-noridoc, paid-list-noridocs
       // Note: nori-sync-docs is also bundled but doesn't have paid- prefix
 
       const pluginDir = process.cwd();
@@ -189,23 +189,24 @@ ${stderr || "(empty)"}`,
       // Verify build directory exists
       expect(fs.existsSync(buildDir)).toBe(true);
 
-      // Find all paid skill script.js files in tier-specific mixin directories
-      const mixinDirs = [
-        path.join(
-          buildDir,
-          "src/cli/features/claude-code/profiles/config/_mixins/_paid/skills",
-        ),
-        path.join(
-          buildDir,
-          "src/cli/features/claude-code/profiles/config/_mixins/_docs-paid/skills",
-        ),
-      ];
+      // Find all paid skill script.js files in profile directories
+      // Skills are now inlined directly in profiles (no more mixin composition)
+      const profilesDir = path.join(
+        buildDir,
+        "src/cli/features/claude-code/profiles/config",
+      );
 
-      let totalScripts = 0;
       const scriptPaths: Array<string> = [];
+      const uniqueSkillNames = new Set<string>();
 
-      for (const skillsDir of mixinDirs) {
-        if (fs.existsSync(skillsDir)) {
+      if (fs.existsSync(profilesDir)) {
+        const profiles = fs.readdirSync(profilesDir);
+        for (const profile of profiles) {
+          if (profile.startsWith("_")) continue; // Skip internal directories
+
+          const skillsDir = path.join(profilesDir, profile, "skills");
+          if (!fs.existsSync(skillsDir)) continue;
+
           const skills = fs.readdirSync(skillsDir);
           for (const skill of skills) {
             if (!skill.startsWith("paid-")) continue;
@@ -216,16 +217,16 @@ ${stderr || "(empty)"}`,
 
             const scriptPath = path.join(skillPath, "script.js");
             if (fs.existsSync(scriptPath)) {
-              totalScripts++;
               scriptPaths.push(scriptPath);
+              uniqueSkillNames.add(skill);
             }
           }
         }
       }
 
-      // Verify we found the expected number of scripts (2 in _paid + 3 in _docs-paid)
-      expect(totalScripts).toBeGreaterThan(0);
-      expect(totalScripts).toBe(5); // 5 total paid-* prefixed skills across all tier-specific mixins
+      // Verify we found scripts and at least 5 unique paid skill types
+      expect(scriptPaths.length).toBeGreaterThan(0);
+      expect(uniqueSkillNames.size).toBe(5); // 5 unique paid-* skill types
 
       // Verify each script file exists
       for (const scriptPath of scriptPaths) {
@@ -240,20 +241,21 @@ ${stderr || "(empty)"}`,
       const pluginDir = process.cwd();
       const buildDir = path.join(pluginDir, "build");
 
-      // Find all paid skill script.js files in the _mixins/_paid directory
-      const paidSkillsDir = path.join(
+      // Find paid skill script.js files in profile directories
+      // Use senior-swe as reference profile (it has all paid skills)
+      const skillsDir = path.join(
         buildDir,
-        "src/cli/features/claude-code/profiles/config/_mixins/_paid/skills",
+        "src/cli/features/claude-code/profiles/config/senior-swe/skills",
       );
 
       const scriptPaths: Array<string> = [];
 
-      if (fs.existsSync(paidSkillsDir)) {
-        const skills = fs.readdirSync(paidSkillsDir);
+      if (fs.existsSync(skillsDir)) {
+        const skills = fs.readdirSync(skillsDir);
         for (const skill of skills) {
           if (!skill.startsWith("paid-")) continue;
 
-          const skillPath = path.join(paidSkillsDir, skill);
+          const skillPath = path.join(skillsDir, skill);
           const stat = fs.statSync(skillPath);
           if (!stat.isDirectory()) continue;
 
@@ -300,20 +302,21 @@ ${stderr || "(empty)"}`,
       const pluginDir = process.cwd();
       const buildDir = path.join(pluginDir, "build");
 
-      // Find all paid skill script.js files in the _mixins/_paid directory
-      const paidSkillsDir = path.join(
+      // Find paid skill script.js files in profile directories
+      // Use senior-swe as reference profile (it has all paid skills)
+      const skillsDir = path.join(
         buildDir,
-        "src/cli/features/claude-code/profiles/config/_mixins/_paid/skills",
+        "src/cli/features/claude-code/profiles/config/senior-swe/skills",
       );
 
       const scriptPaths: Array<string> = [];
 
-      if (fs.existsSync(paidSkillsDir)) {
-        const skills = fs.readdirSync(paidSkillsDir);
+      if (fs.existsSync(skillsDir)) {
+        const skills = fs.readdirSync(skillsDir);
         for (const skill of skills) {
           if (!skill.startsWith("paid-")) continue;
 
-          const skillPath = path.join(paidSkillsDir, skill);
+          const skillPath = path.join(skillsDir, skill);
           const stat = fs.statSync(skillPath);
           if (!stat.isDirectory()) continue;
 

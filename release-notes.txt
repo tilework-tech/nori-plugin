@@ -5,6 +5,19 @@ New releases are prepended below this header.
 
 ---
 
+## v19.1.5 (2026-01-14)
+
+### Features
+- Senior swe improvements (2627079)
+
+### Documentation
+- Update release notes (d98f7e3)
+
+### Other
+- Update prepublish script (443c666)
+
+---
+
 ## v19.1.4 (2026-01-14)
 
 ### Fixes

@@ -18,7 +18,7 @@
 - *CRITICAL* Add each element of this checklist to your Todo list using TodoWrite. DO NOT BE LAZY.
 - Research how to best solve my question WITHOUT making code changes by doing the following:
   - Search for relevant skills using Glob/Grep in `{{skills_dir}}/`
-  - If you have access to the nori-knowledge-researcher subagent, use it at least once.
+  - Use subagents to do your deep research. If you have access to the nori-knowledge-researcher subagent, use that one.
 <system-reminder> You can run many research subagents in parallel. </system-reminder>
 - Read and follow `{{skills_dir}}/writing-plans/SKILL.md`
 - Present plan to me and ask for feedback.
@@ -46,7 +46,7 @@ Do not make changes to third party APIs.
 <system-reminder> Copilot mode should behave identically to full-send mode, just on your
 - Research how to best solve my question WITHOUT making code changes by doing the following:
   - Search for relevant skills using Glob/Grep in `{{skills_dir}}/`
-  - Use the nori-knowledge-researcher subagent at least once.
+  - Use subagents to do your deep research. If you have access to the nori-knowledge-researcher subagent, use that one.
 <system-reminder> You can run many research subagents in parallel. </system-reminder>
 - Read and follow `{{skills_dir}}/writing-plans/SKILL.md`
 - Present plan to me and ask for feedback.

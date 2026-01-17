@@ -114,4 +114,65 @@ Install root: {{install_dir}}
       expect(result).toBe("Skills at /home/user/.claude/skills");
     });
   });
+
+  describe("escaped variables (backtick-wrapped)", () => {
+    it("should not substitute variables wrapped in backticks", () => {
+      const content = "Use `{{skills_dir}}` in your skill content";
+      const result = substituteTemplatePaths({
+        content,
+        installDir: "/project/.claude",
+      });
+      expect(result).toBe("Use `{{skills_dir}}` in your skill content");
+    });
+
+    it("should substitute unescaped but preserve escaped in same content", () => {
+      const content =
+        "Skills at {{skills_dir}}, document `{{skills_dir}}` as variable";
+      const result = substituteTemplatePaths({
+        content,
+        installDir: "/project/.claude",
+      });
+      expect(result).toBe(
+        "Skills at /project/.claude/skills, document `{{skills_dir}}` as variable",
+      );
+    });
+
+    it("should handle multiple escaped variables", () => {
+      const content =
+        "Use `{{skills_dir}}` and `{{install_dir}}` in your content";
+      const result = substituteTemplatePaths({
+        content,
+        installDir: "/project/.claude",
+      });
+      expect(result).toBe(
+        "Use `{{skills_dir}}` and `{{install_dir}}` in your content",
+      );
+    });
+
+    it("should handle escaped variables with surrounding text", () => {
+      const content = `
+These variables are automatically substituted:
+- \`{{skills_dir}}\` → actual path to skills directory
+- \`{{install_dir}}\` → actual install directory
+
+Example: {{skills_dir}}/my-skill/SKILL.md
+`;
+      const result = substituteTemplatePaths({
+        content,
+        installDir: "/project/.claude",
+      });
+      expect(result).toContain("`{{skills_dir}}`");
+      expect(result).toContain("`{{install_dir}}`");
+      expect(result).toContain("/project/.claude/skills/my-skill/SKILL.md");
+    });
+
+    it("should preserve unknown escaped variables", () => {
+      const content = "Use `{{unknown_var}}` for something";
+      const result = substituteTemplatePaths({
+        content,
+        installDir: "/project/.claude",
+      });
+      expect(result).toBe("Use `{{unknown_var}}` for something");
+    });
+  });
 });

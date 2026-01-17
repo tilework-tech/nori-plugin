@@ -6,12 +6,13 @@ description: Use when you need to create a new custom skill for a profile - guid
 <required>
 *CRITICAL* Add the following steps to your Todo list using TodoWrite:
 
-1. Gather skill requirements from me
-2. Select target profile
-3. Create skill directory structure
-4. Write SKILL.md with proper frontmatter
-5. (Optional) Write and bundle scripts
-6. Instruct the user to run /nori-switch-profile to switch profiles.
+1. Read a few example SKILLs in `{{skills_dir}}` for examples of how to write a SKILL.
+2. Gather skill requirements from me
+3. Select target profile
+4. Create skill directory structure
+5. Write SKILL.md with proper frontmatter
+6. (Optional) Write and bundle scripts
+7. Instruct the user to run /nori-switch-profile to switch profiles.
 </required>
 
 # Overview
@@ -44,6 +45,10 @@ Use `mkdir foo/bar`
 ...
 ```
 
+When writing the skill, if you need to refer to me, always use first person. For example, "Ask me if I want to do X or Y"
+
+Use the following XML tags where necessary: `<system-reminder>`, `<good-example>`, `<bad-example>`.
+
 # Writing scripts
 
 Skills may be bundled with scripts. Scripts are simple code cli tools that do various things deterministically.
@@ -61,7 +66,7 @@ that instruction to the <required> block.
 
 These variables are automatically substituted when skills are installed:
 - `{{skills_dir}}` → actual path to skills directory (e.g., `/home/user/.claude/skills`)
-- `{{nori_install_dir}}` → actual install directory (e.g., `/home/user`)
+- `{{install_dir}}` → actual install directory (e.g., `/home/user`)
 
 Use these in your skill content to create portable paths. This is especially
 necessary for making sure scripts are discoverable.

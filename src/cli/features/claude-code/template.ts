@@ -33,9 +33,31 @@ export const substituteTemplatePaths = (args: {
   const parentDir = path.dirname(installDir);
   const profilesDir = getNoriProfilesDir({ installDir: parentDir });
 
-  return content
+  // Use a placeholder to protect escaped variables (wrapped in backticks)
+  // e.g., `{{skills_dir}}` should not be substituted
+  const ESCAPE_PLACEHOLDER = "\x00ESCAPED_VAR\x00";
+
+  // First, temporarily replace escaped variables (backtick-wrapped) with placeholders
+  // Match `{{variable_name}}` where the backticks are literal
+  const escapedVars: Array<string> = [];
+  const contentWithPlaceholders = content.replace(
+    /`(\{\{[^}]+\}\})`/g,
+    (_, variable) => {
+      escapedVars.push(variable);
+      return `${ESCAPE_PLACEHOLDER}${escapedVars.length - 1}${ESCAPE_PLACEHOLDER}`;
+    },
+  );
+
+  // Now perform the actual substitutions on non-escaped variables
+  const substituted = contentWithPlaceholders
     .replace(/\{\{skills_dir\}\}/g, path.join(installDir, "skills"))
     .replace(/\{\{profiles_dir\}\}/g, profilesDir)
     .replace(/\{\{commands_dir\}\}/g, path.join(installDir, "commands"))
     .replace(/\{\{install_dir\}\}/g, parentDir);
+
+  // Restore the escaped variables (keep them as literal text with backticks)
+  return substituted.replace(
+    new RegExp(`${ESCAPE_PLACEHOLDER}(\\d+)${ESCAPE_PLACEHOLDER}`, "g"),
+    (_, index) => `\`${escapedVars[parseInt(index)]}\``,
+  );
 };

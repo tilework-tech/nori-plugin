@@ -40,6 +40,16 @@ vi.mock("@/cli/features/agentRegistry.js", () => ({
   },
 }));
 
+const mockSuccess = vi.fn();
+const mockInfo = vi.fn();
+const mockNewline = vi.fn();
+
+vi.mock("@/cli/logger.js", () => ({
+  success: (args: { message: string }) => mockSuccess(args),
+  info: (args: { message: string }) => mockInfo(args),
+  newline: () => mockNewline(),
+}));
+
 import { REGISTRAR_URL } from "@/api/registrar.js";
 import { main as installMain } from "@/cli/commands/install/install.js";
 import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
@@ -186,5 +196,33 @@ describe("registry-install", () => {
 
     // Should return failure
     expect(result.success).toBe(false);
+  });
+
+  it("should display success message when install completes", async () => {
+    await registryInstallMain({
+      packageSpec: "senior-swe",
+      cwd: "/repo",
+    });
+
+    // Should display success message with profile name
+    expect(mockNewline).toHaveBeenCalled();
+    expect(mockSuccess).toHaveBeenCalledWith({
+      message: expect.stringContaining("senior-swe"),
+    });
+    expect(mockInfo).toHaveBeenCalledWith({
+      message: expect.stringContaining("profile"),
+    });
+  });
+
+  it("should not display success message when download fails", async () => {
+    vi.mocked(registryDownloadMain).mockResolvedValueOnce({ success: false });
+
+    await registryInstallMain({
+      packageSpec: "nonexistent-profile",
+      cwd: "/repo",
+    });
+
+    // Should NOT display success message
+    expect(mockSuccess).not.toHaveBeenCalled();
   });
 });

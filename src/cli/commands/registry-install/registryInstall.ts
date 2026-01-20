@@ -10,6 +10,7 @@ import { main as installMain } from "@/cli/commands/install/install.js";
 import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
 import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
+import { success, info, newline } from "@/cli/logger.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
 import type { Command } from "commander";
@@ -54,6 +55,18 @@ export type RegistryInstallResult = {
   success: boolean;
 };
 
+/**
+ * Display success message after installation completes
+ * @param args - Function arguments
+ * @param args.profileName - Name of the profile that was installed
+ */
+const displaySuccessMessage = (args: { profileName: string }): void => {
+  const { profileName } = args;
+  newline();
+  success({ message: `Successfully installed "${profileName}"` });
+  info({ message: "Nori is now configured to use this profile." });
+};
+
 export const registryInstallMain = async (
   args: RegistryInstallArgs,
 ): Promise<RegistryInstallResult> => {
@@ -91,6 +104,7 @@ export const registryInstallMain = async (
       silent: silent ?? null,
     });
     // Initial install already sets the profile, so we're done
+    displaySuccessMessage({ profileName });
     return { success: true };
   }
 
@@ -110,6 +124,7 @@ export const registryInstallMain = async (
     silent: true,
   });
 
+  displaySuccessMessage({ profileName });
   return { success: true };
 };
 

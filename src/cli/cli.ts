@@ -19,6 +19,7 @@ import { registerRegistryUploadCommand } from "@/cli/commands/registry-upload/re
 import { registerSkillDownloadCommand } from "@/cli/commands/skill-download/skillDownload.js";
 import { registerSkillSearchCommand } from "@/cli/commands/skill-search/skillSearch.js";
 import { registerSkillUploadCommand } from "@/cli/commands/skill-upload/skillUpload.js";
+import { trackInstallLifecycle } from "@/cli/installTracking.js";
 import { registerSwitchProfileCommand } from "@/cli/commands/switch-profile/profiles.js";
 import { registerUninstallCommand } from "@/cli/commands/uninstall/uninstall.js";
 import { getCurrentPackageVersion } from "@/cli/version.js";
@@ -26,6 +27,8 @@ import { normalizeInstallDir } from "@/utils/path.js";
 
 const program = new Command();
 const version = getCurrentPackageVersion() || "unknown";
+
+void trackInstallLifecycle({ currentVersion: version });
 
 program
   .name("nori-ai")

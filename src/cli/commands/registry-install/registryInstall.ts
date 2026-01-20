@@ -1,0 +1,137 @@
+/**
+ * CLI command for installing a profile from the public registry in one step
+ * Handles: nori-ai registry-install <package> [--version <semver>] [--user]
+ */
+
+import * as os from "os";
+
+import { REGISTRAR_URL } from "@/api/registrar.js";
+import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
+import { main as installMain } from "@/cli/commands/install/install.js";
+import { normalizeInstallDir } from "@/utils/path.js";
+
+import type { Command } from "commander";
+
+type RegistryInstallArgs = {
+  packageSpec: string;
+  cwd?: string | null;
+  installDir?: string | null;
+  useHomeDir?: boolean | null;
+  version?: string | null;
+  silent?: boolean | null;
+  agent?: string | null;
+};
+
+const parsePackageName = (args: { packageSpec: string }): string => {
+  const { packageSpec } = args;
+  const [packageName] = packageSpec.split("@");
+  return packageName || packageSpec;
+};
+
+const resolveInstallDir = (args: {
+  cwd?: string | null;
+  installDir?: string | null;
+  useHomeDir?: boolean | null;
+}): string => {
+  const { cwd, installDir, useHomeDir } = args;
+
+  if (installDir) {
+    return normalizeInstallDir({ installDir });
+  }
+
+  if (useHomeDir) {
+    return normalizeInstallDir({ installDir: os.homedir() });
+  }
+
+  return normalizeInstallDir({ installDir: cwd ?? process.cwd() });
+};
+
+const buildPackageSpec = (args: {
+  packageSpec: string;
+  version?: string | null;
+}): string => {
+  const { packageSpec, version } = args;
+  if (!version) {
+    return packageSpec;
+  }
+
+  if (packageSpec.includes("@")) {
+    return packageSpec;
+  }
+
+  return `${packageSpec}@${version}`;
+};
+
+export const registryInstallMain = async (
+  args: RegistryInstallArgs,
+): Promise<void> => {
+  const {
+    packageSpec,
+    cwd,
+    installDir,
+    useHomeDir,
+    version,
+    silent,
+    agent,
+  } = args;
+
+  const targetInstallDir = resolveInstallDir({
+    cwd,
+    installDir,
+    useHomeDir,
+  });
+  const resolvedPackageSpec = buildPackageSpec({ packageSpec, version });
+  const profileName = parsePackageName({ packageSpec: resolvedPackageSpec });
+
+  await registryDownloadMain({
+    packageSpec: resolvedPackageSpec,
+    installDir: targetInstallDir,
+    registryUrl: REGISTRAR_URL,
+    listVersions: null,
+  });
+
+  await installMain({
+    nonInteractive: true,
+    installDir: targetInstallDir,
+    profile: profileName,
+    agent: agent ?? "claude-code",
+    silent: silent ?? null,
+  });
+};
+
+/**
+ * Register the 'registry-install' command with commander
+ * @param args - Configuration arguments
+ * @param args.program - Commander program instance
+ */
+export const registerRegistryInstallCommand = (args: {
+  program: Command;
+}): void => {
+  const { program } = args;
+
+  program
+    .command("registry-install <package>")
+    .description(
+      "Download and install a profile from the public registry in one step",
+    )
+    .option("--version <semver>", "Install a specific version")
+    .option("--user", "Install to the user home directory")
+    .action(
+      async (
+        packageSpec: string,
+        options: { version?: string; user?: boolean },
+      ) => {
+        const globalOpts = program.opts();
+
+        await registryInstallMain({
+          packageSpec,
+          version: options.version ?? null,
+          useHomeDir: options.user ?? null,
+          installDir: globalOpts.installDir || null,
+          cwd: process.cwd(),
+          silent: globalOpts.silent || null,
+          agent: globalOpts.agent || null,
+        });
+      },
+    );
+};

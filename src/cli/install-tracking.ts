@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
+
 import semver from "semver";
 
 type InstallState = {
@@ -15,8 +16,7 @@ type InstallState = {
   install_source: string;
 };
 
-const DEFAULT_ANALYTICS_URL =
-  "https://noriskillsets.dev/api/analytics/track";
+const DEFAULT_ANALYTICS_URL = "https://noriskillsets.dev/api/analytics/track";
 const INSTALL_STATE_PATH = path.join(
   os.homedir(),
   ".nori",
@@ -97,12 +97,12 @@ const shouldOptOut = (state: InstallState): boolean => {
 const isCiEnv = (): boolean =>
   Boolean(
     process.env.CI ||
-      process.env.GITHUB_ACTIONS ||
-      process.env.GITLAB_CI ||
-      process.env.BUILDKITE ||
-      process.env.CIRCLECI ||
-      process.env.TRAVIS ||
-      process.env.BITBUCKET_BUILD_NUMBER,
+    process.env.GITHUB_ACTIONS ||
+    process.env.GITLAB_CI ||
+    process.env.BUILDKITE ||
+    process.env.CIRCLECI ||
+    process.env.TRAVIS ||
+    process.env.BITBUCKET_BUILD_NUMBER,
   );
 
 const isResurrected = (
@@ -133,8 +133,7 @@ const sendAnalyticsEvent = async (args: {
   version: string;
 }): Promise<void> => {
   const { event, clientId, sessionId, timestamp, version } = args;
-  const endpoint =
-    process.env.NORI_ANALYTICS_URL ?? DEFAULT_ANALYTICS_URL;
+  const endpoint = process.env.NORI_ANALYTICS_URL ?? DEFAULT_ANALYTICS_URL;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 500);
@@ -176,8 +175,7 @@ export const trackInstallLifecycle = async (args: {
 
   const existingState = await readInstallState();
   const clientId = existingState?.client_id ?? deriveClientId();
-  const installSource =
-    existingState?.install_source ?? detectInstallSource();
+  const installSource = existingState?.install_source ?? detectInstallSource();
 
   const state: InstallState = {
     schema_version: 1,
@@ -190,7 +188,7 @@ export const trackInstallLifecycle = async (args: {
     install_source: installSource,
   };
 
-  const events: string[] = [];
+  const events: Array<string> = [];
   if (!existingState) {
     state.first_installed_at = timestamp;
     state.last_updated_at = timestamp;

@@ -17,7 +17,7 @@ vi.mock("@/api/registrar.js", () => ({
 }));
 
 vi.mock("@/cli/commands/registry-download/registryDownload.js", () => ({
-  registryDownloadMain: vi.fn(),
+  registryDownloadMain: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("@/cli/commands/install/install.js", () => ({
@@ -162,5 +162,29 @@ describe("registry-install", () => {
       agent: "claude-code",
       silent: null,
     });
+  });
+
+  it("should not proceed with install if download fails", async () => {
+    vi.mocked(registryDownloadMain).mockResolvedValueOnce({ success: false });
+
+    const result = await registryInstallMain({
+      packageSpec: "nonexistent-profile",
+      cwd: "/repo",
+    });
+
+    // Download was attempted
+    expect(registryDownloadMain).toHaveBeenCalledWith({
+      packageSpec: "nonexistent-profile",
+      installDir: "/repo",
+      registryUrl: REGISTRAR_URL,
+      listVersions: null,
+    });
+
+    // Install should NOT have been called
+    expect(installMain).not.toHaveBeenCalled();
+    expect(mockSwitchProfile).not.toHaveBeenCalled();
+
+    // Should return failure
+    expect(result.success).toBe(false);
   });
 });

@@ -47,9 +47,16 @@ const resolveInstallDir = (args: {
   return normalizeInstallDir({ installDir: cwd ?? process.cwd() });
 };
 
+/**
+ * Result of registry install operation
+ */
+export type RegistryInstallResult = {
+  success: boolean;
+};
+
 export const registryInstallMain = async (
   args: RegistryInstallArgs,
-): Promise<void> => {
+): Promise<RegistryInstallResult> => {
   const { packageSpec, cwd, installDir, useHomeDir, silent, agent } = args;
 
   const targetInstallDir = resolveInstallDir({
@@ -62,12 +69,17 @@ export const registryInstallMain = async (
   const agentName = agent ?? "claude-code";
 
   // Step 1: Download the profile from registry first (so it's available for install)
-  await registryDownloadMain({
+  const downloadResult = await registryDownloadMain({
     packageSpec,
     installDir: targetInstallDir,
     registryUrl: REGISTRAR_URL,
     listVersions: null,
   });
+
+  // If download failed, don't proceed with installation
+  if (!downloadResult.success) {
+    return { success: false };
+  }
 
   // Step 2: Run initial install if no existing installation
   if (!hasExistingInstallation({ installDir: targetInstallDir })) {
@@ -79,7 +91,7 @@ export const registryInstallMain = async (
       silent: silent ?? null,
     });
     // Initial install already sets the profile, so we're done
-    return;
+    return { success: true };
   }
 
   // Step 3 (existing installation): Switch to the downloaded profile
@@ -97,6 +109,8 @@ export const registryInstallMain = async (
     agent: agentName,
     silent: true,
   });
+
+  return { success: true };
 };
 
 /**
@@ -118,7 +132,7 @@ export const registerRegistryInstallCommand = (args: {
     .action(async (packageSpec: string, options: { user?: boolean }) => {
       const globalOpts = program.opts();
 
-      await registryInstallMain({
+      const result = await registryInstallMain({
         packageSpec,
         useHomeDir: options.user ?? null,
         installDir: globalOpts.installDir || null,
@@ -126,5 +140,9 @@ export const registerRegistryInstallCommand = (args: {
         silent: globalOpts.silent || null,
         agent: globalOpts.agent || null,
       });
+
+      if (!result.success) {
+        process.exit(1);
+      }
     });
 };

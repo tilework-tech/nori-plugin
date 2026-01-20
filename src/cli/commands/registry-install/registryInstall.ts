@@ -7,7 +7,9 @@ import * as os from "os";
 
 import { REGISTRAR_URL } from "@/api/registrar.js";
 import { main as installMain } from "@/cli/commands/install/install.js";
+import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
 import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
 import type { Command } from "commander";
@@ -73,9 +75,23 @@ export const registryInstallMain = async (
     installDir,
     useHomeDir,
   });
+
   const resolvedPackageSpec = buildPackageSpec({ packageSpec, version });
   const profileName = parsePackageName({ packageSpec: resolvedPackageSpec });
+  const agentName = agent ?? "claude-code";
 
+  // Step 1: Run initial install if no existing installation
+  if (!hasExistingInstallation({ installDir: targetInstallDir })) {
+    await installMain({
+      nonInteractive: true,
+      installDir: targetInstallDir,
+      profile: profileName,
+      agent: agentName,
+      silent: silent ?? null,
+    });
+  }
+
+  // Step 2: Download the profile from registry
   await registryDownloadMain({
     packageSpec: resolvedPackageSpec,
     installDir: targetInstallDir,
@@ -83,12 +99,20 @@ export const registryInstallMain = async (
     listVersions: null,
   });
 
+  // Step 3: Switch to the downloaded profile
+  const agentImpl = AgentRegistry.getInstance().get({ name: agentName });
+  await agentImpl.switchProfile({
+    installDir: targetInstallDir,
+    profileName,
+  });
+
+  // Step 4: Re-run install in silent mode to regenerate files with new profile
   await installMain({
     nonInteractive: true,
+    skipUninstall: true,
     installDir: targetInstallDir,
-    profile: profileName,
-    agent: agent ?? "claude-code",
-    silent: silent ?? null,
+    agent: agentName,
+    silent: true,
   });
 };
 
@@ -105,7 +129,7 @@ export const registerRegistryInstallCommand = (args: {
   program
     .command("registry-install <package>")
     .description(
-      "Download and install a profile from the public registry in one step",
+      "Download, install, and activate a profile from the public registry in one step",
     )
     .option("--version <semver>", "Install a specific version")
     .option("--user", "Install to the user home directory")

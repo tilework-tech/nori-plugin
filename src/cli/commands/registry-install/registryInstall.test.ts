@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("os", async () => {
-  const actual = await vi.importActual<typeof import("os")>("os");
+  const actual: any = await vi.importActual("os");
   return {
     ...actual,
     homedir: vi.fn(() => "/mock-home"),
@@ -25,8 +25,8 @@ vi.mock("@/cli/commands/install/install.js", () => ({
 }));
 
 import { REGISTRAR_URL } from "@/api/registrar.js";
-import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
 import { main as installMain } from "@/cli/commands/install/install.js";
+import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
 
 import { registryInstallMain } from "./registryInstall.js";
 

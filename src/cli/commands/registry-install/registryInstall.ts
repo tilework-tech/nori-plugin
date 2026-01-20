@@ -6,8 +6,8 @@
 import * as os from "os";
 
 import { REGISTRAR_URL } from "@/api/registrar.js";
-import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
 import { main as installMain } from "@/cli/commands/install/install.js";
+import { registryDownloadMain } from "@/cli/commands/registry-download/registryDownload.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
 import type { Command } from "commander";
@@ -65,15 +65,8 @@ const buildPackageSpec = (args: {
 export const registryInstallMain = async (
   args: RegistryInstallArgs,
 ): Promise<void> => {
-  const {
-    packageSpec,
-    cwd,
-    installDir,
-    useHomeDir,
-    version,
-    silent,
-    agent,
-  } = args;
+  const { packageSpec, cwd, installDir, useHomeDir, version, silent, agent } =
+    args;
 
   const targetInstallDir = resolveInstallDir({
     cwd,

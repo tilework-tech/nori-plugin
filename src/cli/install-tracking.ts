@@ -200,9 +200,9 @@ export const isOptedOut = (args: { state: InstallState | null }): boolean => {
 export const determineEvents = (args: {
   currentVersion: string;
   state: InstallState | null;
-}): TrackingEvent[] => {
+}): Array<TrackingEvent> => {
   const { currentVersion, state } = args;
-  const events: TrackingEvent[] = [];
+  const events: Array<TrackingEvent> = [];
 
   // If no state file exists, this is a new installation
   if (state == null) {
@@ -249,7 +249,7 @@ export const determineEvents = (args: {
 export const updateState = (args: {
   currentVersion: string;
   state: InstallState | null;
-  events: TrackingEvent[];
+  events: Array<TrackingEvent>;
 }): InstallState => {
   const { currentVersion, state, events } = args;
   const now = new Date().toISOString();

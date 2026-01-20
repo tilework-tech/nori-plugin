@@ -1,12 +1,11 @@
+import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import * as os from "os";
 import * as path from "path";
-import { createHash, randomUUID } from "crypto";
 
 import semver from "semver";
 
-const DEFAULT_ANALYTICS_URL =
-  "https://noriskillsets.dev/api/analytics/track";
+const DEFAULT_ANALYTICS_URL = "https://noriskillsets.dev/api/analytics/track";
 const INSTALL_STATE_SCHEMA_VERSION = 1;
 const INSTALL_STATE_FILE = ".nori-install.json";
 const RESURRECTION_THRESHOLD_DAYS = 30;
@@ -23,12 +22,7 @@ type InstallState = {
 };
 
 const getInstallStatePath = (): string => {
-  return path.join(
-    os.homedir(),
-    ".nori",
-    "profiles",
-    INSTALL_STATE_FILE,
-  );
+  return path.join(os.homedir(), ".nori", "profiles", INSTALL_STATE_FILE);
 };
 
 const isOptedOut = (state: InstallState | null): boolean => {
@@ -109,12 +103,12 @@ const isCiEnvironment = (): boolean => {
   const env = process.env;
   return Boolean(
     env.CI ||
-      env.GITHUB_ACTIONS ||
-      env.GITLAB_CI ||
-      env.BUILDKITE ||
-      env.CIRCLECI ||
-      env.TRAVIS ||
-      env.BITBUCKET_BUILD_NUMBER,
+    env.GITHUB_ACTIONS ||
+    env.GITLAB_CI ||
+    env.BUILDKITE ||
+    env.CIRCLECI ||
+    env.TRAVIS ||
+    env.BITBUCKET_BUILD_NUMBER,
   );
 };
 
@@ -131,8 +125,7 @@ const fireAndForgetAnalyticsEvent = (payload: {
     is_ci: boolean;
   };
 }): void => {
-  const analyticsUrl =
-    process.env.NORI_ANALYTICS_URL ?? DEFAULT_ANALYTICS_URL;
+  const analyticsUrl = process.env.NORI_ANALYTICS_URL ?? DEFAULT_ANALYTICS_URL;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 500);
 
@@ -162,8 +155,7 @@ const shouldTriggerResurrection = (state: InstallState): boolean => {
     return false;
   }
 
-  const thresholdMs =
-    RESURRECTION_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+  const thresholdMs = RESURRECTION_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
   return Date.now() - lastLaunch > thresholdMs;
 };
 

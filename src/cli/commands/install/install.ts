@@ -486,13 +486,15 @@ export const generatePromptConfig = async (args: {
  * @param args.skipUninstall - Whether to skip uninstall step
  * @param args.installDir - Installation directory (optional)
  * @param args.agent - AI agent to use (defaults to claude-code)
+ * @param args.silent - Whether to suppress all output
  */
 export const interactive = async (args?: {
   skipUninstall?: boolean | null;
   installDir?: string | null;
   agent?: string | null;
+  silent?: boolean | null;
 }): Promise<void> => {
-  const { skipUninstall, installDir, agent } = args || {};
+  const { skipUninstall, installDir, agent, silent } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
   const agentImpl = AgentRegistry.getInstance().get({
     name: agent ?? "claude-code",
@@ -577,10 +579,13 @@ export const interactive = async (args?: {
 
     try {
       let uninstallCmd = `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}"`;
+      if (silent) {
+        uninstallCmd += " --silent";
+      }
       if (supportsAgentFlag({ version: previousVersion })) {
         uninstallCmd += ` --agent="${agentImpl.name}"`;
       }
-      execSync(uninstallCmd, { stdio: "inherit" });
+      execSync(uninstallCmd, { stdio: silent ? "ignore" : "inherit" });
     } catch (err: any) {
       info({
         message: `Note: Uninstall at v${previousVersion} failed (may not exist). Continuing with installation...`,
@@ -693,14 +698,16 @@ export const interactive = async (args?: {
  * @param args.installDir - Installation directory (optional)
  * @param args.agent - AI agent to use (defaults to claude-code)
  * @param args.profile - Profile to use (required if no existing config)
+ * @param args.silent - Whether to suppress all output
  */
 export const noninteractive = async (args?: {
   skipUninstall?: boolean | null;
   installDir?: string | null;
   agent?: string | null;
   profile?: string | null;
+  silent?: boolean | null;
 }): Promise<void> => {
-  const { skipUninstall, installDir, agent, profile } = args || {};
+  const { skipUninstall, installDir, agent, profile, silent } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
   const agentImpl = AgentRegistry.getInstance().get({
     name: agent ?? "claude-code",
@@ -779,10 +786,13 @@ export const noninteractive = async (args?: {
 
     try {
       let uninstallCmd = `nori-ai uninstall --non-interactive --install-dir="${normalizedInstallDir}"`;
+      if (silent) {
+        uninstallCmd += " --silent";
+      }
       if (supportsAgentFlag({ version: previousVersion })) {
         uninstallCmd += ` --agent="${agentImpl.name}"`;
       }
-      execSync(uninstallCmd, { stdio: "inherit" });
+      execSync(uninstallCmd, { stdio: silent ? "ignore" : "inherit" });
     } catch (err: any) {
       info({
         message: `Note: Uninstall at v${previousVersion} failed (may not exist). Continuing with installation...`,
@@ -939,9 +949,15 @@ export const main = async (args?: {
   try {
     // Silent mode implies non-interactive
     if (nonInteractive || silent) {
-      await noninteractive({ skipUninstall, installDir, agent, profile });
+      await noninteractive({
+        skipUninstall,
+        installDir,
+        agent,
+        profile,
+        silent,
+      });
     } else {
-      await interactive({ skipUninstall, installDir, agent });
+      await interactive({ skipUninstall, installDir, agent, silent });
     }
   } catch (err: any) {
     error({ message: err.message });

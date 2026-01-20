@@ -69,7 +69,8 @@ Format the new release notes section as:
 Use the version from package.json for the version number.
 Use today's date for the release date.
 
-Note that the description should actually explain what changed. If the commit title is too vague, you must go deeper and look at the full commit text or the code changes themselves.
+<system-reminder> The description should actually explain what changed. If the commit title is too vague, you must go deeper and look at the full commit text or the code changes themselves. </system-reminder>
+<system-reminder> You do NOT have to include every single commit in the release notes. Focus on the big changes that impact user experience, do not include minor commits for things like docs. </system-reminder>
 
 6. Update release-notes.txt with the new section.
 

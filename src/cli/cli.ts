@@ -6,8 +6,11 @@
  * Routes commands to the appropriate installer/uninstaller using commander.js.
  */
 
+import { randomUUID } from "crypto";
+
 import { Command } from "commander";
 
+import { analyticsApi } from "@/api/analytics.js";
 import { registerCheckCommand } from "@/cli/commands/check/check.js";
 import { registerInstallCommand } from "@/cli/commands/install/install.js";
 import { registerInstallLocationCommand } from "@/cli/commands/install-location/installLocation.js";
@@ -21,11 +24,27 @@ import { registerSkillSearchCommand } from "@/cli/commands/skill-search/skillSea
 import { registerSkillUploadCommand } from "@/cli/commands/skill-upload/skillUpload.js";
 import { registerSwitchProfileCommand } from "@/cli/commands/switch-profile/profiles.js";
 import { registerUninstallCommand } from "@/cli/commands/uninstall/uninstall.js";
+import { trackInstallAndSession } from "@/cli/install-tracking.js";
 import { getCurrentPackageVersion } from "@/cli/version.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 
 const program = new Command();
 const version = getCurrentPackageVersion() || "unknown";
+
+// Fire-and-forget install/session tracking
+// Generate ephemeral session ID for this process run
+const sessionId = randomUUID();
+
+// Track install and session events (non-blocking)
+trackInstallAndSession({
+  currentVersion: version,
+  sessionId,
+  onEvent: async (eventData) => {
+    await analyticsApi.trackInstallEvent(eventData);
+  },
+}).catch(() => {
+  // Silent failure - analytics should never block CLI
+});
 
 program
   .name("nori-ai")

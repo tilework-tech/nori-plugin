@@ -127,7 +127,8 @@ const fireAndForgetAnalyticsEvent = (payload: {
 }): void => {
   const analyticsUrl = process.env.NORI_ANALYTICS_URL ?? DEFAULT_ANALYTICS_URL;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 500);
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  timeout.unref?.();
 
   void fetch(analyticsUrl, {
     method: "POST",
@@ -190,9 +191,8 @@ export const trackInstallLifecycle = async (args: {
         state.client_id = getDeterministicClientId();
       }
 
-      if (!state.install_source) {
-        state.install_source = getInstallSource();
-      }
+      // Always update install_source to current value (user may have switched package managers)
+      state.install_source = getInstallSource();
 
       if (
         semver.valid(currentVersion) != null &&

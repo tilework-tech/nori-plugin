@@ -12,18 +12,24 @@ import zlib from "zlib";
 import * as semver from "semver";
 import * as tar from "tar";
 
-import { registrarApi, REGISTRAR_URL } from "@/api/registrar.js";
+import {
+  registrarApi,
+  REGISTRAR_URL,
+  type Packument,
+} from "@/api/registrar.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import {
   checkRegistryAgentSupport,
   showCursorAgentNotSupportedError,
 } from "@/cli/commands/registryAgentCheck.js";
 import { getRegistryAuth } from "@/cli/config.js";
-import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
+import {
+  getNoriProfilesDir,
+  getNoriSkillsDir,
+} from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline, raw } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
-import type { Packument } from "@/api/registrar.js";
 import type { Config } from "@/cli/config.js";
 import type { Command } from "commander";
 
@@ -36,23 +42,234 @@ type VersionInfo = {
 };
 
 /**
- * Read the .nori-version file from a profile directory
+ * nori.json manifest format for profiles
+ */
+type NoriJson = {
+  name: string;
+  version: string;
+  dependencies?: {
+    skills?: Record<string, string> | null;
+  } | null;
+};
+
+/**
+ * Read the .nori-version file from a directory
  * @param args - The function arguments
- * @param args.profileDir - The profile directory path
+ * @param args.dir - The directory path containing the .nori-version file
  *
  * @returns The version info or null if not found
  */
 const readVersionInfo = async (args: {
-  profileDir: string;
+  dir: string;
 }): Promise<VersionInfo | null> => {
-  const { profileDir } = args;
-  const versionFilePath = path.join(profileDir, ".nori-version");
+  const { dir } = args;
+  const versionFilePath = path.join(dir, ".nori-version");
 
   try {
     const content = await fs.readFile(versionFilePath, "utf-8");
     return JSON.parse(content) as VersionInfo;
   } catch {
     return null;
+  }
+};
+
+/**
+ * Read the nori.json file from a profile directory
+ * @param args - The function arguments
+ * @param args.profileDir - The profile directory path
+ *
+ * @returns The nori.json content or null if not found
+ */
+const readNoriJson = async (args: {
+  profileDir: string;
+}): Promise<NoriJson | null> => {
+  const { profileDir } = args;
+  const noriJsonPath = path.join(profileDir, "nori.json");
+
+  try {
+    const content = await fs.readFile(noriJsonPath, "utf-8");
+    return JSON.parse(content) as NoriJson;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Resolve the best version from a packument that satisfies a version range
+ * @param args - The resolution parameters
+ * @param args.versionRange - The semver version range (e.g., "^1.0.0")
+ * @param args.packument - The packument containing available versions
+ *
+ * @returns The resolved version or null if no version satisfies the range
+ */
+const resolveVersionFromRange = (args: {
+  versionRange: string;
+  packument: Packument;
+}): string | null => {
+  const { versionRange, packument } = args;
+  const availableVersions = Object.keys(packument.versions);
+  return semver.maxSatisfying(availableVersions, versionRange);
+};
+
+/**
+ * Download and install a single skill dependency
+ * @param args - The download parameters
+ * @param args.skillName - The name of the skill to download
+ * @param args.versionRange - The semver version range to satisfy (e.g., "^1.0.0")
+ * @param args.skillsDir - The directory where skills are installed
+ * @param args.registryUrl - The registry URL to download from
+ * @param args.authToken - Optional authentication token for private registries
+ *
+ * @returns True if skill was downloaded/updated, false if skipped or failed
+ */
+const downloadSkillDependency = async (args: {
+  skillName: string;
+  versionRange: string;
+  skillsDir: string;
+  registryUrl: string;
+  authToken?: string | null;
+}): Promise<boolean> => {
+  const { skillName, versionRange, skillsDir, registryUrl, authToken } = args;
+  const skillDir = path.join(skillsDir, skillName);
+
+  try {
+    // Fetch skill packument to get available versions
+    const packument = await registrarApi.getSkillPackument({
+      skillName,
+      registryUrl,
+      authToken: authToken ?? undefined,
+    });
+
+    // Resolve the version that satisfies the range
+    const resolvedVersion = resolveVersionFromRange({
+      versionRange,
+      packument,
+    });
+
+    if (resolvedVersion == null) {
+      info({
+        message: `Warning: No version of skill "${skillName}" satisfies ${versionRange}`,
+      });
+      return false;
+    }
+
+    // Check if skill already exists with compatible version
+    let skillExists = false;
+    try {
+      await fs.access(skillDir);
+      skillExists = true;
+    } catch {
+      // Skill doesn't exist
+    }
+
+    if (skillExists) {
+      const existingVersionInfo = await readVersionInfo({ dir: skillDir });
+      if (existingVersionInfo != null) {
+        // Check if existing version satisfies the range
+        if (semver.satisfies(existingVersionInfo.version, versionRange)) {
+          return false; // Already installed with compatible version
+        }
+      }
+    }
+
+    // Download the skill tarball
+    const tarballData = await registrarApi.downloadSkillTarball({
+      skillName,
+      version: resolvedVersion,
+      registryUrl,
+      authToken: authToken ?? undefined,
+    });
+
+    // Extract to skill directory
+    if (skillExists) {
+      // Update existing skill - extract to temp dir first
+      const tempDir = path.join(skillsDir, `.${skillName}-download-temp`);
+      const backupDir = path.join(skillsDir, `.${skillName}-backup`);
+      await fs.mkdir(tempDir, { recursive: true });
+
+      try {
+        await extractTarball({ tarballData, targetDir: tempDir });
+
+        // Atomic swap
+        await fs.rename(skillDir, backupDir);
+        await fs.rename(tempDir, skillDir);
+        await fs.rm(backupDir, { recursive: true, force: true });
+      } catch (err) {
+        // Restore from backup if swap failed
+        try {
+          await fs.access(backupDir);
+          await fs.rm(skillDir, { recursive: true, force: true }).catch(() => {
+            /* ignore */
+          });
+          await fs.rename(backupDir, skillDir);
+        } catch {
+          /* ignore */
+        }
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {
+          /* ignore */
+        });
+        throw err;
+      }
+    } else {
+      // New install
+      await fs.mkdir(skillDir, { recursive: true });
+      await extractTarball({ tarballData, targetDir: skillDir });
+    }
+
+    // Write .nori-version file
+    await fs.writeFile(
+      path.join(skillDir, ".nori-version"),
+      JSON.stringify(
+        {
+          version: resolvedVersion,
+          registryUrl,
+        },
+        null,
+        2,
+      ),
+    );
+
+    return true;
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    info({
+      message: `Warning: Failed to download skill "${skillName}": ${errorMessage}`,
+    });
+    return false;
+  }
+};
+
+/**
+ * Download all skill dependencies from a nori.json
+ * @param args - The download parameters
+ * @param args.noriJson - The parsed nori.json manifest containing dependencies
+ * @param args.skillsDir - The directory where skills are installed
+ * @param args.registryUrl - The registry URL to download from
+ * @param args.authToken - Optional authentication token for private registries
+ */
+const downloadSkillDependencies = async (args: {
+  noriJson: NoriJson;
+  skillsDir: string;
+  registryUrl: string;
+  authToken?: string | null;
+}): Promise<void> => {
+  const { noriJson, skillsDir, registryUrl, authToken } = args;
+
+  const skillDeps = noriJson.dependencies?.skills;
+  if (skillDeps == null || Object.keys(skillDeps).length === 0) {
+    return;
+  }
+
+  info({ message: "Installing skill dependencies..." });
+
+  for (const [skillName, versionRange] of Object.entries(skillDeps)) {
+    await downloadSkillDependency({
+      skillName,
+      versionRange,
+      skillsDir,
+      registryUrl,
+      authToken,
+    });
   }
 };
 
@@ -417,7 +634,7 @@ export const registryDownloadMain = async (args: {
   try {
     await fs.access(targetDir);
     profileExists = true;
-    existingVersionInfo = await readVersionInfo({ profileDir: targetDir });
+    existingVersionInfo = await readVersionInfo({ dir: targetDir });
   } catch {
     // Directory doesn't exist - continue
   }
@@ -600,6 +817,18 @@ export const registryDownloadMain = async (args: {
         2,
       ),
     );
+
+    // Check for nori.json and download skill dependencies
+    const noriJson = await readNoriJson({ profileDir: targetDir });
+    if (noriJson != null) {
+      const skillsDir = getNoriSkillsDir({ installDir: targetInstallDir });
+      await downloadSkillDependencies({
+        noriJson,
+        skillsDir,
+        registryUrl: selectedRegistry.registryUrl,
+        authToken: selectedRegistry.authToken,
+      });
+    }
 
     const versionStr = version ? `@${version}` : " (latest)";
     newline();

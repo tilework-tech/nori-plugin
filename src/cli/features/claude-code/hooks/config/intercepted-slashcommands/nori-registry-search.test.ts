@@ -1,6 +1,6 @@
 /**
  * Tests for nori-registry-search intercepted slash command
- * Now searches org registry (from config.auth) instead of public registry
+ * Searches both profiles and skills in org registry (from config.auth)
  */
 
 import * as fs from "fs/promises";
@@ -14,6 +14,7 @@ vi.mock("@/api/registrar.js", () => ({
   registrarApi: {
     searchPackages: vi.fn(),
     searchPackagesOnRegistry: vi.fn(),
+    searchSkills: vi.fn(),
   },
 }));
 
@@ -117,8 +118,8 @@ describe("nori-registry-search", () => {
     });
   });
 
-  describe("org registry search", () => {
-    it("should search org registry derived from config.auth", async () => {
+  describe("unified search - profiles and skills", () => {
+    it("should search both profiles and skills APIs", async () => {
       await fs.writeFile(
         configPath,
         JSON.stringify({
@@ -141,16 +142,35 @@ describe("nori-registry-search", () => {
           updatedAt: "2024-01-01",
         },
       ];
+      const mockSkills = [
+        {
+          id: "2",
+          name: "test-skill",
+          description: "A test skill",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
       vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue(
         mockPackages,
       );
+      vi.mocked(registrarApi.searchSkills).mockResolvedValue(mockSkills);
       vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
 
       const result = await noriRegistrySearch.run({
         input: createInput({ prompt: "/nori-registry-search test" }),
       });
 
+      // Verify both APIs were called
       expect(registrarApi.searchPackagesOnRegistry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: "test",
+          registryUrl: "https://myorg.nori-registry.ai",
+          authToken: "mock-auth-token",
+        }),
+      );
+      expect(registrarApi.searchSkills).toHaveBeenCalledWith(
         expect.objectContaining({
           query: "test",
           registryUrl: "https://myorg.nori-registry.ai",
@@ -160,12 +180,138 @@ describe("nori-registry-search", () => {
 
       expect(result).not.toBeNull();
       expect(result!.decision).toBe("block");
-      const plainReason = stripAnsi(result!.reason!);
-      expect(plainReason).toContain("https://myorg.nori-registry.ai");
-      expect(plainReason).toContain("-> test-profile");
     });
 
-    it("should display no results message when empty", async () => {
+    it("should display results with Profiles and Skills section headers", async () => {
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
+          auth: {
+            username: "user@example.com",
+            organizationUrl: "https://myorg.tilework.tech",
+            refreshToken: "mock-token",
+          },
+        }),
+      );
+
+      const mockPackages = [
+        {
+          id: "1",
+          name: "my-profile",
+          description: "A profile",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      const mockSkills = [
+        {
+          id: "2",
+          name: "my-skill",
+          description: "A skill",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue(
+        mockPackages,
+      );
+      vi.mocked(registrarApi.searchSkills).mockResolvedValue(mockSkills);
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      const result = await noriRegistrySearch.run({
+        input: createInput({ prompt: "/nori-registry-search my" }),
+      });
+
+      expect(result).not.toBeNull();
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Profiles:");
+      expect(plainReason).toContain("my-profile");
+      expect(plainReason).toContain("Skills:");
+      expect(plainReason).toContain("my-skill");
+    });
+
+    it("should show only Profiles section when no skills found", async () => {
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
+          auth: {
+            username: "user@example.com",
+            organizationUrl: "https://myorg.tilework.tech",
+            refreshToken: "mock-token",
+          },
+        }),
+      );
+
+      const mockPackages = [
+        {
+          id: "1",
+          name: "only-profile",
+          description: "A profile",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue(
+        mockPackages,
+      );
+      vi.mocked(registrarApi.searchSkills).mockResolvedValue([]);
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      const result = await noriRegistrySearch.run({
+        input: createInput({ prompt: "/nori-registry-search only" }),
+      });
+
+      expect(result).not.toBeNull();
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Profiles:");
+      expect(plainReason).toContain("only-profile");
+      expect(plainReason).not.toContain("Skills:");
+    });
+
+    it("should show only Skills section when no profiles found", async () => {
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
+          auth: {
+            username: "user@example.com",
+            organizationUrl: "https://myorg.tilework.tech",
+            refreshToken: "mock-token",
+          },
+        }),
+      );
+
+      const mockSkills = [
+        {
+          id: "1",
+          name: "only-skill",
+          description: "A skill",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue([]);
+      vi.mocked(registrarApi.searchSkills).mockResolvedValue(mockSkills);
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      const result = await noriRegistrySearch.run({
+        input: createInput({ prompt: "/nori-registry-search only" }),
+      });
+
+      expect(result).not.toBeNull();
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).not.toContain("Profiles:");
+      expect(plainReason).toContain("Skills:");
+      expect(plainReason).toContain("only-skill");
+    });
+
+    it("should display no results message when both APIs return empty", async () => {
       await fs.writeFile(
         configPath,
         JSON.stringify({
@@ -179,6 +325,7 @@ describe("nori-registry-search", () => {
       );
 
       vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue([]);
+      vi.mocked(registrarApi.searchSkills).mockResolvedValue([]);
       vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
 
       const result = await noriRegistrySearch.run({
@@ -187,10 +334,11 @@ describe("nori-registry-search", () => {
 
       expect(result).not.toBeNull();
       const plainReason = stripAnsi(result!.reason!);
-      expect(plainReason.toLowerCase()).toMatch(/no|failed/);
+      expect(plainReason.toLowerCase()).toContain("no");
+      expect(plainReason).toContain("nonexistent");
     });
 
-    it("should handle API errors gracefully", async () => {
+    it("should show profile results and skills error when skills API fails", async () => {
       await fs.writeFile(
         configPath,
         JSON.stringify({
@@ -198,13 +346,26 @@ describe("nori-registry-search", () => {
           auth: {
             username: "user@example.com",
             organizationUrl: "https://myorg.tilework.tech",
-            refreshToken: "token",
+            refreshToken: "mock-token",
           },
         }),
       );
 
-      vi.mocked(registrarApi.searchPackagesOnRegistry).mockRejectedValue(
-        new Error("Network error"),
+      const mockPackages = [
+        {
+          id: "1",
+          name: "good-profile",
+          description: "A profile",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue(
+        mockPackages,
+      );
+      vi.mocked(registrarApi.searchSkills).mockRejectedValue(
+        new Error("Skills API error"),
       );
       vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
 
@@ -214,10 +375,64 @@ describe("nori-registry-search", () => {
 
       expect(result).not.toBeNull();
       const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Profiles:");
+      expect(plainReason).toContain("good-profile");
       expect(plainReason.toLowerCase()).toContain("error");
+      expect(plainReason).toContain("Skills API error");
     });
 
-    it("should show no results when no auth is configured", async () => {
+    it("should show both download hints when both types have results", async () => {
+      await fs.writeFile(
+        configPath,
+        JSON.stringify({
+          agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
+          auth: {
+            username: "user@example.com",
+            organizationUrl: "https://myorg.tilework.tech",
+            refreshToken: "mock-token",
+          },
+        }),
+      );
+
+      const mockPackages = [
+        {
+          id: "1",
+          name: "test-profile",
+          description: "A profile",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      const mockSkills = [
+        {
+          id: "2",
+          name: "test-skill",
+          description: "A skill",
+          authorEmail: "test@example.com",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+        },
+      ];
+      vi.mocked(registrarApi.searchPackagesOnRegistry).mockResolvedValue(
+        mockPackages,
+      );
+      vi.mocked(registrarApi.searchSkills).mockResolvedValue(mockSkills);
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      const result = await noriRegistrySearch.run({
+        input: createInput({ prompt: "/nori-registry-search test" }),
+      });
+
+      expect(result).not.toBeNull();
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("registry-download");
+      expect(plainReason).toContain("skill-download");
+    });
+  });
+
+  describe("config and auth validation", () => {
+    it("should show error when no auth is configured", async () => {
       await fs.writeFile(
         configPath,
         JSON.stringify({
@@ -230,9 +445,10 @@ describe("nori-registry-search", () => {
       });
 
       expect(registrarApi.searchPackagesOnRegistry).not.toHaveBeenCalled();
+      expect(registrarApi.searchSkills).not.toHaveBeenCalled();
       expect(result).not.toBeNull();
       const plainReason = stripAnsi(result!.reason!);
-      expect(plainReason.toLowerCase()).toMatch(/no|failed/);
+      expect(plainReason.toLowerCase()).toMatch(/no|organization/);
     });
   });
 

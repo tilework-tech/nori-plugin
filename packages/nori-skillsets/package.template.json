@@ -1,0 +1,26 @@
+{
+  "name": "nori-skillsets",
+  "version": "{{VERSION}}",
+  "description": "Seaweed CLI - Registry Operations for Nori Profiles and Skills",
+  "type": "module",
+  "bin": {
+    "seaweed": "./build/src/cli/seaweed.js",
+    "nori-skillsets": "./build/src/cli/seaweed.js"
+  },
+  "keywords": [
+    "claude code",
+    "skills",
+    "profiles",
+    "registry",
+    "seaweed",
+    "nori"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nori-dot-ai/skillsets"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

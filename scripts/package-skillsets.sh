@@ -24,6 +24,12 @@ DIST_DIR="$PROJECT_ROOT/dist"
 STAGING_DIR="$DIST_DIR/nori-skillsets-staging"
 BUILD_DIR="$PROJECT_ROOT/build"
 
+# Template files
+TEMPLATE_DIR="$PROJECT_ROOT/packages/nori-skillsets"
+PACKAGE_TEMPLATE="$TEMPLATE_DIR/package.template.json"
+DEPS_CONFIG="$TEMPLATE_DIR/dependencies.json"
+MAIN_PACKAGE_JSON="$PROJECT_ROOT/package.json"
+
 # Version can be set via environment variable, defaults to 1.0.0
 VERSION="${SKILLSETS_VERSION:-1.0.0}"
 
@@ -39,7 +45,7 @@ echo -e "${BLUE}================================${NC}"
 echo ""
 
 # ============================================================================
-# Verify build exists
+# Verify prerequisites
 # ============================================================================
 
 if [[ ! -d "$BUILD_DIR" ]]; then
@@ -51,6 +57,16 @@ fi
 if [[ ! -f "$BUILD_DIR/src/cli/seaweed.js" ]]; then
   echo -e "${RED}ERROR: seaweed.js not found in build output${NC}"
   echo "Run 'npm run build' first."
+  exit 1
+fi
+
+if [[ ! -f "$PACKAGE_TEMPLATE" ]]; then
+  echo -e "${RED}ERROR: Package template not found at $PACKAGE_TEMPLATE${NC}"
+  exit 1
+fi
+
+if [[ ! -f "$DEPS_CONFIG" ]]; then
+  echo -e "${RED}ERROR: Dependencies config not found at $DEPS_CONFIG${NC}"
   exit 1
 fi
 
@@ -80,52 +96,48 @@ fi
 echo -e "${GREEN}  Copied build directory${NC}"
 
 # ============================================================================
-# Generate package.json for nori-skillsets
+# Generate package.json from template
 # ============================================================================
 
-echo -e "${BLUE}[3/4] Generating package.json...${NC}"
+echo -e "${BLUE}[3/4] Generating package.json from template...${NC}"
 
-# Read dependencies from the main package.json
-# We need commander, node-fetch, and other runtime dependencies
-MAIN_PACKAGE_JSON="$PROJECT_ROOT/package.json"
+# Use node to:
+# 1. Read the template
+# 2. Read the dependencies list
+# 3. Look up versions from main package.json
+# 4. Substitute version and add dependencies
+node -e "
+const fs = require('fs');
 
-# Extract dependencies using node (more reliable than jq for complex JSON)
-DEPENDENCIES=$(node -e "
-const pkg = require('$MAIN_PACKAGE_JSON');
-const deps = pkg.dependencies || {};
-// Include all dependencies - seaweed uses shared modules that may need them
-console.log(JSON.stringify(deps, null, 2));
-")
+// Read inputs
+const template = JSON.parse(fs.readFileSync('$PACKAGE_TEMPLATE', 'utf-8'));
+const depsConfig = JSON.parse(fs.readFileSync('$DEPS_CONFIG', 'utf-8'));
+const mainPkg = JSON.parse(fs.readFileSync('$MAIN_PACKAGE_JSON', 'utf-8'));
 
-cat > "$STAGING_DIR/package.json" << EOF
-{
-  "name": "nori-skillsets",
-  "version": "$VERSION",
-  "description": "Seaweed CLI - Registry Operations for Nori Profiles and Skills",
-  "type": "module",
-  "bin": {
-    "seaweed": "./build/src/cli/seaweed.js",
-    "nori-skillsets": "./build/src/cli/seaweed.js"
-  },
-  "keywords": [
-    "claude code",
-    "skills",
-    "profiles",
-    "registry",
-    "seaweed",
-    "nori"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/nori-dot-ai/skillsets"
-  },
-  "license": "MIT",
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": $DEPENDENCIES
+// Substitute version
+template.version = '$VERSION';
+
+// Build dependencies object with versions from main package.json
+const dependencies = {};
+for (const depName of depsConfig.dependencies) {
+  const version = mainPkg.dependencies[depName];
+  if (!version) {
+    console.error('ERROR: Dependency \"' + depName + '\" not found in main package.json');
+    process.exit(1);
+  }
+  dependencies[depName] = version;
 }
-EOF
+
+template.dependencies = dependencies;
+
+// Write output
+fs.writeFileSync('$STAGING_DIR/package.json', JSON.stringify(template, null, 2) + '\n');
+
+console.log('  Dependencies included:');
+for (const [name, ver] of Object.entries(dependencies)) {
+  console.log('    - ' + name + ': ' + ver);
+}
+"
 
 echo -e "${GREEN}  Generated package.json (version: $VERSION)${NC}"
 

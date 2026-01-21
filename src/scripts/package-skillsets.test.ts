@@ -25,6 +25,65 @@ describe("scripts/package-skillsets.sh", () => {
   });
 });
 
+describe("packages/nori-skillsets template files", () => {
+  const projectRoot = process.cwd();
+  const templateDir = path.join(projectRoot, "packages", "nori-skillsets");
+
+  describe("package.template.json", () => {
+    it("should exist", () => {
+      const templatePath = path.join(templateDir, "package.template.json");
+      expect(fs.existsSync(templatePath)).toBe(true);
+    });
+
+    it("should have name nori-skillsets", () => {
+      const templatePath = path.join(templateDir, "package.template.json");
+      const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+      expect(template.name).toBe("nori-skillsets");
+    });
+
+    it("should have version placeholder", () => {
+      const templatePath = path.join(templateDir, "package.template.json");
+      const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+      expect(template.version).toBe("{{VERSION}}");
+    });
+
+    it("should have correct bin entries", () => {
+      const templatePath = path.join(templateDir, "package.template.json");
+      const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+      expect(template.bin["seaweed"]).toBe("./build/src/cli/seaweed.js");
+      expect(template.bin["nori-skillsets"]).toBe("./build/src/cli/seaweed.js");
+    });
+  });
+
+  describe("dependencies.json", () => {
+    it("should exist", () => {
+      const depsPath = path.join(templateDir, "dependencies.json");
+      expect(fs.existsSync(depsPath)).toBe(true);
+    });
+
+    it("should have dependencies array", () => {
+      const depsPath = path.join(templateDir, "dependencies.json");
+      const depsConfig = JSON.parse(fs.readFileSync(depsPath, "utf-8"));
+      expect(Array.isArray(depsConfig.dependencies)).toBe(true);
+      expect(depsConfig.dependencies.length).toBeGreaterThan(0);
+    });
+
+    it("should reference valid dependencies from main package.json", () => {
+      const depsPath = path.join(templateDir, "dependencies.json");
+      const mainPkgPath = path.join(projectRoot, "package.json");
+      const depsConfig = JSON.parse(fs.readFileSync(depsPath, "utf-8"));
+      const mainPkg = JSON.parse(fs.readFileSync(mainPkgPath, "utf-8"));
+
+      for (const depName of depsConfig.dependencies) {
+        expect(
+          mainPkg.dependencies[depName],
+          `Dependency "${depName}" should exist in main package.json`,
+        ).toBeDefined();
+      }
+    });
+  });
+});
+
 describe("package-skillsets.sh execution", () => {
   const projectRoot = process.cwd();
   const scriptPath = path.join(projectRoot, "scripts", "package-skillsets.sh");
@@ -106,9 +165,27 @@ describe("package-skillsets.sh execution", () => {
       const packageJsonPath = path.join(stagingDir, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
       expect(packageJson.dependencies).toBeDefined();
-      // Core dependencies needed by seaweed
+      // Core dependencies needed by seaweed (as defined in packages/nori-skillsets/dependencies.json)
       expect(packageJson.dependencies["commander"]).toBeDefined();
-      expect(packageJson.dependencies["node-fetch"]).toBeDefined();
+      expect(packageJson.dependencies["semver"]).toBeDefined();
+      expect(packageJson.dependencies["winston"]).toBeDefined();
+    });
+
+    it("should only include dependencies listed in dependencies.json", () => {
+      const packageJsonPath = path.join(stagingDir, "package.json");
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+      const depsConfigPath = path.join(
+        projectRoot,
+        "packages",
+        "nori-skillsets",
+        "dependencies.json",
+      );
+      const depsConfig = JSON.parse(fs.readFileSync(depsConfigPath, "utf-8"));
+
+      const actualDeps = Object.keys(packageJson.dependencies);
+      const expectedDeps = depsConfig.dependencies;
+
+      expect(actualDeps.sort()).toEqual(expectedDeps.sort());
     });
 
     it("should use version from environment variable when provided", () => {

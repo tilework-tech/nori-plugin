@@ -5,10 +5,7 @@
  * - search (searches org registry)
  * - download (downloads profile package)
  * - install (downloads and installs profile)
- * - update (updates installed profile)
- * - upload (uploads profile to registry)
  * - download-skill (downloads skill package)
- * - upload-skill (uploads skill to registry)
  * - switch-skillset (switches skillset)
  * - version (built-in)
  */
@@ -152,7 +149,7 @@ describe("seaweed CLI", () => {
     expect(hasInstallCommand).toBe(true);
   });
 
-  it("should have update command (simplified from registry-update)", () => {
+  it("should NOT have update command", () => {
     let output = "";
 
     try {
@@ -168,16 +165,16 @@ describe("seaweed CLI", () => {
       }
     }
 
-    // Should have "update" as a command (not registry-update)
+    // Should NOT have "update" as a command
     const lines = output.split("\n");
     const hasUpdateCommand = lines.some(
       (line) =>
         line.trim().startsWith("update ") || line.trim().startsWith("update\t"),
     );
-    expect(hasUpdateCommand).toBe(true);
+    expect(hasUpdateCommand).toBe(false);
   });
 
-  it("should have upload command (simplified from registry-upload)", () => {
+  it("should NOT have upload command", () => {
     let output = "";
 
     try {
@@ -193,13 +190,13 @@ describe("seaweed CLI", () => {
       }
     }
 
-    // Should have "upload" as a command (not registry-upload)
+    // Should NOT have "upload" as a command
     const lines = output.split("\n");
     const hasUploadCommand = lines.some(
       (line) =>
         line.trim().startsWith("upload ") || line.trim().startsWith("upload\t"),
     );
-    expect(hasUploadCommand).toBe(true);
+    expect(hasUploadCommand).toBe(false);
   });
 
   it("should have switch-skillset command", () => {
@@ -254,7 +251,7 @@ describe("seaweed CLI", () => {
     expect(hasDownloadSkillCommand).toBe(true);
   });
 
-  it("should have upload-skill command", () => {
+  it("should NOT have upload-skill command", () => {
     let output = "";
 
     try {
@@ -270,14 +267,14 @@ describe("seaweed CLI", () => {
       }
     }
 
-    // Should have "upload-skill" as a command
+    // Should NOT have "upload-skill" as a command
     const lines = output.split("\n");
     const hasUploadSkillCommand = lines.some(
       (line) =>
         line.trim().startsWith("upload-skill ") ||
         line.trim().startsWith("upload-skill\t"),
     );
-    expect(hasUploadSkillCommand).toBe(true);
+    expect(hasUploadSkillCommand).toBe(false);
   });
 
   it("should show help when no arguments provided", () => {
@@ -320,8 +317,12 @@ describe("seaweed CLI", () => {
     expect(output).toContain("$ seaweed search");
     expect(output).toContain("$ seaweed download");
     expect(output).toContain("$ seaweed install");
-    expect(output).toContain("$ seaweed update");
-    expect(output).toContain("$ seaweed upload");
     expect(output).toContain("$ seaweed switch-skillset");
+    expect(output).toContain("$ seaweed download-skill");
+
+    // Should NOT contain upload/update examples
+    expect(output).not.toContain("$ seaweed update");
+    expect(output).not.toContain("$ seaweed upload");
+    expect(output).not.toContain("$ seaweed upload-skill");
   });
 });

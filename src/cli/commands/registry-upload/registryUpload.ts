@@ -12,6 +12,10 @@ import * as tar from "tar";
 import { registrarApi, REGISTRAR_URL } from "@/api/registrar.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import {
+  getCommandNames,
+  type CliName,
+} from "@/cli/commands/cliCommandNames.js";
+import {
   checkRegistryAgentSupport,
   showCursorAgentNotSupportedError,
 } from "@/cli/commands/registryAgentCheck.js";
@@ -103,14 +107,18 @@ const createProfileTarball = async (args: {
  * @param args - The function arguments
  * @param args.profileName - The profile name to upload
  * @param args.registries - The available registries
+ * @param args.cliName - The CLI name for command hints
  *
  * @returns Formatted error message
  */
 const formatMultipleRegistriesError = (args: {
   profileName: string;
   registries: Array<RegistryAuth>;
+  cliName?: CliName | null;
 }): string => {
-  const { profileName, registries } = args;
+  const { profileName, registries, cliName } = args;
+  const commandNames = getCommandNames({ cliName });
+  const cliPrefix = cliName ?? "nori-ai";
 
   const lines = [
     "Multiple registries configured. Please specify which registry to upload to.\n",
@@ -124,7 +132,7 @@ const formatMultipleRegistriesError = (args: {
   lines.push("\nTo upload, specify the registry with --registry:");
   for (const registry of registries) {
     lines.push(
-      `nori-ai registry-upload ${profileName} --registry ${registry.registryUrl}`,
+      `${cliPrefix} ${commandNames.upload} ${profileName} --registry ${registry.registryUrl}`,
     );
   }
 
@@ -186,15 +194,19 @@ const determineUploadVersion = async (args: {
  * @param args.cwd - Current working directory (defaults to process.cwd())
  * @param args.installDir - Optional explicit install directory
  * @param args.registryUrl - Optional registry URL to upload to
+ * @param args.cliName - CLI name for user-facing messages (nori-ai or seaweed)
  */
 export const registryUploadMain = async (args: {
   profileSpec: string;
   cwd?: string | null;
   installDir?: string | null;
   registryUrl?: string | null;
+  cliName?: CliName | null;
 }): Promise<void> => {
-  const { profileSpec, installDir, registryUrl } = args;
+  const { profileSpec, installDir, registryUrl, cliName } = args;
   const cwd = args.cwd ?? process.cwd();
+  const commandNames = getCommandNames({ cliName });
+  const cliPrefix = cliName ?? "nori-ai";
 
   const { profileName, version } = parseProfileSpec({ profileSpec });
 
@@ -319,6 +331,7 @@ export const registryUploadMain = async (args: {
       message: formatMultipleRegistriesError({
         profileName,
         registries: availableRegistries,
+        cliName,
       }),
     });
     return;
@@ -366,7 +379,7 @@ export const registryUploadMain = async (args: {
     });
     newline();
     info({
-      message: `Others can install it with 'nori-ai registry-download ${profileName}'.`,
+      message: `Others can install it with '${cliPrefix} ${commandNames.download} ${profileName}'.`,
     });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);

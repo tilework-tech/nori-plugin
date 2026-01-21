@@ -959,4 +959,140 @@ describe("install integration test", () => {
       });
     });
   });
+
+  describe("--setup-only flag", () => {
+    it("should install infrastructure without profile when --setup-only is used", async () => {
+      const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+      // Ensure no existing config
+      try {
+        fs.unlinkSync(CONFIG_PATH);
+      } catch {}
+      expect(fs.existsSync(CONFIG_PATH)).toBe(false);
+
+      // Run installation with --setup-only flag
+      await installMain({
+        setupOnly: true,
+        installDir: tempDir,
+      });
+
+      // STEP 1: Verify config was created with version but no agents/profile
+      expect(fs.existsSync(CONFIG_PATH)).toBe(true);
+      const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+      expect(config.version).toBe("13.0.0");
+      // agents should be null/undefined or empty (no profile selected)
+      expect(
+        config.agents == null || Object.keys(config.agents).length === 0,
+      ).toBe(true);
+
+      // STEP 2: Verify infrastructure was created
+      // Check that settings.json exists (hooks are configured there)
+      const settingsPath = path.join(TEST_CLAUDE_DIR, "settings.json");
+      expect(fs.existsSync(settingsPath)).toBe(true);
+      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+      // Hooks should be installed
+      expect(settings.hooks).toBeDefined();
+
+      // Check that profiles directory was created and permissions configured
+      const noriProfilesDir = path.join(TEST_NORI_DIR, "profiles");
+      expect(fs.existsSync(noriProfilesDir)).toBe(true);
+      expect(settings.permissions?.additionalDirectories).toContain(
+        noriProfilesDir,
+      );
+
+      // STEP 3: Verify profile-specific features were NOT installed
+      // CLAUDE.md should NOT exist (no profile to generate from)
+      const claudeMdPath = path.join(TEST_CLAUDE_DIR, "CLAUDE.md");
+      expect(fs.existsSync(claudeMdPath)).toBe(false);
+
+      // Skills directory should be empty or not exist
+      const skillsDir = path.join(TEST_CLAUDE_DIR, "skills");
+      if (fs.existsSync(skillsDir)) {
+        const skillsContents = fs.readdirSync(skillsDir);
+        expect(skillsContents.length).toBe(0);
+      }
+    });
+
+    it("should not require --profile flag when --setup-only is used", async () => {
+      const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+      // Ensure no existing config
+      try {
+        fs.unlinkSync(CONFIG_PATH);
+      } catch {}
+      expect(fs.existsSync(CONFIG_PATH)).toBe(false);
+
+      // Run installation with --setup-only but NO --profile flag
+      // This should NOT fail (unlike regular non-interactive install which requires --profile)
+      await installMain({
+        setupOnly: true,
+        installDir: tempDir,
+      });
+
+      // Verify installation completed successfully
+      expect(fs.existsSync(CONFIG_PATH)).toBe(true);
+      const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+      expect(config.version).toBe("13.0.0");
+    });
+
+    it("should error when both --setup-only and --profile are provided", async () => {
+      const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+      // Ensure no existing config
+      try {
+        fs.unlinkSync(CONFIG_PATH);
+      } catch {}
+
+      // Mock process.exit to capture exit code
+      const processExitSpy = vi
+        .spyOn(process, "exit")
+        .mockImplementation((code?: string | number | null) => {
+          throw new Error(`process.exit(${code})`);
+        }) as any;
+
+      try {
+        // Run installation with BOTH --setup-only and --profile flags
+        await expect(
+          installMain({
+            setupOnly: true,
+            profile: "senior-swe",
+            installDir: tempDir,
+          }),
+        ).rejects.toThrow("process.exit(1)");
+
+        // Verify no config was created
+        expect(fs.existsSync(CONFIG_PATH)).toBe(false);
+      } finally {
+        processExitSpy.mockRestore();
+      }
+    });
+
+    it("should preserve existing profile when --setup-only is used", async () => {
+      const CONFIG_PATH = getConfigPath({ installDir: tempDir });
+
+      // STEP 1: Create existing config with a profile
+      fs.writeFileSync(
+        CONFIG_PATH,
+        JSON.stringify({
+          version: "12.0.0",
+          agents: {
+            "claude-code": { profile: { baseProfile: "amol" } },
+          },
+        }),
+      );
+
+      // STEP 2: Run installation with --setup-only
+      await installMain({
+        setupOnly: true,
+        installDir: tempDir,
+      });
+
+      // STEP 3: Verify existing profile was preserved
+      const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+      expect(config.version).toBe("13.0.0");
+      expect(config.agents["claude-code"].profile).toEqual({
+        baseProfile: "amol",
+      });
+    });
+  });
 });

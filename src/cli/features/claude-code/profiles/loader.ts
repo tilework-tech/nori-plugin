@@ -376,6 +376,15 @@ export const profilesLoader: Loader = {
     const { config } = args;
     await installProfiles({ config });
 
+    // Skip profile-dependent features in setup-only mode
+    if (config.setupOnly) {
+      info({
+        message:
+          "Setup-only mode: skipping profile-dependent features (skills, CLAUDE.md, slash commands, subagents)",
+      });
+      return;
+    }
+
     // Install all profile-dependent features
     const registry = ProfileLoaderRegistry.getInstance();
     const loaders = registry.getAll();

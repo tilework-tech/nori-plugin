@@ -61,6 +61,11 @@ export type Config = {
   agents?: Record<string, AgentConfig> | null;
   /** Installed version of Nori */
   version?: string | null;
+  /**
+   * Whether this is a setup-only install (skip profile-dependent loaders).
+   * Runtime-only field - NOT persisted to disk by saveConfig().
+   */
+  setupOnly?: boolean | null;
 };
 
 /**

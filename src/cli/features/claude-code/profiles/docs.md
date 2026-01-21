@@ -120,12 +120,13 @@ This logic is implemented in @/src/cli/features/claude-code/profiles/skills/load
    - Skips existing profiles (logs "use registry to update")
    - Copies new profiles directly from config/
    - Never overwrites existing profiles
+   - In setup-only mode (`config.setupOnly = true`), skips profile-dependent sub-loaders (skills, CLAUDE.md, slash commands, subagents)
 
-2. **User selects profile** (interactive mode)
+2. **User selects profile** (interactive mode, skipped in setup-only mode)
    - Reads available profiles from `~/.nori/profiles/`
    - Shows both built-in and custom profiles
 
-3. **Feature loaders run**
+3. **Feature loaders run** (skipped in setup-only mode)
    - Read profile configuration from `~/.nori/profiles/${selectedProfile}/`
    - Install CLAUDE.md, skills, slashcommands, subagents to `~/.claude/` from that profile
 

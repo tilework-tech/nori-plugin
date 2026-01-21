@@ -908,6 +908,146 @@ export const noninteractive = async (args?: {
 };
 
 /**
+ * Setup-only installation mode
+ * Sets up directories, config, hooks, and permissions without profile selection
+ *
+ * @param args - Configuration arguments
+ * @param args.installDir - Installation directory (optional)
+ * @param args.agent - AI agent to use (defaults to claude-code)
+ */
+export const setupOnlyInstall = async (args?: {
+  installDir?: string | null;
+  agent?: string | null;
+}): Promise<void> => {
+  const { installDir, agent } = args || {};
+  const normalizedInstallDir = normalizeInstallDir({ installDir });
+  const agentImpl = AgentRegistry.getInstance().get({
+    name: agent ?? "claude-code",
+  });
+
+  info({ message: "Running setup-only installation..." });
+  newline();
+
+  // Check for ancestor installations (warn but continue)
+  const allInstallations = getInstallDirs({
+    currentDir: normalizedInstallDir,
+  });
+  const ancestorInstallations = allInstallations.filter(
+    (dir) => dir !== normalizedInstallDir,
+  );
+
+  if (ancestorInstallations.length > 0) {
+    newline();
+    warn({ message: "⚠️  Nori installation detected in ancestor directory!" });
+    newline();
+    info({
+      message: "Claude Code loads CLAUDE.md files from all parent directories.",
+    });
+    info({
+      message:
+        "Having multiple Nori installations can cause duplicate or conflicting configurations.",
+    });
+    newline();
+    info({ message: "Existing Nori installations found at:" });
+    for (const ancestorPath of ancestorInstallations) {
+      info({ message: `  • ${ancestorPath}` });
+    }
+    newline();
+    info({ message: "To remove an existing installation, run:" });
+    for (const ancestorPath of ancestorInstallations) {
+      info({
+        message: `  cd ${ancestorPath} && nori-ai uninstall`,
+      });
+    }
+    newline();
+    warn({
+      message:
+        "Continuing with setup-only installation despite ancestor installations...",
+    });
+    newline();
+  }
+
+  // Load and migrate existing config (if any)
+  const existingConfig = await loadAndMigrateConfig({
+    installDir: normalizedInstallDir,
+  });
+
+  // Create config that preserves existing agents or sets to null
+  const config: Config = {
+    ...(existingConfig ?? {}),
+    agents: existingConfig?.agents ?? null,
+    installDir: normalizedInstallDir,
+    setupOnly: true,
+  };
+
+  // Track installation start
+  trackEvent({
+    eventName: "plugin_install_started",
+    eventParams: {
+      install_type: isPaidInstall({ config }) ? "paid" : "free",
+      non_interactive: true,
+      setup_only: true,
+    },
+  });
+
+  // Create progress marker
+  const currentVersion = getCurrentPackageVersion();
+  if (currentVersion) {
+    const markerPath = path.join(
+      process.env.HOME || "~",
+      ".nori-install-in-progress",
+    );
+    writeFileSync(markerPath, currentVersion, "utf-8");
+  }
+
+  // Run all loaders (loaders will check config.setupOnly to skip profile-dependent features)
+  const registry = agentImpl.getLoaderRegistry();
+  const loaders = registry.getAll();
+
+  info({ message: "Installing infrastructure..." });
+  newline();
+
+  for (const loader of loaders) {
+    await loader.run({ config });
+  }
+
+  newline();
+
+  // Remove progress marker
+  const markerPath = path.join(
+    process.env.HOME || "~",
+    ".nori-install-in-progress",
+  );
+  if (existsSync(markerPath)) {
+    unlinkSync(markerPath);
+  }
+
+  // Track completion
+  trackEvent({
+    eventName: "plugin_install_completed",
+    eventParams: {
+      install_type: isPaidInstall({ config }) ? "paid" : "free",
+      non_interactive: true,
+      setup_only: true,
+    },
+  });
+
+  success({
+    message:
+      "======================================================================",
+  });
+  success({
+    message:
+      "        Setup complete! Run 'nori-ai install' to select a profile    ",
+  });
+  success({
+    message:
+      "======================================================================",
+  });
+  newline();
+};
+
+/**
  * Main installer entry point
  * Routes to interactive or non-interactive mode
  * @param args - Configuration arguments
@@ -917,6 +1057,7 @@ export const noninteractive = async (args?: {
  * @param args.agent - AI agent to use (defaults to claude-code)
  * @param args.silent - Whether to suppress all output (implies nonInteractive)
  * @param args.profile - Profile to use for non-interactive install (required if no existing config)
+ * @param args.setupOnly - Whether to only set up directories and config without profile selection
  */
 export const main = async (args?: {
   nonInteractive?: boolean | null;
@@ -925,9 +1066,26 @@ export const main = async (args?: {
   agent?: string | null;
   silent?: boolean | null;
   profile?: string | null;
+  setupOnly?: boolean | null;
 }): Promise<void> => {
-  const { nonInteractive, skipUninstall, installDir, agent, silent, profile } =
-    args || {};
+  const {
+    nonInteractive,
+    skipUninstall,
+    installDir,
+    agent,
+    silent,
+    profile,
+    setupOnly,
+  } = args || {};
+
+  // Validate incompatible flags: --setup-only and --profile cannot be used together
+  if (setupOnly && profile) {
+    error({
+      message:
+        "Cannot use --setup-only and --profile together. Use --setup-only to set up infrastructure without a profile, or use --profile to install with a specific profile.",
+    });
+    process.exit(1);
+  }
 
   // Save original console.log and suppress all output if silent mode requested
   const originalConsoleLog = console.log;
@@ -937,8 +1095,11 @@ export const main = async (args?: {
   }
 
   try {
-    // Silent mode implies non-interactive
-    if (nonInteractive || silent) {
+    // Setup-only mode runs its own flow
+    if (setupOnly) {
+      await setupOnlyInstall({ installDir, agent });
+    } else if (nonInteractive || silent) {
+      // Silent mode implies non-interactive
       await noninteractive({ skipUninstall, installDir, agent, profile });
     } else {
       await interactive({ skipUninstall, installDir, agent });
@@ -974,6 +1135,10 @@ export const registerInstallCommand = (args: { program: Command }): void => {
       "--skip-uninstall",
       "Skip uninstall step (useful for profile switching to preserve user customizations)",
     )
+    .option(
+      "--setup-only",
+      "Only set up directories and config without profile selection",
+    )
     .action(async (options) => {
       // Get global options from parent
       const globalOpts = program.opts();
@@ -985,6 +1150,7 @@ export const registerInstallCommand = (args: { program: Command }): void => {
         agent: globalOpts.agent || null,
         silent: globalOpts.silent || null,
         profile: options.profile || null,
+        setupOnly: options.setupOnly || null,
       });
     });
 };

@@ -116,9 +116,11 @@ The command creates `.claude/skills/` directory if it doesn't exist. This allows
 4. **Multiple registries:** If multiple registries are configured and no `--registry` is specified, the command prompts the user to select one (or errors in non-interactive mode).
 
 **registry-download Auto-Init:** The `registry-download` command (and `seaweed download`) automatically initializes Nori configuration when no installation exists, allowing users to download profiles without first running `nori-ai init` or `nori-ai install`. The installation directory resolution logic:
-1. If `--install-dir` is provided but no installation exists there: calls `initMain({ installDir, nonInteractive: true })` to set up at that location
-2. If no `--install-dir` and no existing installations found via `getInstallDirs()`: calls `initMain({ installDir: cwd, nonInteractive: true })` to set up at current directory
+1. If `--install-dir` is provided but no installation exists there: calls `initMain({ installDir, nonInteractive: false })` to set up at that location
+2. If no `--install-dir` and no existing installations found via `getInstallDirs()`: calls `initMain({ installDir: cwd, nonInteractive: false })` to set up at current directory
 3. If multiple installations found: errors with a list of installations and prompts user to specify with `--install-dir`
+
+By using `nonInteractive: false`, the auto-init triggers the interactive existing config capture flow - users with an existing `~/.claude/` configuration (CLAUDE.md, skills, agents, commands) will be prompted to save it as a named profile before proceeding.
 
 This differs from `registry-install`, which calls the full `installMain()` (orchestrating init, onboard, and loaders). The `registry-download` command only calls `initMain()` because download just places profile files without activating them - the user still needs to run `switch-profile` to activate the downloaded profile.
 

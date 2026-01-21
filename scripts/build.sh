@@ -88,7 +88,8 @@ echo ""
 echo -e "${BLUE}[5/7] Setting file permissions...${NC}"
 
 # Core executables
-chmod +x build/src/cli/cli.js
+chmod +x build/src/cli/nori-ai.js
+chmod +x build/src/cli/seaweed.js
 chmod +x build/src/cli/commands/install/install.js
 chmod +x build/src/cli/commands/uninstall/uninstall.js
 

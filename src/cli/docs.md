@@ -8,7 +8,14 @@ CLI for Nori Profiles that prompts for configuration, installs features into Cla
 
 ### How it fits into the larger codebase
 
-**CLI Architecture:** The CLI binaries (`nori-ai` and `seaweed`, both defined in @/package.json bin) routes to @/src/cli/cli.ts, which uses Commander.js for command routing, argument parsing, validation, and help generation. The CLI defines global options (`--install-dir`, `--non-interactive`, `--agent`) on the main program. Each command lives in its own subdirectory under @/src/cli/commands/ and exports a `registerXCommand({ program })` function that cli.ts imports and calls. Commands access global options via `program.opts()`. The CLI provides automatic `--help`, `--version`, and unknown command detection. Running either command with no arguments shows help. The CLI layer (cli.ts) is responsible ONLY for parsing and routing - all business logic remains in the command modules.
+**CLI Architecture:** The package provides two CLI binaries (defined in @/package.json bin):
+
+| Binary | Entry Point | Purpose |
+|--------|-------------|---------|
+| `nori-ai` | @/src/cli/nori-ai.ts | Full CLI with all commands for Nori Profiles installation, management, and registry operations |
+| `seaweed` | @/src/cli/seaweed.ts | Minimal CLI focused only on registry operations |
+
+Both CLIs use Commander.js for command routing, argument parsing, validation, and help generation. Both define the same global options (`--install-dir`, `--non-interactive`, `--silent`, `--agent`) on the main program. Each command lives in its own subdirectory under @/src/cli/commands/ and exports a `registerXCommand({ program })` function that the entry points import and call. Commands access global options via `program.opts()`. Both CLIs provide automatic `--help`, `--version`, and unknown command detection. Running either binary with no arguments shows help. The CLI layer is responsible ONLY for parsing and routing - all business logic remains in the command modules.
 
 **Global Options:**
 
@@ -27,7 +34,8 @@ The `--agent` option enables support for multiple AI agents. Commands use the Ag
 
 ```
 src/cli/
-  cli.ts                 # Main entry point, command registration
+  nori-ai.ts             # Full CLI entry point with all commands
+  seaweed.ts             # Minimal CLI entry point for registry operations only
   config.ts              # Config type and persistence (supports per-agent profiles)
   logger.ts              # Console output formatting via Winston
   prompt.ts              # User input prompting
@@ -47,22 +55,30 @@ src/cli/
     registry-search/     # Search Nori registrar
     registry-download/   # Download from registrar
     registry-install/    # Download + install + activate from public registrar
+    registry-update/     # Update installed registry profiles
     registry-upload/     # Upload to registrar
+    skill-search/        # Search for skills in registrar
+    skill-download/      # Download a skill from registrar
+    skill-upload/        # Upload a skill to registrar
 ```
 
 **CLI Commands:**
 
-| Command | Module | Description |
-|---------|--------|-------------|
-| `install` | commands/install/install.ts | Install Nori Profiles with profile selection |
-| `uninstall` | commands/uninstall/uninstall.ts | Remove Nori installation |
-| `check` | commands/check/check.ts | Validate installation and configuration |
-| `switch-profile` | commands/switch-profile/profiles.ts | Switch to a different profile |
-| `install-location` | commands/install-location/installLocation.ts | Display installation directories |
-| `registry-search` | commands/registry-search/registrySearch.ts | Search for profile packages in the Nori registrar |
-| `registry-download` | commands/registry-download/registryDownload.ts | Download and install a profile from the Nori registrar |
-| `registry-install` | commands/registry-install/registryInstall.ts | Download, install, and activate a profile from the public registrar in one step |
-| `registry-upload` | commands/registry-upload/registryUpload.ts | Upload a profile package to the Nori registrar |
+| Command | Module | nori-ai | seaweed | Description |
+|---------|--------|:-------:|:-------:|-------------|
+| `install` | commands/install/install.ts | ✓ | | Install Nori Profiles with profile selection |
+| `uninstall` | commands/uninstall/uninstall.ts | ✓ | | Remove Nori installation |
+| `check` | commands/check/check.ts | ✓ | | Validate installation and configuration |
+| `switch-profile` | commands/switch-profile/profiles.ts | ✓ | | Switch to a different profile |
+| `install-location` | commands/install-location/installLocation.ts | ✓ | | Display installation directories |
+| `registry-search` | commands/registry-search/registrySearch.ts | ✓ | ✓ | Search for profile packages in the Nori registrar |
+| `registry-download` | commands/registry-download/registryDownload.ts | ✓ | ✓ | Download and install a profile from the Nori registrar |
+| `registry-install` | commands/registry-install/registryInstall.ts | ✓ | ✓ | Download, install, and activate a profile from the public registrar |
+| `registry-update` | commands/registry-update/registryUpdate.ts | ✓ | ✓ | Update an installed registry profile to the latest version |
+| `registry-upload` | commands/registry-upload/registryUpload.ts | ✓ | ✓ | Upload a profile package to the Nori registrar |
+| `skill-search` | commands/skill-search/skillSearch.ts | ✓ | | Search for skills in the Nori registrar |
+| `skill-download` | commands/skill-download/skillDownload.ts | ✓ | | Download a skill from the Nori registrar |
+| `skill-upload` | commands/skill-upload/skillUpload.ts | ✓ | | Upload a skill to the Nori registrar |
 
 Each command directory contains the command implementation, its tests, and any command-specific utilities (e.g., `install/` contains `asciiArt.ts` and `installState.ts`).
 

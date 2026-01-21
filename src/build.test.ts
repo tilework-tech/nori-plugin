@@ -88,7 +88,7 @@ describe.sequential("build process", () => {
       // Note: We don't check install output - it's expected to succeed
       // The real validation happens with the check command below
       execSync(
-        `node build/src/cli/cli.js install --non-interactive --install-dir "${tempDir}" --profile senior-swe`,
+        `node build/src/cli/nori-ai.js install --non-interactive --install-dir "${tempDir}" --profile senior-swe`,
         {
           cwd: pluginDir,
           encoding: "utf-8",
@@ -108,7 +108,7 @@ describe.sequential("build process", () => {
       let checkOutput = "";
       try {
         checkOutput = execSync(
-          `node build/src/cli/cli.js check --install-dir "${tempDir}"`,
+          `node build/src/cli/nori-ai.js check --install-dir "${tempDir}"`,
           {
             cwd: pluginDir,
             encoding: "utf-8",
@@ -453,6 +453,41 @@ ${stderr || "(empty)"}`,
     expect(mdFiles).toContain("nori-info.md");
   });
 
+  it("should register nori-ai and seaweed binaries in package.json", () => {
+    // This test verifies that both binaries are registered in package.json
+    // with nori-ai pointing to nori-ai.js and seaweed pointing to seaweed.js.
+    const pluginDir = process.cwd();
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(pluginDir, "package.json"), "utf-8"),
+    );
+
+    // Both binaries should be registered
+    expect(packageJson.bin).toHaveProperty("nori-ai");
+    expect(packageJson.bin).toHaveProperty("seaweed");
+
+    // Each should point to its own CLI entry point
+    expect(packageJson.bin["nori-ai"]).toBe("./build/src/cli/nori-ai.js");
+    expect(packageJson.bin.seaweed).toBe("./build/src/cli/seaweed.js");
+  });
+
+  it("should create both nori-ai.js and seaweed.js executables in build", () => {
+    // This test verifies that both CLI entry points exist after build
+    const pluginDir = process.cwd();
+
+    const noriAiPath = path.join(pluginDir, "build/src/cli/nori-ai.js");
+    const seaweedPath = path.join(pluginDir, "build/src/cli/seaweed.js");
+
+    // Both files should exist
+    expect(fs.existsSync(noriAiPath)).toBe(true);
+    expect(fs.existsSync(seaweedPath)).toBe(true);
+
+    // Both should be executable
+    const noriAiStats = fs.statSync(noriAiPath);
+    const seaweedStats = fs.statSync(seaweedPath);
+    expect((noriAiStats.mode & 0o100) !== 0).toBe(true);
+    expect((seaweedStats.mode & 0o100) !== 0).toBe(true);
+  });
+
   // CLI behavior tests - these run after build tests to ensure build artifacts exist
   describe("CLI behavior", () => {
     let tempDir: string;
@@ -488,7 +523,7 @@ ${stderr || "(empty)"}`,
       let output = "";
 
       try {
-        output = execSync("node build/src/cli/cli.js", {
+        output = execSync("node build/src/cli/nori-ai.js", {
           encoding: "utf-8",
           stdio: "pipe",
           env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -516,7 +551,7 @@ ${stderr || "(empty)"}`,
 
       try {
         // Run with --help on the install command to avoid actual installation
-        output = execSync("node build/src/cli/cli.js install --help", {
+        output = execSync("node build/src/cli/nori-ai.js install --help", {
           encoding: "utf-8",
           stdio: "pipe",
           env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },

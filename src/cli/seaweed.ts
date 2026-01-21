@@ -15,7 +15,7 @@ import {
   registerSeaweedSearchCommand,
   registerSeaweedUpdateCommand,
   registerSeaweedUploadCommand,
-} from "@/cli/commands/seaweed/seaweedCommands.js";
+} from "@/cli/commands/seaweedCommands.js";
 import { getCurrentPackageVersion } from "@/cli/version.js";
 import { normalizeInstallDir } from "@/utils/path.js";
 

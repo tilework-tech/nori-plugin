@@ -57,7 +57,6 @@ src/cli/
     registry-install/    # Download + install + activate from public registrar
     registry-update/     # Update installed registry profiles
     registry-upload/     # Upload to registrar
-    seaweed/             # Simplified command wrappers for seaweed CLI
     skill-search/        # Search for skills in registrar
     skill-download/      # Download a skill from registrar
     skill-upload/        # Upload a skill to registrar
@@ -81,7 +80,7 @@ src/cli/
 | `skill-download` | | commands/skill-download/skillDownload.ts | Download a skill from the Nori registrar |
 | `skill-upload` | | commands/skill-upload/skillUpload.ts | Upload a skill to the Nori registrar |
 
-The seaweed CLI uses simplified command names (no `registry-` prefix) since it is dedicated to registry operations. Both CLIs share the same underlying `*Main` implementation functions - the seaweed commands are thin wrappers defined in @/src/cli/commands/seaweed/seaweedCommands.ts that delegate to the registry-* command implementations.
+The seaweed CLI uses simplified command names (no `registry-` prefix) since it is dedicated to registry operations. Both CLIs share the same underlying `*Main` implementation functions - the seaweed commands are thin wrappers defined in @/src/cli/commands/seaweedCommands.ts that delegate to the registry-* command implementations.
 
 Each command directory contains the command implementation, its tests, and any command-specific utilities (e.g., `install/` contains `asciiArt.ts` and `installState.ts`).
 

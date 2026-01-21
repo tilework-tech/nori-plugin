@@ -53,12 +53,11 @@ src/cli/
     check/               # Check/validation command
     switch-profile/      # Profile switching command
     install-location/    # Display installation directories
-    registry-search/     # Search Nori registrar
+    registry-search/     # Search for profiles and skills in registrar
     registry-download/   # Download from registrar
     registry-install/    # Download + install + activate from public registrar
     registry-update/     # Update installed registry profiles
     registry-upload/     # Upload to registrar
-    skill-search/        # Search for skills in registrar
     skill-download/      # Download a skill from registrar
     skill-upload/        # Upload a skill to registrar
 ```
@@ -72,16 +71,16 @@ src/cli/
 | `check` | | commands/check/check.ts | Validate installation and configuration |
 | `switch-profile`, `switch-skillset` | `switch-skillset` | commands/switch-profile/profiles.ts | Switch to a different profile/skillset |
 | `install-location` | | commands/install-location/installLocation.ts | Display installation directories |
-| `registry-search` | `search` | commands/registry-search/registrySearch.ts | Search for profile packages in the Nori registrar |
+| `registry-search` | `search` | commands/registry-search/registrySearch.ts | Search for profiles and skills in the Nori registrar |
 | `registry-download` | `download` | commands/registry-download/registryDownload.ts | Download and install a profile from the Nori registrar |
 | `registry-install` | `install` | commands/registry-install/registryInstall.ts | Download, install, and activate a profile from the public registrar |
 | `registry-update` | `update` | commands/registry-update/registryUpdate.ts | Update an installed registry profile to the latest version |
 | `registry-upload` | `upload` | commands/registry-upload/registryUpload.ts | Upload a profile package to the Nori registrar |
 | `skill-search` | | commands/skill-search/skillSearch.ts | Search for skills in the Nori registrar |
-| `skill-download` | | commands/skill-download/skillDownload.ts | Download a skill from the Nori registrar |
-| `skill-upload` | | commands/skill-upload/skillUpload.ts | Upload a skill to the Nori registrar |
+| `skill-download` | `download-skill` | commands/skill-download/skillDownload.ts | Download a skill from the Nori registrar |
+| `skill-upload` | `upload-skill` | commands/skill-upload/skillUpload.ts | Upload a skill to the Nori registrar |
 
-The seaweed CLI uses simplified command names (no `registry-` prefix for registry operations, plus `switch-skillset` for profile switching). Both CLIs share the same underlying implementation functions - the seaweed commands are thin wrappers defined in @/src/cli/commands/seaweedCommands.ts that delegate to the existing implementations (registry-* `*Main` functions and `switchSkillsetAction` from profiles.ts).
+The seaweed CLI uses simplified command names (no `registry-` prefix for profile registry operations, `download-skill`/`upload-skill` for skill registry operations, plus `switch-skillset` for profile switching). Both CLIs share the same underlying implementation functions - the seaweed commands are thin wrappers defined in @/src/cli/commands/seaweedCommands.ts that delegate to the existing implementations (`*Main` functions from registry-* and skill-* commands, plus `switchSkillsetAction` from profiles.ts).
 
 Each command directory contains the command implementation, its tests, and any command-specific utilities (e.g., `install/` contains `asciiArt.ts` and `installState.ts`).
 
@@ -198,7 +197,7 @@ Install lifecycle tracking (installTracking.ts) is called at CLI startup via `tr
 
 **Test Isolation:** Tests that perform file operations pass a temp directory as installDir to all functions. Since all functions now require installDir as a parameter, tests can directly pass a temporary directory path rather than mocking process.env.HOME. Tests follow this pattern: (1) create temp directory using fs.mkdtemp() in beforeEach, (2) pass tempDir as installDir to all function calls, (3) clean up temp directory with fs.rm(tempDir, { recursive: true, force: true }) in afterEach. For example: `loadConfig({ installDir: tempDir })`, `getConfigPath({ installDir: tempDir })`, `hasExistingInstallation({ installDir: tempDir })`. This explicit parameter passing is safer than HOME mocking because it makes the file path dependency explicit and prevents any possibility of accidentally operating on real user files. Note that some tests still mock process.env.HOME for paid skill tests that use process.cwd() at runtime, but the core installer functions all use the explicit installDir parameter.
 
-**Registrar CLI Commands:** The `registry-search`, `registry-download`, and `registry-upload` commands provide terminal access to Nori package registries for discovering, installing, and publishing profile packages. These commands use the `registrarApi` from @/src/api/registrar.ts (the same API used by slash commands). The `registry-search <query>` command searches for packages and displays results with names and descriptions. The `registry-download <package>[@version] [--registry <url>]` command downloads a package tarball and extracts it to `<installDir>/.claude/profiles/<packageName>/`. The download command supports optional version pinning via `package@1.0.0` syntax; without a version, it downloads the latest. Before downloading, it uses `getInstallDirs()` to locate the Nori installation (erroring if none found or if multiple exist without `--install-dir` specified). Extraction handles both gzipped and plain tarballs by checking for gzip magic bytes (0x1f 0x8b). If extraction fails, the target directory is cleaned up to avoid partial installations.
+**Registrar CLI Commands:** The `registry-search`, `registry-download`, and `registry-upload` commands provide terminal access to Nori package registries for discovering, installing, and publishing profile packages. These commands use the `registrarApi` from @/src/api/registrar.ts (the same API used by slash commands). The `registry-search <query>` command searches for packages and displays results with names and descriptions. The search always queries the public registry (at `REGISTRAR_URL`) without authentication; if org auth is configured (`config.auth`), it also searches the org registry with authentication (org results displayed first). The `registry-download <package>[@version] [--registry <url>]` command downloads a package tarball and extracts it to `<installDir>/.claude/profiles/<packageName>/`. The download command supports optional version pinning via `package@1.0.0` syntax; without a version, it downloads the latest. Before downloading, it uses `getInstallDirs()` to locate the Nori installation (erroring if none found or if multiple exist without `--install-dir` specified). Extraction handles both gzipped and plain tarballs by checking for gzip magic bytes (0x1f 0x8b). If extraction fails, the target directory is cleaned up to avoid partial installations.
 
 **Multi-Registry Download:** The `registry-download` command searches both the public registry (`REGISTRAR_URL`) and private registries configured in `config.registryAuths`. The public registry is always searched without authentication; private registries require auth credentials from the config and use `getRegistryAuthToken()` to obtain Firebase tokens. When a package is found in multiple registries, the command displays all matching registries with version/description and requires the user to specify `--registry <url>` to disambiguate. The `--registry` option allows downloading from a specific registry URL directly - for private registries, auth must be configured in `.nori-config.json` or an error is displayed. This behavior mirrors the `/nori-registry-download` slash command in @/src/cli/features/claude-code/hooks/config/intercepted-slashcommands/.
 

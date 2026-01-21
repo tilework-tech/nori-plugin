@@ -373,7 +373,8 @@ export const registrySearchMain = async (args: {
     (r) => r.skillResult.error == null && r.skillResult.skills.length > 0,
   );
   const allProfileErrors = results.every(
-    (r) => r.profileResult.error != null || r.profileResult.packages.length === 0,
+    (r) =>
+      r.profileResult.error != null || r.profileResult.packages.length === 0,
   );
   const allSkillErrors = results.every(
     (r) => r.skillResult.error != null || r.skillResult.skills.length === 0,
@@ -382,7 +383,12 @@ export const registrySearchMain = async (args: {
   // Handle case where everything failed with errors
   const hasAnyProfileError = results.some((r) => r.profileResult.error != null);
   const hasAnySkillError = results.some((r) => r.skillResult.error != null);
-  if (allProfileErrors && allSkillErrors && hasAnyProfileError && hasAnySkillError) {
+  if (
+    allProfileErrors &&
+    allSkillErrors &&
+    hasAnyProfileError &&
+    hasAnySkillError
+  ) {
     error({
       message: `Failed to search:\n\n${formatUnifiedSearchResults({ results })}`,
     });
@@ -390,7 +396,12 @@ export const registrySearchMain = async (args: {
   }
 
   // Handle no results (and no errors that need displaying)
-  if (!hasProfileResults && !hasSkillResults && !hasAnyProfileError && !hasAnySkillError) {
+  if (
+    !hasProfileResults &&
+    !hasSkillResults &&
+    !hasAnyProfileError &&
+    !hasAnySkillError
+  ) {
     info({ message: `No profiles or skills found matching "${query}".` });
     return;
   }

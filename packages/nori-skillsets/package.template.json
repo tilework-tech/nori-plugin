@@ -1,25 +1,33 @@
 {
   "name": "nori-skillsets",
   "version": "{{VERSION}}",
-  "description": "Seaweed CLI - Registry Operations for Nori Profiles and Skills",
+  "description": "Operations for Nori Skillsets and Skills",
   "type": "module",
   "bin": {
     "seaweed": "./build/src/cli/seaweed.js",
     "nori-skillsets": "./build/src/cli/seaweed.js"
   },
   "keywords": [
+    "claude",
     "claude code",
+    "codex",
     "skills",
+    "skillsets",
     "profiles",
     "registry",
-    "seaweed",
-    "nori"
+    "nori",
+    "agent"
   ],
+  "homepage": "https://github.com/tilework-tech/nori-skillsets/tree/main",
+  "bugs": {
+    "url": "https://github.com/tilework-tech/nori-skillsets/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nori-dot-ai/skillsets"
+    "url": "https://github.com/tilework-tech/nori-skillsets"
   },
-  "license": "MIT",
+  "author": "Tilework <contact@tilework.tech>",
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=18"
   }

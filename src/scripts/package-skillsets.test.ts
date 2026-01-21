@@ -1,5 +1,5 @@
 /**
- * Tests for scripts/package-skillsets.sh
+ * Tests for scripts/package_skillsets.sh
  *
  * These tests verify the packaging script that creates the nori-skillsets npm package:
  * 1. Creates a staging directory with the correct structure
@@ -14,9 +14,9 @@ import * as path from "path";
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
-describe("scripts/package-skillsets.sh", () => {
+describe("scripts/package_skillsets.sh", () => {
   const projectRoot = process.cwd();
-  const scriptPath = path.join(projectRoot, "scripts", "package-skillsets.sh");
+  const scriptPath = path.join(projectRoot, "scripts", "package_skillsets.sh");
 
   describe("file structure", () => {
     it("should be executable", () => {
@@ -84,9 +84,9 @@ describe("packages/nori-skillsets template files", () => {
   });
 });
 
-describe("package-skillsets.sh execution", () => {
+describe("package_skillsets.sh execution", () => {
   const projectRoot = process.cwd();
-  const scriptPath = path.join(projectRoot, "scripts", "package-skillsets.sh");
+  const scriptPath = path.join(projectRoot, "scripts", "package_skillsets.sh");
   const distDir = path.join(projectRoot, "dist");
   const stagingDir = path.join(distDir, "nori-skillsets-staging");
 

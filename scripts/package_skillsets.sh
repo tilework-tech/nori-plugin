@@ -6,8 +6,8 @@
 # It creates a minimal package containing only the seaweed CLI.
 #
 # Usage:
-#   ./scripts/package-skillsets.sh
-#   SKILLSETS_VERSION=1.0.0 ./scripts/package-skillsets.sh
+#   ./scripts/package_skillsets.sh
+#   SKILLSETS_VERSION=1.0.0 ./scripts/package_skillsets.sh
 #
 # Environment variables:
 #   SKILLSETS_VERSION - Version for the nori-skillsets package (default: 1.0.0)
@@ -78,6 +78,7 @@ echo -e "${BLUE}[1/4] Creating staging directory...${NC}"
 
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
+echo -e "${GREEN}✓ Staging directory created${NC}"
 
 # ============================================================================
 # Copy build output
@@ -93,7 +94,7 @@ if [[ -f "$PROJECT_ROOT/README.md" ]]; then
   cp "$PROJECT_ROOT/README.md" "$STAGING_DIR/"
 fi
 
-echo -e "${GREEN}  Copied build directory${NC}"
+echo -e "${GREEN}✓ Build directory copied${NC}"
 
 # ============================================================================
 # Generate package.json from template
@@ -139,7 +140,13 @@ for (const [name, ver] of Object.entries(dependencies)) {
 }
 "
 
-echo -e "${GREEN}  Generated package.json (version: $VERSION)${NC}"
+# Verify template placeholders were substituted
+if grep -q '{{VERSION}}' "$STAGING_DIR/package.json"; then
+  echo -e "${RED}ERROR: Version placeholder was not substituted in package.json${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✓ Generated package.json (version: $VERSION)${NC}"
 
 # ============================================================================
 # Create npm tarball
@@ -151,7 +158,14 @@ cd "$STAGING_DIR"
 npm pack --pack-destination "$DIST_DIR"
 
 TARBALL_NAME="nori-skillsets-${VERSION}.tgz"
-echo -e "${GREEN}  Created: $DIST_DIR/$TARBALL_NAME${NC}"
+
+# Verify tarball was created
+if [[ ! -f "$DIST_DIR/$TARBALL_NAME" ]]; then
+  echo -e "${RED}ERROR: Expected tarball not found at $DIST_DIR/$TARBALL_NAME${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✓ Created: $DIST_DIR/$TARBALL_NAME${NC}"
 
 # ============================================================================
 # Summary
@@ -159,7 +173,7 @@ echo -e "${GREEN}  Created: $DIST_DIR/$TARBALL_NAME${NC}"
 
 echo ""
 echo -e "${GREEN}================================${NC}"
-echo -e "${GREEN}  Package Complete${NC}"
+echo -e "${GREEN}  ✓ Package Complete${NC}"
 echo -e "${GREEN}================================${NC}"
 echo ""
 echo "Staging directory: $STAGING_DIR"

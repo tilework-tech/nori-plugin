@@ -177,7 +177,7 @@ jobs:
       - name: Package nori-skillsets
         env:
           SKILLSETS_VERSION: ${{ needs.validate.outputs.version }}
-        run: ./scripts/package-skillsets.sh
+        run: ./scripts/package_skillsets.sh
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4

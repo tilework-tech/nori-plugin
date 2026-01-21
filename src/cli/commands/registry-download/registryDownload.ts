@@ -95,27 +95,9 @@ const readNoriJson = async (args: {
 };
 
 /**
- * Resolve the best version from a packument that satisfies a version range
- * @param args - The resolution parameters
- * @param args.versionRange - The semver version range (e.g., "^1.0.0")
- * @param args.packument - The packument containing available versions
- *
- * @returns The resolved version or null if no version satisfies the range
- */
-const resolveVersionFromRange = (args: {
-  versionRange: string;
-  packument: Packument;
-}): string | null => {
-  const { versionRange, packument } = args;
-  const availableVersions = Object.keys(packument.versions);
-  return semver.maxSatisfying(availableVersions, versionRange);
-};
-
-/**
- * Download and install a single skill dependency
+ * Download and install a single skill dependency (always uses latest version)
  * @param args - The download parameters
  * @param args.skillName - The name of the skill to download
- * @param args.versionRange - The semver version range to satisfy (e.g., "^1.0.0")
  * @param args.skillsDir - The directory where skills are installed
  * @param args.registryUrl - The registry URL to download from
  * @param args.authToken - Optional authentication token for private registries
@@ -124,36 +106,30 @@ const resolveVersionFromRange = (args: {
  */
 const downloadSkillDependency = async (args: {
   skillName: string;
-  versionRange: string;
   skillsDir: string;
   registryUrl: string;
   authToken?: string | null;
 }): Promise<boolean> => {
-  const { skillName, versionRange, skillsDir, registryUrl, authToken } = args;
+  const { skillName, skillsDir, registryUrl, authToken } = args;
   const skillDir = path.join(skillsDir, skillName);
 
   try {
-    // Fetch skill packument to get available versions
+    // Fetch skill packument to get latest version
     const packument = await registrarApi.getSkillPackument({
       skillName,
       registryUrl,
       authToken: authToken ?? undefined,
     });
 
-    // Resolve the version that satisfies the range
-    const resolvedVersion = resolveVersionFromRange({
-      versionRange,
-      packument,
-    });
-
-    if (resolvedVersion == null) {
+    const latestVersion = packument["dist-tags"].latest;
+    if (latestVersion == null) {
       info({
-        message: `Warning: No version of skill "${skillName}" satisfies ${versionRange}`,
+        message: `Warning: No latest version found for skill "${skillName}"`,
       });
       return false;
     }
 
-    // Check if skill already exists with compatible version
+    // Check if skill already exists with same version
     let skillExists = false;
     try {
       await fs.access(skillDir);
@@ -165,17 +141,17 @@ const downloadSkillDependency = async (args: {
     if (skillExists) {
       const existingVersionInfo = await readVersionInfo({ dir: skillDir });
       if (existingVersionInfo != null) {
-        // Check if existing version satisfies the range
-        if (semver.satisfies(existingVersionInfo.version, versionRange)) {
-          return false; // Already installed with compatible version
+        // Skip if already at latest version
+        if (existingVersionInfo.version === latestVersion) {
+          return false; // Already installed with latest version
         }
       }
     }
 
-    // Download the skill tarball
+    // Download the skill tarball (latest version)
     const tarballData = await registrarApi.downloadSkillTarball({
       skillName,
-      version: resolvedVersion,
+      version: latestVersion,
       registryUrl,
       authToken: authToken ?? undefined,
     });
@@ -221,7 +197,7 @@ const downloadSkillDependency = async (args: {
       path.join(skillDir, ".nori-version"),
       JSON.stringify(
         {
-          version: resolvedVersion,
+          version: latestVersion,
           registryUrl,
         },
         null,
@@ -240,7 +216,7 @@ const downloadSkillDependency = async (args: {
 };
 
 /**
- * Download all skill dependencies from a nori.json
+ * Download all skill dependencies from a nori.json (always uses latest versions)
  * @param args - The download parameters
  * @param args.noriJson - The parsed nori.json manifest containing dependencies
  * @param args.skillsDir - The directory where skills are installed
@@ -262,10 +238,9 @@ const downloadSkillDependencies = async (args: {
 
   info({ message: "Installing skill dependencies..." });
 
-  for (const [skillName, versionRange] of Object.entries(skillDeps)) {
+  for (const skillName of Object.keys(skillDeps)) {
     await downloadSkillDependency({
       skillName,
-      versionRange,
       skillsDir,
       registryUrl,
       authToken,

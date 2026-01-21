@@ -1117,7 +1117,7 @@ describe("registry-download", () => {
 
       expect(registrarApi.downloadSkillTarball).toHaveBeenCalledWith({
         skillName: "test-skill",
-        version: "1.2.0", // Resolved from ^1.0.0
+        version: "1.2.0", // Always uses latest version
         registryUrl: REGISTRAR_URL,
         authToken: undefined,
       });
@@ -1312,8 +1312,8 @@ describe("registry-download", () => {
       expect(allOutput.toLowerCase()).toContain("missing-skill");
     });
 
-    it("should skip skill if already installed with compatible version", async () => {
-      // Pre-install the skill
+    it("should skip skill if already installed with latest version", async () => {
+      // Pre-install the skill with the latest version
       const existingSkillDir = path.join(skillsDir, "test-skill");
       await fs.mkdir(existingSkillDir, { recursive: true });
       await fs.writeFile(
@@ -1342,13 +1342,14 @@ describe("registry-download", () => {
           version: "1.0.0",
           dependencies: {
             skills: {
-              "test-skill": "^1.0.0", // 1.5.0 satisfies ^1.0.0
+              "test-skill": "^1.0.0", // Version range is ignored, always uses latest
             },
           },
         },
       });
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(profileTarball);
 
+      // Registry says latest is 1.5.0, which matches installed version
       vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
         name: "test-skill",
         "dist-tags": { latest: "1.5.0" },
@@ -1360,11 +1361,11 @@ describe("registry-download", () => {
         cwd: testDir,
       });
 
-      // Verify skill was NOT downloaded (already installed with compatible version)
+      // Verify skill was NOT downloaded (already installed with latest version)
       expect(registrarApi.downloadSkillTarball).not.toHaveBeenCalled();
     });
 
-    it("should update skill if installed version does not satisfy range", async () => {
+    it("should update skill if installed version is not latest", async () => {
       // Pre-install an older version of the skill
       const existingSkillDir = path.join(skillsDir, "test-skill");
       await fs.mkdir(existingSkillDir, { recursive: true });
@@ -1394,13 +1395,14 @@ describe("registry-download", () => {
           version: "1.0.0",
           dependencies: {
             skills: {
-              "test-skill": "^1.0.0", // 0.9.0 does NOT satisfy ^1.0.0
+              "test-skill": "^1.0.0", // Version range is ignored, always uses latest
             },
           },
         },
       });
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(profileTarball);
 
+      // Registry says latest is 1.2.0, but installed is 0.9.0
       vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
         name: "test-skill",
         "dist-tags": { latest: "1.2.0" },
@@ -1423,7 +1425,7 @@ describe("registry-download", () => {
         cwd: testDir,
       });
 
-      // Verify skill was updated
+      // Verify skill was updated to latest
       expect(registrarApi.downloadSkillTarball).toHaveBeenCalledWith({
         skillName: "test-skill",
         version: "1.2.0",
@@ -1513,7 +1515,7 @@ describe("registry-download", () => {
       });
     });
 
-    it("should warn when version range cannot be satisfied", async () => {
+    it("should always download latest version regardless of version range in nori.json", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
         registryAuths: [],
@@ -1531,14 +1533,14 @@ describe("registry-download", () => {
           version: "1.0.0",
           dependencies: {
             skills: {
-              "test-skill": "^5.0.0", // No version satisfies this
+              "test-skill": "^5.0.0", // Version range is ignored
             },
           },
         },
       });
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(profileTarball);
 
-      // Skill exists but no version satisfies ^5.0.0
+      // Skill exists with latest 2.0.0 (which doesn't match ^5.0.0 but we ignore that)
       vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
         name: "test-skill",
         "dist-tags": { latest: "2.0.0" },
@@ -1548,23 +1550,29 @@ describe("registry-download", () => {
         },
       });
 
+      const skillTarball = await createMockSkillTarball({
+        skillName: "test-skill",
+      });
+      vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(
+        skillTarball,
+      );
+
       await registryDownloadMain({
         packageSpec: "test-profile",
         cwd: testDir,
       });
 
-      // Verify skill was NOT downloaded
-      expect(registrarApi.downloadSkillTarball).not.toHaveBeenCalled();
+      // Verify skill was downloaded with latest version (ignoring semver range)
+      expect(registrarApi.downloadSkillTarball).toHaveBeenCalledWith({
+        skillName: "test-skill",
+        version: "2.0.0", // Always latest, not semver resolved
+        registryUrl: REGISTRAR_URL,
+        authToken: undefined,
+      });
 
-      // Verify profile was still installed successfully
+      // Verify profile was installed successfully
       const profileDir = path.join(profilesDir, "test-profile");
       expect((await fs.stat(profileDir)).isDirectory()).toBe(true);
-
-      // Verify warning was shown
-      const allOutput = mockConsoleLog.mock.calls
-        .map((call) => call.join(" "))
-        .join("\n");
-      expect(allOutput).toContain("test-skill");
     });
   });
 });

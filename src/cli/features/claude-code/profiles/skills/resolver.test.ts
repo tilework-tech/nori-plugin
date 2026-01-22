@@ -13,7 +13,6 @@ import {
   readSkillsJson,
   parseSkillsJson,
   resolveSkillVersion,
-  isSkillInstalled,
   type SkillsJson,
 } from "./resolver.js";
 
@@ -187,65 +186,6 @@ describe("skill version resolution", () => {
       });
 
       expect(result).toBeNull();
-    });
-  });
-});
-
-describe("skill installation check", () => {
-  describe("isSkillInstalled", () => {
-    let tempDir: string;
-
-    beforeEach(async () => {
-      tempDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "skills-install-test-"),
-      );
-    });
-
-    afterEach(async () => {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    });
-
-    it("should return true when skill directory exists with SKILL.md", async () => {
-      const skillDir = path.join(tempDir, ".nori", "skills", "writing-plans");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, "SKILL.md"),
-        "---\nname: writing-plans\ndescription: test\n---\n",
-      );
-
-      const result = await isSkillInstalled({
-        installDir: tempDir,
-        skillName: "writing-plans",
-      });
-
-      expect(result).toBe(true);
-    });
-
-    it("should return false when skill directory does not exist", async () => {
-      const result = await isSkillInstalled({
-        installDir: tempDir,
-        skillName: "nonexistent-skill",
-      });
-
-      expect(result).toBe(false);
-    });
-
-    it("should return false when skill directory exists but has no SKILL.md", async () => {
-      const skillDir = path.join(
-        tempDir,
-        ".nori",
-        "skills",
-        "incomplete-skill",
-      );
-      await fs.mkdir(skillDir, { recursive: true });
-      // No SKILL.md file
-
-      const result = await isSkillInstalled({
-        installDir: tempDir,
-        skillName: "incomplete-skill",
-      });
-
-      expect(result).toBe(false);
     });
   });
 });

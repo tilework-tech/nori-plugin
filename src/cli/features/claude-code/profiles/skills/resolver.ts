@@ -8,8 +8,6 @@ import * as path from "path";
 
 import * as semver from "semver";
 
-import { getNoriSkillDir } from "@/cli/features/claude-code/paths.js";
-
 /**
  * Skills.json format - maps skill name to version range or object with version
  */
@@ -117,29 +115,4 @@ export const resolveSkillVersion = (args: {
   }
 
   return null;
-};
-
-/**
- * Check if a skill is installed in the Nori skills directory
- *
- * @param args - Arguments
- * @param args.installDir - Installation directory
- * @param args.skillName - Name of the skill
- *
- * @returns True if the skill is installed with a valid SKILL.md
- */
-export const isSkillInstalled = async (args: {
-  installDir: string;
-  skillName: string;
-}): Promise<boolean> => {
-  const { installDir, skillName } = args;
-  const skillDir = getNoriSkillDir({ installDir, skillName });
-  const skillMdPath = path.join(skillDir, "SKILL.md");
-
-  try {
-    await fs.access(skillMdPath);
-    return true;
-  } catch {
-    return false;
-  }
 };

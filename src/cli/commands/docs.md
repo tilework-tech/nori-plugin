@@ -100,7 +100,7 @@ Registry commands (registry-search, registry-download, registry-update, registry
 
 **Skill Commands:** Two commands manage skills as first-class registry entities (mirroring the profile registry commands):
 - `skill-download` - Download and install skills directly to `.claude/skills/{skill-name}/` in the target directory. Searches public registry first, then private registries. Creates `.nori-version` file for version tracking. Supports `--list-versions` flag and `--registry` option.
-- `skill-upload` - Upload skills from `~/.nori/skills/` to a registry. Auto-bumps patch version when no version specified. Extracts description from SKILL.md frontmatter.
+- `skill-upload` - Upload skills from `~/.claude/skills/` to a registry. Auto-bumps patch version when no version specified. Extracts description from SKILL.md frontmatter.
 
 Skills follow the same tarball-based upload/download pattern as profiles. Downloaded skills go directly to `.claude/skills/`, making them immediately available in the Claude Code profile. Skills require a SKILL.md file (with optional YAML frontmatter containing name and description).
 
@@ -129,10 +129,10 @@ This differs from `registry-install`, which calls the full `installMain()` (orch
 **registry-download Skill Dependencies:** The `registry-download` command automatically installs skill dependencies declared in a profile's `nori.json` manifest. After extracting a profile tarball, the command checks for a `nori.json` file with a `dependencies.skills` field (mapping skill names to version strings). For each declared skill:
 1. Fetches the skill packument via `registrarApi.getSkillPackument()` to get the latest version
 2. Checks if the already-installed version equals the latest version (skips download if so)
-3. Downloads and extracts the skill tarball to `~/.nori/skills/{skill-name}/`
+3. Downloads and extracts the skill tarball to the profile's own skills directory (`~/.nori/profiles/{profile-name}/skills/{skill-name}/`)
 4. Writes a `.nori-version` file for version tracking
 
-Skills always download the latest version - version ranges in `nori.json` are currently ignored but reserved for future use. Skills are downloaded from the same registry (with same auth token) as the profile being installed. Skill download failures are non-blocking - the command warns but continues with profile installation. The `nori.json` format supports externalized skills that can be shared across profiles and versioned independently:
+Skills always download the latest version - version ranges in `nori.json` are currently ignored but reserved for future use. Skills are downloaded from the same registry (with same auth token) as the profile being installed. Skill download failures are non-blocking - the command warns but continues with profile installation. Skills are stored in the profile's directory to keep profiles self-contained. The `nori.json` format supports externalized skills:
 ```json
 { "name": "profile-name", "version": "1.0.0", "dependencies": { "skills": { "skill-name": "*" } } }
 ```

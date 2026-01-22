@@ -20,7 +20,7 @@ import {
   showCursorAgentNotSupportedError,
 } from "@/cli/commands/registryAgentCheck.js";
 import { getRegistryAuth } from "@/cli/config.js";
-import { getNoriSkillsDir } from "@/cli/features/claude-code/paths.js";
+import { getClaudeSkillsDir } from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -288,7 +288,9 @@ export const skillUploadMain = async (args: {
   // Use config from agentCheck (already loaded during support check)
   const config = agentCheck.config;
 
-  const skillsDir = getNoriSkillsDir({ installDir: targetInstallDir });
+  // Skills for upload are stored in ~/.claude/skills/ (Claude native path)
+  // NOT in ~/.nori/skills/ - that global path no longer exists
+  const skillsDir = getClaudeSkillsDir({ installDir: targetInstallDir });
   const skillDir = path.join(skillsDir, skillName);
 
   // Check if skill exists

@@ -179,13 +179,11 @@ describe("init command", () => {
 
       // Mock promptUser to simulate user accepting:
       // 1. Profile persistence warning (type "yes")
-      // 2. Accept saving config ("y")
-      // 3. Profile name
+      // 2. Profile name directly (no "save?" question - user must provide a name)
       const { promptUser } = await import("@/cli/prompt.js");
       vi.mocked(promptUser)
         .mockResolvedValueOnce("yes") // Profile persistence warning
-        .mockResolvedValueOnce("y") // Accept saving config
-        .mockResolvedValueOnce("my-captured-profile"); // Profile name
+        .mockResolvedValueOnce("my-captured-profile"); // Profile name only
 
       // Run init in interactive mode (default)
       await initMain({ installDir: tempDir });

@@ -30,7 +30,8 @@ export const detectNoriPollution = (cwdPath: string): Array<string> => {
 
     for (const dir of noriDirs) {
       const dirPath = path.join(claudePath, dir);
-      if (fs.existsSync(dirPath)) {
+      // Only check for directories, not files (empty files may be created by IDE/editor)
+      if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
         pollutionMarkers.push(`.claude/${dir}`);
       }
     }

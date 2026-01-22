@@ -10,7 +10,7 @@
 #   SKILLSETS_VERSION=1.0.0 ./scripts/package_skillsets.sh
 #
 # Environment variables:
-#   SKILLSETS_VERSION - Version for the nori-skillsets package (default: 1.0.0)
+#   SKILLSETS_VERSION - Version for the nori-skillsets package (default: 0.0.0)
 
 set -e  # Exit on any error
 
@@ -30,8 +30,8 @@ PACKAGE_TEMPLATE="$TEMPLATE_DIR/package.template.json"
 DEPS_CONFIG="$TEMPLATE_DIR/dependencies.json"
 MAIN_PACKAGE_JSON="$PROJECT_ROOT/package.json"
 
-# Version can be set via environment variable, defaults to 1.0.0
-VERSION="${SKILLSETS_VERSION:-1.0.0}"
+# Version can be set via environment variable, defaults to 0.0.0 for local development
+VERSION="${SKILLSETS_VERSION:-0.0.0}"
 
 # Color codes for output
 RED='\033[0;31m'

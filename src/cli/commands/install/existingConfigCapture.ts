@@ -358,16 +358,19 @@ export const promptForExistingConfigCapture = async (args: {
     newline();
   }
 
-  // Inform user that config will be saved
-  info({ message: "This configuration will be saved as a profile." });
+  // Inform user that config will be saved locally as a skillset
+  info({
+    message:
+      "This configuration will be saved locally as a skillset in ~/.nori/profiles/.",
+  });
   info({ message: "(Press Ctrl+C to abort if you do not want to save it.)" });
   newline();
 
-  // Prompt for profile name with validation (required)
+  // Prompt for skillset name with validation (required)
   while (true) {
     const nameResponse = await promptUser({
       prompt:
-        "Enter a name for this profile (lowercase letters, numbers, hyphens): ",
+        "Enter a name for this skillset (lowercase letters, numbers, hyphens): ",
     });
 
     if (isValidProfileName(nameResponse)) {
@@ -376,7 +379,7 @@ export const promptForExistingConfigCapture = async (args: {
 
     error({
       message:
-        "Invalid profile name. Use only lowercase letters, numbers, and hyphens.",
+        "Invalid skillset name. Use only lowercase letters, numbers, and hyphens.",
     });
   }
 };

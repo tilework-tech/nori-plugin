@@ -29,9 +29,6 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
   getNoriDir: () => mockNoriDir,
   getNoriProfilesDir: () => path.join(mockNoriDir, "profiles"),
   getNoriConfigFile: () => path.join(mockNoriDir, "config.json"),
-  getNoriSkillsDir: () => path.join(mockNoriDir, "skills"),
-  getNoriSkillDir: (args: { installDir: string; skillName: string }) =>
-    path.join(mockNoriDir, "skills", args.skillName),
 }));
 
 // Import loaders after mocking env
@@ -919,6 +916,10 @@ describe("skillsLoader", () => {
   });
 
   describe("skills.json support (external skills)", () => {
+    // Note: External skills are stored in the PROFILE's skills directory ({profileDir}/skills/)
+    // NOT in a global ~/.nori/skills/ directory. The skills.json references dependencies
+    // that were downloaded by registry-download to the profile's skills directory.
+
     it("should install skills from both inline folder and skills.json", async () => {
       const config: Config = {
         installDir: tempDir,
@@ -936,9 +937,10 @@ describe("skillsLoader", () => {
         }),
       );
 
-      // Create the external skill in ~/.nori/skills/
+      // Create the external skill in the PROFILE's skills directory
+      // (this is where registry-download puts skill dependencies)
       const externalSkillDir = path.join(
-        mockNoriDir,
+        profileDir,
         "skills",
         "external-skill",
       );
@@ -982,8 +984,8 @@ describe("skillsLoader", () => {
         }),
       );
 
-      // Create the external version in ~/.nori/skills/
-      const externalSkillDir = path.join(mockNoriDir, "skills", "using-skills");
+      // Create the external version in the PROFILE's skills directory
+      const externalSkillDir = path.join(profileDir, "skills", "using-skills");
       await fs.mkdir(externalSkillDir, { recursive: true });
       await fs.writeFile(
         path.join(externalSkillDir, "SKILL.md"),
@@ -998,6 +1000,46 @@ describe("skillsLoader", () => {
         "utf-8",
       );
       expect(content).toContain("EXTERNAL VERSION");
+    });
+
+    it("should NOT read skills from global ~/.nori/skills/ directory", async () => {
+      const config: Config = {
+        installDir: tempDir,
+        agents: {
+          "claude-code": { profile: { baseProfile: "senior-swe" } },
+        },
+      };
+
+      // Create a skills.json referencing a skill
+      const profileDir = path.join(mockNoriDir, "profiles", "senior-swe");
+      await fs.writeFile(
+        path.join(profileDir, "skills.json"),
+        JSON.stringify({
+          "global-only-skill": "^1.0.0",
+        }),
+      );
+
+      // Create the skill ONLY in the global ~/.nori/skills/ directory (old path)
+      // This should NOT be found since we now read from profile directory
+      const globalSkillDir = path.join(
+        mockNoriDir,
+        "skills",
+        "global-only-skill",
+      );
+      await fs.mkdir(globalSkillDir, { recursive: true });
+      await fs.writeFile(
+        path.join(globalSkillDir, "SKILL.md"),
+        "---\nname: Global Only Skill\ndescription: Should not be found\n---\n# Global Only\n",
+      );
+
+      await skillsLoader.install({ config });
+
+      // The global-only skill should NOT be installed because we don't read from global path
+      const globalSkillExists = await fs
+        .access(path.join(skillsDir, "global-only-skill", "SKILL.md"))
+        .then(() => true)
+        .catch(() => false);
+      expect(globalSkillExists).toBe(false);
     });
 
     it("should work when profile has no skills.json", async () => {
@@ -1039,9 +1081,9 @@ describe("skillsLoader", () => {
         }),
       );
 
-      // Create the external skill with template placeholders
+      // Create the external skill with template placeholders in the PROFILE's skills directory
       const externalSkillDir = path.join(
-        mockNoriDir,
+        profileDir,
         "skills",
         "templated-skill",
       );

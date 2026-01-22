@@ -28,10 +28,7 @@ import {
   showCursorAgentNotSupportedError,
 } from "@/cli/commands/registryAgentCheck.js";
 import { getRegistryAuth } from "@/cli/config.js";
-import {
-  getNoriProfilesDir,
-  getNoriSkillsDir,
-} from "@/cli/features/claude-code/paths.js";
+import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline, raw } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -733,7 +730,18 @@ export const registryDownloadMain = async (args: {
 
     if (installedValid && targetValid) {
       if (semver.gte(installedVersion, targetVersion)) {
-        // Already at same or newer version
+        // Already at same or newer version - still check skill dependencies
+        const noriJson = await readNoriJson({ profileDir: targetDir });
+        if (noriJson != null) {
+          const profileSkillsDir = path.join(targetDir, "skills");
+          await downloadSkillDependencies({
+            noriJson,
+            skillsDir: profileSkillsDir,
+            registryUrl: selectedRegistry.registryUrl,
+            authToken: selectedRegistry.authToken,
+          });
+        }
+
         if (installedVersion === targetVersion) {
           success({
             message: `Profile "${packageName}" is already at version ${installedVersion}.`,
@@ -750,7 +758,18 @@ export const registryDownloadMain = async (args: {
         message: `Updating profile "${packageName}" from ${installedVersion} to ${targetVersion}...`,
       });
     } else if (installedVersion === targetVersion) {
-      // Fallback for non-semver versions
+      // Fallback for non-semver versions - still check skill dependencies
+      const noriJson = await readNoriJson({ profileDir: targetDir });
+      if (noriJson != null) {
+        const profileSkillsDir = path.join(targetDir, "skills");
+        await downloadSkillDependencies({
+          noriJson,
+          skillsDir: profileSkillsDir,
+          registryUrl: selectedRegistry.registryUrl,
+          authToken: selectedRegistry.authToken,
+        });
+      }
+
       success({
         message: `Profile "${packageName}" is already at version ${installedVersion}.`,
       });
@@ -785,9 +804,10 @@ export const registryDownloadMain = async (args: {
       }
 
       // Extraction succeeded - now safely remove existing profile contents
+      // Preserve .nori-version and skills/ directory (downloaded skill dependencies)
       const existingFiles = await fs.readdir(targetDir);
       for (const file of existingFiles) {
-        if (file !== ".nori-version") {
+        if (file !== ".nori-version" && file !== "skills") {
           await fs.rm(path.join(targetDir, file), {
             recursive: true,
             force: true,
@@ -796,8 +816,17 @@ export const registryDownloadMain = async (args: {
       }
 
       // Move extracted files from temp to profile directory
+      // Skip skills directory - it's managed separately via downloadSkillDependencies
       const extractedFiles = await fs.readdir(tempDir);
       for (const file of extractedFiles) {
+        if (file === "skills") {
+          // Don't overwrite existing skills - remove extracted skills from temp
+          await fs.rm(path.join(tempDir, file), {
+            recursive: true,
+            force: true,
+          });
+          continue;
+        }
         await fs.rename(path.join(tempDir, file), path.join(targetDir, file));
       }
 
@@ -832,10 +861,11 @@ export const registryDownloadMain = async (args: {
     // Check for nori.json and download skill dependencies
     const noriJson = await readNoriJson({ profileDir: targetDir });
     if (noriJson != null) {
-      const skillsDir = getNoriSkillsDir({ installDir: targetInstallDir });
+      // Skills are downloaded to the PROFILE's skills directory, not a global path
+      const profileSkillsDir = path.join(targetDir, "skills");
       await downloadSkillDependencies({
         noriJson,
-        skillsDir,
+        skillsDir: profileSkillsDir,
         registryUrl: selectedRegistry.registryUrl,
         authToken: selectedRegistry.authToken,
       });

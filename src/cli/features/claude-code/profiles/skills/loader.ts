@@ -12,7 +12,6 @@ import {
   getClaudeSkillsDir,
   getClaudeSettingsFile,
   getNoriDir,
-  getNoriSkillDir,
 } from "@/cli/features/claude-code/paths.js";
 import { readSkillsJson } from "@/cli/features/claude-code/profiles/skills/resolver.js";
 import { substituteTemplatePaths } from "@/cli/features/claude-code/template.js";
@@ -196,44 +195,10 @@ const installSkills = async (args: { config: Config }): Promise<void> => {
     });
   }
 
-  // Step 2: Install external skills from skills.json
-  // External skills take precedence over inline skills (copied second to overwrite)
-  const profileDir = getProfileDir({
-    profileName,
-    installDir: config.installDir,
-  });
-  const skillDependencies = await readSkillsJson({ profileDir });
-
-  if (skillDependencies != null && skillDependencies.length > 0) {
-    info({
-      message: `Installing ${skillDependencies.length} external skill(s) from skills.json...`,
-    });
-
-    for (const dep of skillDependencies) {
-      const externalSkillDir = getNoriSkillDir({
-        installDir: config.installDir,
-        skillName: dep.name,
-      });
-
-      // Check if external skill exists
-      try {
-        await fs.access(externalSkillDir);
-
-        // Copy external skill to claude skills dir (overwrites inline if exists)
-        const destPath = path.join(claudeSkillsDir, dep.name);
-        await copyDirWithTemplateSubstitution({
-          src: externalSkillDir,
-          dest: destPath,
-          installDir: config.installDir,
-        });
-        info({ message: `  Installed external skill: ${dep.name}` });
-      } catch {
-        warn({
-          message: `External skill '${dep.name}' not found at ${externalSkillDir}`,
-        });
-      }
-    }
-  }
+  // Note: External skills from skills.json are now stored in the profile's own skills
+  // directory ({profileDir}/skills/) after being downloaded by registry-download.
+  // Step 1 already copies all skills from that directory, so no separate step is needed.
+  // The skills.json file is now just metadata for tracking which skills were downloaded.
 
   success({ message: "✓ Installed skills" });
 

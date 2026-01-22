@@ -1217,15 +1217,9 @@ describe("registry-download", () => {
   });
 
   describe("nori.json skill dependencies", () => {
-    let skillsDir: string;
+    // Note: Skills are installed to {profileDir}/skills/, NOT to a global .nori/skills/ directory
 
-    beforeEach(async () => {
-      // Create skills directory
-      skillsDir = path.join(testDir, ".nori", "skills");
-      await fs.mkdir(skillsDir, { recursive: true });
-    });
-
-    it("should download skill dependencies listed in nori.json", async () => {
+    it("should download skill dependencies to profile directory", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
         registryAuths: [],
@@ -1287,19 +1281,28 @@ describe("registry-download", () => {
         authToken: undefined,
       });
 
-      // Verify skill was installed to correct location
-      const skillDir = path.join(skillsDir, "test-skill");
-      const stats = await fs.stat(skillDir);
+      // Verify skill was installed to PROFILE directory, not global .nori/skills/
+      const profileSkillDir = path.join(
+        profilesDir,
+        "test-profile",
+        "skills",
+        "test-skill",
+      );
+      const stats = await fs.stat(profileSkillDir);
       expect(stats.isDirectory()).toBe(true);
 
+      // Verify global .nori/skills/ was NOT used
+      const globalSkillsDir = path.join(testDir, ".nori", "skills");
+      await expect(fs.access(globalSkillsDir)).rejects.toThrow();
+
       // Verify skill has .nori-version file
-      const skillVersionFile = path.join(skillDir, ".nori-version");
+      const skillVersionFile = path.join(profileSkillDir, ".nori-version");
       const skillVersionContent = await fs.readFile(skillVersionFile, "utf-8");
       const skillVersionInfo = JSON.parse(skillVersionContent);
       expect(skillVersionInfo.version).toBe("1.2.0");
     });
 
-    it("should download multiple skill dependencies", async () => {
+    it("should download multiple skill dependencies to profile directory", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
         registryAuths: [],
@@ -1363,9 +1366,10 @@ describe("registry-download", () => {
       // Verify both skills were downloaded
       expect(registrarApi.downloadSkillTarball).toHaveBeenCalledTimes(2);
 
-      // Verify both skills were installed
-      const skillOneDir = path.join(skillsDir, "skill-one");
-      const skillTwoDir = path.join(skillsDir, "skill-two");
+      // Verify both skills were installed to PROFILE directory
+      const profileSkillsDir = path.join(profilesDir, "test-profile", "skills");
+      const skillOneDir = path.join(profileSkillsDir, "skill-one");
+      const skillTwoDir = path.join(profileSkillsDir, "skill-two");
       expect((await fs.stat(skillOneDir)).isDirectory()).toBe(true);
       expect((await fs.stat(skillTwoDir)).isDirectory()).toBe(true);
     });
@@ -1477,9 +1481,14 @@ describe("registry-download", () => {
       expect(allOutput.toLowerCase()).toContain("missing-skill");
     });
 
-    it("should skip skill if already installed with latest version", async () => {
-      // Pre-install the skill with the latest version
-      const existingSkillDir = path.join(skillsDir, "test-skill");
+    it("should skip skill if already installed in profile with latest version", async () => {
+      // Create profile directory with pre-installed skill at latest version
+      const existingProfileDir = path.join(profilesDir, "test-profile");
+      const existingSkillDir = path.join(
+        existingProfileDir,
+        "skills",
+        "test-skill",
+      );
       await fs.mkdir(existingSkillDir, { recursive: true });
       await fs.writeFile(
         path.join(existingSkillDir, "SKILL.md"),
@@ -1489,22 +1498,31 @@ describe("registry-download", () => {
         path.join(existingSkillDir, ".nori-version"),
         JSON.stringify({ version: "1.5.0", registryUrl: REGISTRAR_URL }),
       );
+      // Create profile .nori-version so it's recognized as existing
+      await fs.writeFile(
+        path.join(existingProfileDir, ".nori-version"),
+        JSON.stringify({ version: "1.0.0", registryUrl: REGISTRAR_URL }),
+      );
 
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
         registryAuths: [],
       });
 
+      // Profile update scenario - newer version available
       vi.mocked(registrarApi.getPackument).mockResolvedValue({
         name: "test-profile",
-        "dist-tags": { latest: "1.0.0" },
-        versions: { "1.0.0": { name: "test-profile", version: "1.0.0" } },
+        "dist-tags": { latest: "2.0.0" },
+        versions: {
+          "1.0.0": { name: "test-profile", version: "1.0.0" },
+          "2.0.0": { name: "test-profile", version: "2.0.0" },
+        },
       });
 
       const profileTarball = await createMockTarballWithNoriJson({
         noriJson: {
           name: "test-profile",
-          version: "1.0.0",
+          version: "2.0.0",
           dependencies: {
             skills: {
               "test-skill": "^1.0.0", // Version range is ignored, always uses latest
@@ -1514,7 +1532,7 @@ describe("registry-download", () => {
       });
       vi.mocked(registrarApi.downloadTarball).mockResolvedValue(profileTarball);
 
-      // Registry says latest is 1.5.0, which matches installed version
+      // Registry says latest skill version is 1.5.0, which matches installed version
       vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
         name: "test-skill",
         "dist-tags": { latest: "1.5.0" },
@@ -1530,9 +1548,14 @@ describe("registry-download", () => {
       expect(registrarApi.downloadSkillTarball).not.toHaveBeenCalled();
     });
 
-    it("should update skill if installed version is not latest", async () => {
-      // Pre-install an older version of the skill
-      const existingSkillDir = path.join(skillsDir, "test-skill");
+    it("should update skill in profile if installed version is not latest", async () => {
+      // Create profile directory with pre-installed skill at older version
+      const existingProfileDir = path.join(profilesDir, "test-profile");
+      const existingSkillDir = path.join(
+        existingProfileDir,
+        "skills",
+        "test-skill",
+      );
       await fs.mkdir(existingSkillDir, { recursive: true });
       await fs.writeFile(
         path.join(existingSkillDir, "SKILL.md"),
@@ -1541,6 +1564,24 @@ describe("registry-download", () => {
       await fs.writeFile(
         path.join(existingSkillDir, ".nori-version"),
         JSON.stringify({ version: "0.9.0", registryUrl: REGISTRAR_URL }),
+      );
+      // Create profile .nori-version so it's recognized as existing
+      await fs.writeFile(
+        path.join(existingProfileDir, ".nori-version"),
+        JSON.stringify({ version: "1.0.0", registryUrl: REGISTRAR_URL }),
+      );
+      // Create nori.json with skill dependencies (required to trigger skill update check)
+      await fs.writeFile(
+        path.join(existingProfileDir, "nori.json"),
+        JSON.stringify({
+          name: "test-profile",
+          version: "1.0.0",
+          dependencies: {
+            skills: {
+              "test-skill": "^1.0.0",
+            },
+          },
+        }),
       );
 
       vi.mocked(loadConfig).mockResolvedValue({

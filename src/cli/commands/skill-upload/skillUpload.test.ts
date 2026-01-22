@@ -61,8 +61,9 @@ describe("skill-upload", () => {
     // Create test directory structure simulating a Nori installation
     testDir = await fs.mkdtemp(path.join(tmpdir(), "nori-skill-upload-test-"));
     configPath = path.join(testDir, ".nori-config.json");
-    // Skills are stored in .nori/skills
-    skillsDir = path.join(testDir, ".nori", "skills");
+    // Skills for upload are stored in .claude/skills (Claude native path)
+    // NOT in .nori/skills - that global path no longer exists
+    skillsDir = path.join(testDir, ".claude", "skills");
 
     // Create skills directory
     await fs.mkdir(skillsDir, { recursive: true });
@@ -224,6 +225,53 @@ This is a test skill.
         .map((call) => call.join(" "))
         .join("\n");
       expect(allErrorOutput.toLowerCase()).toContain("not found");
+    });
+
+    it("should NOT find skills in deprecated global .nori/skills/ path", async () => {
+      // Create skill in the OLD global .nori/skills/ path (deprecated)
+      const deprecatedSkillsDir = path.join(testDir, ".nori", "skills");
+      const deprecatedSkillDir = path.join(deprecatedSkillsDir, "global-skill");
+      await fs.mkdir(deprecatedSkillDir, { recursive: true });
+      await fs.writeFile(
+        path.join(deprecatedSkillDir, "SKILL.md"),
+        `---
+name: Global Skill
+description: Should not be found
+---
+# Global Skill
+`,
+      );
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [
+          {
+            username: "test@example.com",
+            password: "test-password",
+            registryUrl: "https://noriskillsets.dev",
+          },
+        ],
+      });
+
+      vi.mocked(getRegistryAuth).mockReturnValue({
+        username: "test@example.com",
+        password: "test-password",
+        registryUrl: "https://noriskillsets.dev",
+      });
+
+      await skillUploadMain({
+        skillSpec: "global-skill",
+        cwd: testDir,
+      });
+
+      // Should NOT find the skill - only looks in .claude/skills/
+      const allErrorOutput = mockConsoleError.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allErrorOutput.toLowerCase()).toContain("not found");
+
+      // Should NOT attempt upload
+      expect(registrarApi.uploadSkill).not.toHaveBeenCalled();
     });
 
     it("should error when skill directory has no SKILL.md", async () => {

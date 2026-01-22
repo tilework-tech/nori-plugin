@@ -1,8 +1,8 @@
 /**
- * Seaweed CLI command registration functions
+ * Nori Skillsets CLI command registration functions
  *
  * These functions register simplified command names (search, download, install, update, upload)
- * for the seaweed CLI, reusing the existing *Main implementation functions from the registry-* commands.
+ * for the nori-skillsets CLI, reusing the existing *Main implementation functions from the registry-* commands.
  *
  * The nori-ai CLI continues to use the registry-* prefixed commands.
  */
@@ -17,11 +17,11 @@ import { switchSkillsetAction } from "@/cli/commands/switch-profile/profiles.js"
 import type { Command } from "commander";
 
 /**
- * Register the 'init' command for seaweed CLI
+ * Register the 'init' command for nori-skillsets CLI
  * @param args - Configuration arguments
  * @param args.program - Commander program instance
  */
-export const registerSeaweedInitCommand = (args: {
+export const registerNoriSkillsetsInitCommand = (args: {
   program: Command;
 }): void => {
   const { program } = args;
@@ -39,11 +39,11 @@ export const registerSeaweedInitCommand = (args: {
 };
 
 /**
- * Register the 'search' command for seaweed CLI
+ * Register the 'search' command for nori-skillsets CLI
  * @param args - Configuration arguments
  * @param args.program - Commander program instance
  */
-export const registerSeaweedSearchCommand = (args: {
+export const registerNoriSkillsetsSearchCommand = (args: {
   program: Command;
 }): void => {
   const { program } = args;
@@ -56,17 +56,17 @@ export const registerSeaweedSearchCommand = (args: {
       await registrySearchMain({
         query,
         installDir: globalOpts.installDir || null,
-        cliName: "seaweed",
+        cliName: "nori-skillsets",
       });
     });
 };
 
 /**
- * Register the 'download' command for seaweed CLI
+ * Register the 'download' command for nori-skillsets CLI
  * @param args - Configuration arguments
  * @param args.program - Commander program instance
  */
-export const registerSeaweedDownloadCommand = (args: {
+export const registerNoriSkillsetsDownloadCommand = (args: {
   program: Command;
 }): void => {
   const { program } = args;
@@ -96,7 +96,7 @@ export const registerSeaweedDownloadCommand = (args: {
           installDir: globalOpts.installDir || null,
           registryUrl: options.registry || null,
           listVersions: options.listVersions || null,
-          cliName: "seaweed",
+          cliName: "nori-skillsets",
         });
 
         if (!result.success) {
@@ -107,11 +107,11 @@ export const registerSeaweedDownloadCommand = (args: {
 };
 
 /**
- * Register the 'install' command for seaweed CLI
+ * Register the 'install' command for nori-skillsets CLI
  * @param args - Configuration arguments
  * @param args.program - Commander program instance
  */
-export const registerSeaweedInstallCommand = (args: {
+export const registerNoriSkillsetsInstallCommand = (args: {
   program: Command;
 }): void => {
   const { program } = args;
@@ -141,11 +141,11 @@ export const registerSeaweedInstallCommand = (args: {
 };
 
 /**
- * Register the 'switch-skillset' command for seaweed CLI
+ * Register the 'switch-skillset' command for nori-skillsets CLI
  * @param args - Configuration arguments
  * @param args.program - Commander program instance
  */
-export const registerSeaweedSwitchSkillsetCommand = (args: {
+export const registerNoriSkillsetsSwitchSkillsetCommand = (args: {
   program: Command;
 }): void => {
   const { program } = args;
@@ -160,11 +160,11 @@ export const registerSeaweedSwitchSkillsetCommand = (args: {
 };
 
 /**
- * Register the 'download-skill' command for seaweed CLI
+ * Register the 'download-skill' command for nori-skillsets CLI
  * @param args - Configuration arguments
  * @param args.program - Commander program instance
  */
-export const registerSeaweedDownloadSkillCommand = (args: {
+export const registerNoriSkillsetsDownloadSkillCommand = (args: {
   program: Command;
 }): void => {
   const { program } = args;
@@ -192,7 +192,7 @@ export const registerSeaweedDownloadSkillCommand = (args: {
           installDir: globalOpts.installDir || null,
           registryUrl: options.registry || null,
           listVersions: options.listVersions || null,
-          cliName: "seaweed",
+          cliName: "nori-skillsets",
         });
       },
     );

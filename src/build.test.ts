@@ -453,9 +453,9 @@ ${stderr || "(empty)"}`,
     expect(mdFiles).toContain("nori-info.md");
   });
 
-  it("should register nori-ai and seaweed binaries in package.json", () => {
+  it("should register nori-ai and nori-skillsets binaries in package.json", () => {
     // This test verifies that both binaries are registered in package.json
-    // with nori-ai pointing to nori-ai.js and seaweed pointing to seaweed.js.
+    // with nori-ai pointing to nori-ai.js and nori-skillsets pointing to nori-skillsets.js.
     const pluginDir = process.cwd();
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(pluginDir, "package.json"), "utf-8"),
@@ -463,29 +463,34 @@ ${stderr || "(empty)"}`,
 
     // Both binaries should be registered
     expect(packageJson.bin).toHaveProperty("nori-ai");
-    expect(packageJson.bin).toHaveProperty("seaweed");
+    expect(packageJson.bin).toHaveProperty("nori-skillsets");
 
     // Each should point to its own CLI entry point
     expect(packageJson.bin["nori-ai"]).toBe("./build/src/cli/nori-ai.js");
-    expect(packageJson.bin.seaweed).toBe("./build/src/cli/seaweed.js");
+    expect(packageJson.bin["nori-skillsets"]).toBe(
+      "./build/src/cli/nori-skillsets.js",
+    );
   });
 
-  it("should create both nori-ai.js and seaweed.js executables in build", () => {
+  it("should create both nori-ai.js and nori-skillsets.js executables in build", () => {
     // This test verifies that both CLI entry points exist after build
     const pluginDir = process.cwd();
 
     const noriAiPath = path.join(pluginDir, "build/src/cli/nori-ai.js");
-    const seaweedPath = path.join(pluginDir, "build/src/cli/seaweed.js");
+    const noriSkillsetsPath = path.join(
+      pluginDir,
+      "build/src/cli/nori-skillsets.js",
+    );
 
     // Both files should exist
     expect(fs.existsSync(noriAiPath)).toBe(true);
-    expect(fs.existsSync(seaweedPath)).toBe(true);
+    expect(fs.existsSync(noriSkillsetsPath)).toBe(true);
 
     // Both should be executable
     const noriAiStats = fs.statSync(noriAiPath);
-    const seaweedStats = fs.statSync(seaweedPath);
+    const noriSkillsetsStats = fs.statSync(noriSkillsetsPath);
     expect((noriAiStats.mode & 0o100) !== 0).toBe(true);
-    expect((seaweedStats.mode & 0o100) !== 0).toBe(true);
+    expect((noriSkillsetsStats.mode & 0o100) !== 0).toBe(true);
   });
 
   // CLI behavior tests - these run after build tests to ensure build artifacts exist

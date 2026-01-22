@@ -290,7 +290,7 @@ const buildDownloadHints = (args: {
  * @param args - The search parameters
  * @param args.query - The search query
  * @param args.installDir - Optional installation directory (detected if not provided)
- * @param args.cliName - CLI name for user-facing messages (nori-ai or seaweed)
+ * @param args.cliName - CLI name for user-facing messages (nori-ai or nori-skillsets)
  */
 export const registrySearchMain = async (args: {
   query: string;

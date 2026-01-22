@@ -952,7 +952,7 @@ No frontmatter here.
   });
 
   describe("cliName in user-facing messages", () => {
-    it("should use seaweed command names in success message when cliName is seaweed", async () => {
+    it("should use nori-skillsets command names in success message when cliName is nori-skillsets", async () => {
       await createTestSkill({ name: "test-skill" });
 
       vi.mocked(loadConfig).mockResolvedValue({
@@ -988,13 +988,13 @@ No frontmatter here.
       await skillUploadMain({
         skillSpec: "test-skill",
         cwd: testDir,
-        cliName: "seaweed",
+        cliName: "nori-skillsets",
       });
 
       const allOutput = mockConsoleLog.mock.calls
         .map((call) => call.join(" "))
         .join("\n");
-      expect(allOutput).toContain("seaweed download-skill");
+      expect(allOutput).toContain("nori-skillsets download-skill");
       expect(allOutput).not.toContain("nori-ai skill-download");
     });
 
@@ -1041,7 +1041,7 @@ No frontmatter here.
         .map((call) => call.join(" "))
         .join("\n");
       expect(allOutput).toContain("nori-ai skill-download");
-      expect(allOutput).not.toContain("seaweed download-skill");
+      expect(allOutput).not.toContain("nori-skillsets download-skill");
     });
   });
 });

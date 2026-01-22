@@ -4,7 +4,7 @@
  * These tests verify the packaging script that creates the nori-skillsets npm package:
  * 1. Creates a staging directory with the correct structure
  * 2. Generates a proper package.json for nori-skillsets
- * 3. Includes the seaweed CLI entry point
+ * 3. Includes the nori-skillsets CLI entry point
  * 4. Creates a valid npm tarball
  */
 
@@ -50,8 +50,9 @@ describe("packages/nori-skillsets template files", () => {
     it("should have correct bin entries", () => {
       const templatePath = path.join(templateDir, "package.template.json");
       const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
-      expect(template.bin["seaweed"]).toBe("./build/src/cli/seaweed.js");
-      expect(template.bin["nori-skillsets"]).toBe("./build/src/cli/seaweed.js");
+      expect(template.bin["nori-skillsets"]).toBe(
+        "./build/src/cli/nori-skillsets.js",
+      );
     });
   });
 
@@ -121,15 +122,15 @@ describe("package_skillsets.sh execution", () => {
       expect(fs.existsSync(buildDir)).toBe(true);
     });
 
-    it("should contain seaweed.js entry point", () => {
-      const seaweedPath = path.join(
+    it("should contain nori-skillsets.js entry point", () => {
+      const noriSkillsetsPath = path.join(
         stagingDir,
         "build",
         "src",
         "cli",
-        "seaweed.js",
+        "nori-skillsets.js",
       );
-      expect(fs.existsSync(seaweedPath)).toBe(true);
+      expect(fs.existsSync(noriSkillsetsPath)).toBe(true);
     });
   });
 
@@ -149,9 +150,8 @@ describe("package_skillsets.sh execution", () => {
       const packageJsonPath = path.join(stagingDir, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
       expect(packageJson.bin).toBeDefined();
-      expect(packageJson.bin["seaweed"]).toBe("./build/src/cli/seaweed.js");
       expect(packageJson.bin["nori-skillsets"]).toBe(
-        "./build/src/cli/seaweed.js",
+        "./build/src/cli/nori-skillsets.js",
       );
     });
 
@@ -165,7 +165,7 @@ describe("package_skillsets.sh execution", () => {
       const packageJsonPath = path.join(stagingDir, "package.json");
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
       expect(packageJson.dependencies).toBeDefined();
-      // Core dependencies needed by seaweed (as defined in packages/nori-skillsets/dependencies.json)
+      // Core dependencies needed by nori-skillsets (as defined in packages/nori-skillsets/dependencies.json)
       expect(packageJson.dependencies["commander"]).toBeDefined();
       expect(packageJson.dependencies["semver"]).toBeDefined();
       expect(packageJson.dependencies["winston"]).toBeDefined();

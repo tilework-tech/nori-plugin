@@ -1,5 +1,5 @@
 {
-  "$comment": "Dependencies required by the seaweed CLI at runtime. Versions are pulled from the main package.json during build.",
+  "$comment": "Dependencies required by the nori-skillsets CLI at runtime. Versions are pulled from the main package.json during build.",
   "dependencies": [
     "ajv",
     "ajv-formats",

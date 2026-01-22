@@ -118,7 +118,7 @@ const extractTarball = async (args: {
  * @param args.cwd - Current working directory (defaults to process.cwd())
  * @param args.installDir - Optional explicit install directory
  * @param args.registryUrl - Optional registry URL override (uses stored registry URL if not provided)
- * @param args.cliName - CLI name for user-facing messages (nori-ai or seaweed)
+ * @param args.cliName - CLI name for user-facing messages (nori-ai or nori-skillsets)
  */
 export const registryUpdateMain = async (args: {
   profileName: string;

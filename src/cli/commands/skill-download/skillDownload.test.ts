@@ -943,7 +943,7 @@ describe("skill-download", () => {
   });
 
   describe("cliName in user-facing messages", () => {
-    it("should use seaweed command names when cliName is seaweed", async () => {
+    it("should use nori-skillsets command names when cliName is nori-skillsets", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
         registryAuths: [],
@@ -959,14 +959,14 @@ describe("skill-download", () => {
         skillSpec: "test-skill",
         cwd: testDir,
         listVersions: true,
-        cliName: "seaweed",
+        cliName: "nori-skillsets",
       });
 
-      // Verify version hint uses seaweed command names
+      // Verify version hint uses nori-skillsets command names
       const allOutput = mockConsoleLog.mock.calls
         .map((call) => call.join(" "))
         .join("\n");
-      expect(allOutput).toContain("seaweed download-skill");
+      expect(allOutput).toContain("nori-skillsets download-skill");
       expect(allOutput).not.toContain("nori-ai skill-download");
     });
 
@@ -994,7 +994,7 @@ describe("skill-download", () => {
         .map((call) => call.join(" "))
         .join("\n");
       expect(allOutput).toContain("nori-ai skill-download");
-      expect(allOutput).not.toContain("seaweed download-skill");
+      expect(allOutput).not.toContain("nori-skillsets download-skill");
     });
   });
 });

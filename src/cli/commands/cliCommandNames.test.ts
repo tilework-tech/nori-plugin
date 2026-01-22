@@ -20,8 +20,8 @@ describe("cliCommandNames", () => {
       expect(names.switchProfile).toBe("switch-profile");
     });
 
-    it("should return seaweed command names when cliName is seaweed", () => {
-      const names = getCommandNames({ cliName: "seaweed" });
+    it("should return nori-skillsets command names when cliName is nori-skillsets", () => {
+      const names = getCommandNames({ cliName: "nori-skillsets" });
 
       expect(names.download).toBe("download");
       expect(names.downloadSkill).toBe("download-skill");

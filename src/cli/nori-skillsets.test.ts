@@ -1,7 +1,7 @@
 /**
- * Tests for the seaweed CLI
+ * Tests for the nori-skillsets CLI
  *
- * The seaweed CLI is a minimal registry-focused CLI that provides simplified commands:
+ * The nori-skillsets CLI is a minimal registry-focused CLI that provides simplified commands:
  * - search (searches org registry)
  * - download (downloads profile package)
  * - install (downloads and installs profile)
@@ -17,11 +17,13 @@ import * as path from "path";
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-describe("seaweed CLI", () => {
+describe("nori-skillsets CLI", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "seaweed-cli-test-"));
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "nori-skillsets-cli-test-"),
+    );
   });
 
   afterEach(() => {
@@ -36,7 +38,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -48,15 +50,15 @@ describe("seaweed CLI", () => {
       }
     }
 
-    // Verify the CLI is named "seaweed"
-    expect(output).toContain("Usage: seaweed");
+    // Verify the CLI is named "nori-skillsets"
+    expect(output).toContain("Usage: nori-skillsets");
   });
 
   it("should show version when --version flag is used", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --version", {
+      output = execSync("node build/src/cli/nori-skillsets.js --version", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -76,7 +78,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -101,7 +103,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -127,7 +129,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -153,7 +155,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -179,7 +181,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -205,7 +207,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -230,7 +232,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js", {
+      output = execSync("node build/src/cli/nori-skillsets.js", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -242,7 +244,7 @@ describe("seaweed CLI", () => {
       }
     }
 
-    expect(output).toContain("Usage: seaweed");
+    expect(output).toContain("Usage: nori-skillsets");
     expect(output).toContain("Commands:");
   });
 
@@ -250,7 +252,7 @@ describe("seaweed CLI", () => {
     let output = "";
 
     try {
-      output = execSync("node build/src/cli/seaweed.js --help", {
+      output = execSync("node build/src/cli/nori-skillsets.js --help", {
         encoding: "utf-8",
         stdio: "pipe",
         env: { ...process.env, FORCE_COLOR: "0", HOME: tempDir },
@@ -263,11 +265,11 @@ describe("seaweed CLI", () => {
     }
 
     // Help examples should use simplified command names
-    expect(output).toContain("$ seaweed init");
-    expect(output).toContain("$ seaweed search");
-    expect(output).toContain("$ seaweed download");
-    expect(output).toContain("$ seaweed install");
-    expect(output).toContain("$ seaweed switch-skillset");
-    expect(output).toContain("$ seaweed download-skill");
+    expect(output).toContain("$ nori-skillsets init");
+    expect(output).toContain("$ nori-skillsets search");
+    expect(output).toContain("$ nori-skillsets download");
+    expect(output).toContain("$ nori-skillsets install");
+    expect(output).toContain("$ nori-skillsets switch-skillset");
+    expect(output).toContain("$ nori-skillsets download-skill");
   });
 });

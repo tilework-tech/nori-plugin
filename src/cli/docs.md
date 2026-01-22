@@ -13,7 +13,7 @@ CLI for Nori Profiles that prompts for configuration, installs features into Cla
 | Binary | Entry Point | Purpose |
 |--------|-------------|---------|
 | `nori-ai` | @/src/cli/nori-ai.ts | Full CLI with all commands for Nori Profiles installation, management, and registry operations |
-| `seaweed` | @/src/cli/seaweed.ts | Minimal CLI focused only on registry operations |
+| `nori-skillsets` | @/src/cli/nori-skillsets.ts | Minimal CLI focused only on registry operations |
 
 Both CLIs use Commander.js for command routing, argument parsing, validation, and help generation. Both define the same global options (`--install-dir`, `--non-interactive`, `--silent`, `--agent`) on the main program. Each command lives in its own subdirectory under @/src/cli/commands/ and exports a `registerXCommand({ program })` function that the entry points import and call. Commands access global options via `program.opts()`. Both CLIs provide automatic `--help`, `--version`, and unknown command detection. Running either binary with no arguments shows help. The CLI layer is responsible ONLY for parsing and routing - all business logic remains in the command modules.
 
@@ -35,7 +35,7 @@ The `--agent` option enables support for multiple AI agents. Commands use the Ag
 ```
 src/cli/
   nori-ai.ts             # Full CLI entry point with all commands
-  seaweed.ts             # Minimal CLI entry point for registry operations only
+  nori-skillsets.ts      # Minimal CLI entry point for registry operations only
   config.ts              # Config type and persistence (supports per-agent profiles)
   logger.ts              # Console output formatting via Winston
   prompt.ts              # User input prompting
@@ -65,7 +65,7 @@ src/cli/
 
 **CLI Commands:**
 
-| nori-ai Command | seaweed Command | Module | Description |
+| nori-ai Command | nori-skillsets Command | Module | Description |
 |-----------------|-----------------|--------|-------------|
 | `install` | | commands/install/install.ts | Install Nori Profiles with profile selection |
 | `init` | `init` | commands/init/init.ts | Initialize Nori configuration and directories |
@@ -83,7 +83,7 @@ src/cli/
 | `skill-download` | `download-skill` | commands/skill-download/skillDownload.ts | Download a skill from the Nori registrar |
 | `skill-upload` | | commands/skill-upload/skillUpload.ts | Upload a skill to the Nori registrar |
 
-The seaweed CLI uses simplified command names (no `registry-` prefix for registry read operations, `download-skill` for skill downloads, `switch-skillset` for profile switching, and `init` for initialization). Upload, update, and onboard operations are only available via the nori-ai CLI. Both CLIs share the same underlying implementation functions - the seaweed commands are thin wrappers defined in @/src/cli/commands/seaweedCommands.ts that delegate to the existing implementations (`*Main` functions from registry-*, skill-*, and init commands, plus `switchSkillsetAction` from profiles.ts).
+The nori-skillsets CLI uses simplified command names (no `registry-` prefix for registry read operations, `download-skill` for skill downloads, `switch-skillset` for profile switching, and `init` for initialization). Upload, update, and onboard operations are only available via the nori-ai CLI. Both CLIs share the same underlying implementation functions - the nori-skillsets commands are thin wrappers defined in @/src/cli/commands/noriSkillsetsCommands.ts that delegate to the existing implementations (`*Main` functions from registry-*, skill-*, and init commands, plus `switchSkillsetAction` from profiles.ts).
 
 Each command directory contains the command implementation, its tests, and any command-specific utilities (e.g., `install/` contains `asciiArt.ts` and `installState.ts`).
 

@@ -350,7 +350,7 @@ const formatMultipleSkillsError = (args: {
  * @param args.installDir - Optional explicit install directory
  * @param args.registryUrl - Optional registry URL to download from
  * @param args.listVersions - If true, list available versions instead of downloading
- * @param args.cliName - CLI name for user-facing messages (nori-ai or seaweed)
+ * @param args.cliName - CLI name for user-facing messages (nori-ai or nori-skillsets)
  */
 export const skillDownloadMain = async (args: {
   skillSpec: string;

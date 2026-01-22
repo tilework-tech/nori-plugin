@@ -866,7 +866,7 @@ describe("registry-upload", () => {
   });
 
   describe("cliName in user-facing messages", () => {
-    it("should use seaweed command names in success message when cliName is seaweed", async () => {
+    it("should use nori-skillsets command names in success message when cliName is nori-skillsets", async () => {
       await createTestProfile({ name: "test-profile" });
 
       vi.mocked(loadConfig).mockResolvedValue({
@@ -902,13 +902,13 @@ describe("registry-upload", () => {
       await registryUploadMain({
         profileSpec: "test-profile",
         cwd: testDir,
-        cliName: "seaweed",
+        cliName: "nori-skillsets",
       });
 
       const allOutput = mockConsoleLog.mock.calls
         .map((call) => call.join(" "))
         .join("\n");
-      expect(allOutput).toContain("seaweed download");
+      expect(allOutput).toContain("nori-skillsets download");
       expect(allOutput).not.toContain("nori-ai registry-download");
     });
 
@@ -955,7 +955,7 @@ describe("registry-upload", () => {
         .map((call) => call.join(" "))
         .join("\n");
       expect(allOutput).toContain("nori-ai registry-download");
-      expect(allOutput).not.toContain("seaweed download");
+      expect(allOutput).not.toContain("nori-skillsets download");
     });
   });
 });

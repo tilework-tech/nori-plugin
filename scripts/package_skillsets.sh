@@ -3,7 +3,7 @@
 # Package Skillsets Script
 #
 # This script creates the nori-skillsets npm package from the build output.
-# It creates a minimal package containing only the seaweed CLI.
+# It creates a minimal package containing only the nori-skillsets CLI.
 #
 # Usage:
 #   ./scripts/package_skillsets.sh
@@ -54,8 +54,8 @@ if [[ ! -d "$BUILD_DIR" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$BUILD_DIR/src/cli/seaweed.js" ]]; then
-  echo -e "${RED}ERROR: seaweed.js not found in build output${NC}"
+if [[ ! -f "$BUILD_DIR/src/cli/nori-skillsets.js" ]]; then
+  echo -e "${RED}ERROR: nori-skillsets.js not found in build output${NC}"
   echo "Run 'npm run build' first."
   exit 1
 fi
@@ -86,7 +86,7 @@ echo -e "${GREEN}✓ Staging directory created${NC}"
 
 echo -e "${BLUE}[2/4] Copying build output...${NC}"
 
-# Copy the entire build directory (seaweed depends on shared modules)
+# Copy the entire build directory (nori-skillsets depends on shared modules)
 cp -r "$BUILD_DIR" "$STAGING_DIR/"
 
 # Copy README if it exists

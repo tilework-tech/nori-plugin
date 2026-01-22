@@ -1,11 +1,11 @@
 /**
  * CLI command name mapping for user-facing messages
  *
- * Maps CLI names (nori-ai, seaweed) to their respective command names.
+ * Maps CLI names (nori-ai, nori-skillsets) to their respective command names.
  * Used to display correct command hints in output messages.
  */
 
-export type CliName = "nori-ai" | "seaweed";
+export type CliName = "nori-ai" | "nori-skillsets";
 
 export type CommandNames = {
   download: string;
@@ -27,7 +27,7 @@ const NORI_AI_COMMANDS: CommandNames = {
   switchProfile: "switch-profile",
 };
 
-const SEAWEED_COMMANDS: CommandNames = {
+const NORI_SKILLSETS_COMMANDS: CommandNames = {
   download: "download",
   downloadSkill: "download-skill",
   search: "search",
@@ -40,7 +40,7 @@ const SEAWEED_COMMANDS: CommandNames = {
 /**
  * Get the command names for the given CLI
  * @param args - The function arguments
- * @param args.cliName - The CLI name (nori-ai or seaweed). Defaults to nori-ai.
+ * @param args.cliName - The CLI name (nori-ai or nori-skillsets). Defaults to nori-ai.
  *
  * @returns The command names for the CLI
  */
@@ -49,8 +49,8 @@ export const getCommandNames = (args: {
 }): CommandNames => {
   const { cliName } = args;
 
-  if (cliName === "seaweed") {
-    return SEAWEED_COMMANDS;
+  if (cliName === "nori-skillsets") {
+    return NORI_SKILLSETS_COMMANDS;
   }
 
   return NORI_AI_COMMANDS;

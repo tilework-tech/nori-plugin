@@ -12,7 +12,7 @@
   "type": "module",
   "bin": {
     "nori-ai": "./build/src/cli/nori-ai.js",
-    "seaweed": "./build/src/cli/seaweed.js"
+    "nori-skillsets": "./build/src/cli/nori-skillsets.js"
   },
   "scripts": {
     "build": "./scripts/build.sh",

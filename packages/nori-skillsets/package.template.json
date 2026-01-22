@@ -4,8 +4,7 @@
   "description": "Operations for Nori Skillsets and Skills",
   "type": "module",
   "bin": {
-    "seaweed": "./build/src/cli/seaweed.js",
-    "nori-skillsets": "./build/src/cli/seaweed.js"
+    "nori-skillsets": "./build/src/cli/nori-skillsets.js"
   },
   "keywords": [
     "claude",

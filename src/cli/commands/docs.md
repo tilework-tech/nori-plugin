@@ -4,11 +4,11 @@ Path: @/src/cli/commands
 
 ### Overview
 
-Contains all CLI command implementations for both the nori-ai and seaweed CLIs. Each command lives in its own subdirectory with its implementation, tests, and any command-specific utilities co-located together.
+Contains all CLI command implementations for both the nori-ai and nori-skillsets CLIs. Each command lives in its own subdirectory with its implementation, tests, and any command-specific utilities co-located together.
 
 ### How it fits into the larger codebase
 
-The CLI entry points (@/src/cli/nori-ai.ts and @/src/cli/seaweed.ts) import `registerXCommand` functions from each command subdirectory and call them to register commands with the Commander.js program. Each command module exports a register function that accepts `{ program: Command }` and adds its command definition. Commands access global options (`--install-dir`, `--non-interactive`, `--agent`) via `program.opts()`. Business logic is encapsulated within each command directory - the entry points only handle routing.
+The CLI entry points (@/src/cli/nori-ai.ts and @/src/cli/nori-skillsets.ts) import `registerXCommand` functions from each command subdirectory and call them to register commands with the Commander.js program. Each command module exports a register function that accepts `{ program: Command }` and adds its command definition. Commands access global options (`--install-dir`, `--non-interactive`, `--agent`) via `program.opts()`. Business logic is encapsulated within each command directory - the entry points only handle routing.
 
 Commands that interact with agent-specific features (install, uninstall, check, switch-profile) use the AgentRegistry (@/src/cli/features/agentRegistry.ts) to look up the agent implementation by name. The agent provides access to its LoaderRegistry, environment paths, and global feature declarations. Commands pass the `--agent` option through their call chain to ensure consistent agent context.
 
@@ -68,7 +68,7 @@ nori-ai install (orchestrator)
 The user must enter "y" or "Y" to proceed; any other input cancels the operation. In non-interactive mode (`--non-interactive`), confirmation is skipped to allow automated/scripted usage.
 
 
-**switch-profile Built-in Profile Handling:** The switch-profile command passes `skipBuiltinProfiles: true` to the install process. This prevents the profiles loader from copying all built-in profiles (amol, senior-swe, documenter, etc.) during profile switching. This is important for the `seaweed download && seaweed switch-skillset` workflow where users download a specific profile from the registry and only want that profile to be active, not all built-in profiles installed. The `skipBuiltinProfiles` flag is a runtime-only Config field (not persisted to disk) that the profiles loaders check before installing built-in profiles.
+**switch-profile Built-in Profile Handling:** The switch-profile command passes `skipBuiltinProfiles: true` to the install process. This prevents the profiles loader from copying all built-in profiles (amol, senior-swe, documenter, etc.) during profile switching. This is important for the `nori-skillsets download && nori-skillsets switch-skillset` workflow where users download a specific profile from the registry and only want that profile to be active, not all built-in profiles installed. The `skipBuiltinProfiles` flag is a runtime-only Config field (not persisted to disk) that the profiles loaders check before installing built-in profiles.
 The uninstall command uses two agent methods for global features:
 - `agent.getGlobalFeatureNames()`: Human-readable names for displaying in prompts (e.g., "hooks, statusline, and global slash commands")
 - `agent.getGlobalLoaderNames()`: Loader names for determining which loaders to skip when preserving global settings (e.g., `["hooks", "statusline", "slashcommands"]`)
@@ -119,7 +119,7 @@ The command creates `.claude/skills/` directory if it doesn't exist. This allows
 3. **Explicit registry:** Users can specify `--registry <url>` to target a specific registry. The command checks `availableRegistries` first (which includes the public registry for authenticated users), then falls back to `getRegistryAuth()` for legacy `registryAuths` lookups.
 4. **Multiple registries:** If multiple registries are configured and no `--registry` is specified, the command prompts the user to select one (or errors in non-interactive mode).
 
-**registry-download Auto-Init:** The `registry-download` command (and `seaweed download`) automatically initializes Nori configuration when no installation exists, allowing users to download profiles without first running `nori-ai init` or `nori-ai install`. The installation directory resolution logic:
+**registry-download Auto-Init:** The `registry-download` command (and `nori-skillsets download`) automatically initializes Nori configuration when no installation exists, allowing users to download profiles without first running `nori-ai init` or `nori-ai install`. The installation directory resolution logic:
 1. If `--install-dir` is provided but no installation exists there: calls `initMain({ installDir, nonInteractive: false })` to set up at that location
 2. If no `--install-dir` and no existing installations found via `getInstallDirs()`: calls `initMain({ installDir: cwd, nonInteractive: false })` to set up at current directory
 3. If multiple installations found: errors with a list of installations and prompts user to specify with `--install-dir`
@@ -157,14 +157,14 @@ nori-ai.ts (full CLI)
   +-- registerSkillDownloadCommand({ program })--> commands/skill-download/skillDownload.ts
   +-- registerSkillUploadCommand({ program })  --> commands/skill-upload/skillUpload.ts
 
-seaweed.ts (simplified CLI for registry read operations, skill downloads, profile switching, and initialization)
+nori-skillsets.ts (simplified CLI for registry read operations, skill downloads, profile switching, and initialization)
   |
-  +-- registerSeaweedInitCommand({ program })          --> commands/seaweedCommands.ts --> initMain
-  +-- registerSeaweedSearchCommand({ program })        --> commands/seaweedCommands.ts --> registrySearchMain
-  +-- registerSeaweedDownloadCommand({ program })      --> commands/seaweedCommands.ts --> registryDownloadMain
-  +-- registerSeaweedInstallCommand({ program })       --> commands/seaweedCommands.ts --> registryInstallMain
-  +-- registerSeaweedSwitchSkillsetCommand({ program })--> commands/seaweedCommands.ts --> switchSkillsetAction
-  +-- registerSeaweedDownloadSkillCommand({ program }) --> commands/seaweedCommands.ts --> skillDownloadMain
+  +-- registerNoriSkillsetsInitCommand({ program })          --> commands/noriSkillsetsCommands.ts --> initMain
+  +-- registerNoriSkillsetsSearchCommand({ program })        --> commands/noriSkillsetsCommands.ts --> registrySearchMain
+  +-- registerNoriSkillsetsDownloadCommand({ program })      --> commands/noriSkillsetsCommands.ts --> registryDownloadMain
+  +-- registerNoriSkillsetsInstallCommand({ program })       --> commands/noriSkillsetsCommands.ts --> registryInstallMain
+  +-- registerNoriSkillsetsSwitchSkillsetCommand({ program })--> commands/noriSkillsetsCommands.ts --> switchSkillsetAction
+  +-- registerNoriSkillsetsDownloadSkillCommand({ program }) --> commands/noriSkillsetsCommands.ts --> skillDownloadMain
 ```
 
 Commands use shared utilities from the parent @/src/cli/ directory:
@@ -211,9 +211,9 @@ export const registerXCommand = (args: { program: Command }): void => {
 
 The commands directory contains shared utilities at the top level:
 - `registryAgentCheck.ts` - Shared validation for registry commands. Checks if the installation has only cursor-agent (no claude-code) and rejects with a helpful error message. Used by registry-search, registry-download, registry-update, registry-upload, and skill-upload commands. Note: `skill-download` does not use this validation.
-- `cliCommandNames.ts` - CLI command name mapping for user-facing messages. Maps CLI names (`nori-ai`, `seaweed`) to their respective command names (e.g., `registry-download` vs `download`, `switch-profile` vs `switch-skillset`). The `getCommandNames({ cliName })` function returns a `CommandNames` object with mappings for download, downloadSkill, search, update, upload, uploadSkill, and switchProfile. Defaults to nori-ai command names when `cliName` is null or undefined.
+- `cliCommandNames.ts` - CLI command name mapping for user-facing messages. Maps CLI names (`nori-ai`, `nori-skillsets`) to their respective command names (e.g., `registry-download` vs `download`, `switch-profile` vs `switch-skillset`). The `getCommandNames({ cliName })` function returns a `CommandNames` object with mappings for download, downloadSkill, search, update, upload, uploadSkill, and switchProfile. Defaults to nori-ai command names when `cliName` is null or undefined.
 
-The `seaweedCommands.ts` file contains thin command wrappers for the seaweed CLI - registration functions that provide simplified command names (`init`, `search`, `download`, `install`, `switch-skillset`, `download-skill`) by delegating to the underlying implementation functions (`*Main` functions from init, registry-*, and skill-* commands, `switchSkillsetAction` for switch-skillset). Upload, update, and onboard commands are only available via the nori-ai CLI. Each wrapper passes `cliName: "seaweed"` to the `*Main` functions so user-facing messages display seaweed command names (e.g., "run seaweed switch-skillset" instead of "run nori-ai switch-profile"). This allows the seaweed CLI to use cleaner command names while sharing all business logic with the nori-ai CLI.
+The `noriSkillsetsCommands.ts` file contains thin command wrappers for the nori-skillsets CLI - registration functions that provide simplified command names (`init`, `search`, `download`, `install`, `switch-skillset`, `download-skill`) by delegating to the underlying implementation functions (`*Main` functions from init, registry-*, and skill-* commands, `switchSkillsetAction` for switch-skillset). Upload, update, and onboard commands are only available via the nori-ai CLI. Each wrapper passes `cliName: "nori-skillsets"` to the `*Main` functions so user-facing messages display nori-skillsets command names (e.g., "run nori-skillsets switch-skillset" instead of "run nori-ai switch-profile"). This allows the nori-skillsets CLI to use cleaner command names while sharing all business logic with the nori-ai CLI.
 
 The `install/` directory contains command-specific utilities:
 - `asciiArt.ts` - ASCII banners displayed during installation. All display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.

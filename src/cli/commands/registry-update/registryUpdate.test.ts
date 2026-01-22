@@ -541,7 +541,7 @@ describe("registry-update", () => {
   });
 
   describe("cliName in user-facing messages", () => {
-    it("should use seaweed command names when cliName is seaweed", async () => {
+    it("should use nori-skillsets command names when cliName is nori-skillsets", async () => {
       // Create profile without .nori-version (triggers reinstall message)
       const existingProfileDir = path.join(profilesDir, "test-profile");
       await fs.mkdir(existingProfileDir, { recursive: true });
@@ -564,13 +564,13 @@ describe("registry-update", () => {
       await registryUpdateMain({
         profileName: "test-profile",
         cwd: testDir,
-        cliName: "seaweed",
+        cliName: "nori-skillsets",
       });
 
       const allOutput = mockConsoleError.mock.calls
         .map((call) => call.join(" "))
         .join("\n");
-      expect(allOutput).toContain("seaweed download");
+      expect(allOutput).toContain("nori-skillsets download");
       expect(allOutput).not.toContain("nori-ai registry-download");
     });
 
@@ -604,7 +604,7 @@ describe("registry-update", () => {
         .map((call) => call.join(" "))
         .join("\n");
       expect(allOutput).toContain("nori-ai registry-download");
-      expect(allOutput).not.toContain("seaweed download");
+      expect(allOutput).not.toContain("nori-skillsets download");
     });
   });
 });

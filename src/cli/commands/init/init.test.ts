@@ -195,7 +195,7 @@ describe("init command", () => {
         "my-captured-profile",
       );
       expect(fs.existsSync(capturedProfileDir)).toBe(true);
-      expect(fs.existsSync(path.join(capturedProfileDir, "profile.json"))).toBe(
+      expect(fs.existsSync(path.join(capturedProfileDir, "nori.json"))).toBe(
         true,
       );
       expect(fs.existsSync(path.join(capturedProfileDir, "CLAUDE.md"))).toBe(
@@ -238,7 +238,7 @@ describe("init command", () => {
         "my-profile",
       );
       expect(fs.existsSync(capturedProfileDir)).toBe(true);
-      expect(fs.existsSync(path.join(capturedProfileDir, "profile.json"))).toBe(
+      expect(fs.existsSync(path.join(capturedProfileDir, "nori.json"))).toBe(
         true,
       );
       expect(fs.existsSync(path.join(capturedProfileDir, "CLAUDE.md"))).toBe(

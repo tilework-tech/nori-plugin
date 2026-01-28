@@ -1,0 +1,89 @@
+/**
+ * List skillsets command for Nori Skillsets CLI
+ * Lists locally available profiles for programmatic use
+ */
+
+import { loadConfig, getInstalledAgents } from "@/cli/config.js";
+import { AgentRegistry } from "@/cli/features/agentRegistry.js";
+import { error, raw } from "@/cli/logger.js";
+import { normalizeInstallDir, getInstallDirs } from "@/utils/path.js";
+
+import type { Command } from "commander";
+
+/**
+ * Main function for list-skillsets command
+ * @param args - Configuration arguments
+ * @param args.installDir - Optional custom installation directory
+ * @param args.agent - Optional agent name override
+ */
+export const listSkillsetsMain = async (args: {
+  installDir?: string | null;
+  agent?: string | null;
+}): Promise<void> => {
+  const { agent: agentOption } = args;
+
+  // Determine installation directory
+  let installDir: string;
+
+  if (args.installDir != null && args.installDir !== "") {
+    installDir = normalizeInstallDir({ installDir: args.installDir });
+  } else {
+    const installations = getInstallDirs({ currentDir: process.cwd() });
+    if (installations.length === 0) {
+      error({
+        message:
+          "No Nori installations found. Use --install-dir to specify a location.",
+      });
+      process.exit(1);
+    }
+    installDir = installations[0];
+  }
+
+  // Determine which agent to use
+  let agentName: string;
+
+  if (agentOption != null && agentOption !== "") {
+    agentName = agentOption;
+  } else {
+    // Auto-detect from config
+    const config = await loadConfig({ installDir });
+    const installedAgents = config ? getInstalledAgents({ config }) : [];
+
+    if (installedAgents.length === 0) {
+      agentName = "claude-code";
+    } else {
+      agentName = installedAgents[0];
+    }
+  }
+
+  const agent = AgentRegistry.getInstance().get({ name: agentName });
+
+  // Get and output profiles - one per line for easy parsing
+  const profiles = await agent.listProfiles({ installDir });
+
+  for (const profile of profiles) {
+    raw({ message: profile });
+  }
+};
+
+/**
+ * Register the 'list-skillsets' command with commander
+ * @param args - Configuration arguments
+ * @param args.program - Commander program instance
+ */
+export const registerListSkillsetsCommand = (args: {
+  program: Command;
+}): void => {
+  const { program } = args;
+
+  program
+    .command("list-skillsets")
+    .description("List locally available skillsets (one per line)")
+    .action(async () => {
+      const globalOpts = program.opts();
+      await listSkillsetsMain({
+        installDir: globalOpts.installDir || null,
+        agent: globalOpts.agent || null,
+      });
+    });
+};

@@ -4,13 +4,15 @@
  * Authenticates users against noriskillsets.dev and stores credentials.
  */
 
+import * as os from "os";
+import * as path from "path";
+
 import { signInWithEmailAndPassword, AuthErrorCodes } from "firebase/auth";
 
 import { loadConfig, saveConfig } from "@/cli/config.js";
 import { error, info, success, warn, newline } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
 import { configureFirebase, getFirebase } from "@/providers/firebase.js";
-import { normalizeInstallDir } from "@/utils/path.js";
 
 import type { Command } from "commander";
 import type { AuthError } from "firebase/auth";
@@ -69,6 +71,9 @@ const fetchUserAccess = async (args: {
  * @param args.email - Email address (for non-interactive mode)
  * @param args.password - Password (for non-interactive mode)
  */
+/** Default config directory for login/logout commands */
+const DEFAULT_CONFIG_DIR = path.join(os.homedir(), ".nori");
+
 export const loginMain = async (args?: {
   installDir?: string | null;
   nonInteractive?: boolean | null;
@@ -76,7 +81,8 @@ export const loginMain = async (args?: {
   password?: string | null;
 }): Promise<void> => {
   const { installDir, nonInteractive, email, password } = args ?? {};
-  const normalizedInstallDir = normalizeInstallDir({ installDir });
+  // Default to ~/.nori for config storage
+  const configDir = installDir ?? DEFAULT_CONFIG_DIR;
 
   // Get credentials
   let userEmail: string;
@@ -174,7 +180,7 @@ export const loginMain = async (args?: {
   }
 
   // Load existing config to preserve other fields
-  const existingConfig = await loadConfig({ installDir: normalizedInstallDir });
+  const existingConfig = await loadConfig({ installDir: configDir });
 
   // Save credentials to config
   await saveConfig({
@@ -188,7 +194,7 @@ export const loginMain = async (args?: {
     registryAuths: existingConfig?.registryAuths ?? null,
     agents: existingConfig?.agents ?? null,
     version: existingConfig?.version ?? null,
-    installDir: normalizedInstallDir,
+    installDir: configDir,
   });
 
   newline();

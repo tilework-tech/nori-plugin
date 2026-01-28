@@ -4,11 +4,16 @@
  * Clears stored authentication credentials.
  */
 
+import * as os from "os";
+import * as path from "path";
+
 import { loadConfig, saveConfig } from "@/cli/config.js";
 import { info, success } from "@/cli/logger.js";
-import { normalizeInstallDir } from "@/utils/path.js";
 
 import type { Command } from "commander";
+
+/** Default config directory for login/logout commands */
+const DEFAULT_CONFIG_DIR = path.join(os.homedir(), ".nori");
 
 /**
  * Main logout function
@@ -20,10 +25,11 @@ export const logoutMain = async (args?: {
   installDir?: string | null;
 }): Promise<void> => {
   const { installDir } = args ?? {};
-  const normalizedInstallDir = normalizeInstallDir({ installDir });
+  // Default to ~/.nori for config storage
+  const configDir = installDir ?? DEFAULT_CONFIG_DIR;
 
   // Load existing config
-  const existingConfig = await loadConfig({ installDir: normalizedInstallDir });
+  const existingConfig = await loadConfig({ installDir: configDir });
 
   // Check if user is logged in
   if (existingConfig?.auth == null) {
@@ -40,7 +46,7 @@ export const logoutMain = async (args?: {
     registryAuths: existingConfig.registryAuths ?? null,
     agents: existingConfig.agents ?? null,
     version: existingConfig.version ?? null,
-    installDir: normalizedInstallDir,
+    installDir: configDir,
   });
 
   success({ message: "Logged out successfully." });

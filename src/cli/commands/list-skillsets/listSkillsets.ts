@@ -32,7 +32,7 @@ export const listSkillsetsMain = async (args: {
     if (installations.length === 0) {
       error({
         message:
-          "No Nori installations found. Use --install-dir to specify a location.",
+          "No Nori installation found in current directory or ancestors.",
       });
       process.exit(1);
     }
@@ -56,10 +56,28 @@ export const listSkillsetsMain = async (args: {
     }
   }
 
-  const agent = AgentRegistry.getInstance().get({ name: agentName });
+  // Validate agent exists
+  let agent;
+  try {
+    agent = AgentRegistry.getInstance().get({ name: agentName });
+  } catch {
+    const availableAgents = AgentRegistry.getInstance().list().join(", ");
+    error({
+      message: `Unknown agent '${agentName}'. Available: ${availableAgents}`,
+    });
+    process.exit(1);
+    return;
+  }
 
   // Get and output profiles - one per line for easy parsing
   const profiles = await agent.listProfiles({ installDir });
+
+  if (profiles.length === 0) {
+    error({
+      message: `No skillsets installed for ${agent.displayName} at ${installDir}.`,
+    });
+    process.exit(1);
+  }
 
   for (const profile of profiles) {
     raw({ message: profile });

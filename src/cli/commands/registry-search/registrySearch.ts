@@ -18,7 +18,11 @@ import {
 import { loadConfig } from "@/cli/config.js";
 import { error, info, newline, raw } from "@/cli/logger.js";
 import { getInstallDirs, normalizeInstallDir } from "@/utils/path.js";
-import { extractOrgId, buildRegistryUrl } from "@/utils/url.js";
+import {
+  extractOrgId,
+  buildRegistryUrl,
+  buildOrganizationRegistryUrl,
+} from "@/utils/url.js";
 
 import type { RegistryAuth } from "@/cli/config.js";
 import type { Command } from "commander";
@@ -332,8 +336,47 @@ export const registrySearchMain = async (args: {
   // Collect results from all registries
   const results: Array<RegistrySearchResult> = [];
 
-  // Search org registry first if auth is configured (private first, then public)
-  if (
+  // Check for unified auth with organizations (new multi-org flow)
+  const hasUnifiedAuthWithOrgs =
+    config?.auth != null &&
+    config.auth.refreshToken != null &&
+    config.auth.organizations != null;
+
+  if (hasUnifiedAuthWithOrgs) {
+    // Search all organization registries in parallel
+    const userOrgs = config.auth!.organizations!;
+    const orgSearchPromises: Array<Promise<RegistrySearchResult>> = [];
+
+    for (const orgId of userOrgs) {
+      // Skip "public" org - we'll search it separately without auth
+      if (orgId === "public") {
+        continue;
+      }
+
+      const registryUrl = buildOrganizationRegistryUrl({ orgId });
+      const registryAuth: RegistryAuth = {
+        registryUrl,
+        username: config.auth!.username,
+        refreshToken: config.auth!.refreshToken,
+      };
+
+      // Create a promise that searches both profiles and skills for this org
+      const orgSearchPromise = (async (): Promise<RegistrySearchResult> => {
+        const [profileResult, skillResult] = await Promise.all([
+          searchOrgRegistryProfiles({ query, registryUrl, registryAuth }),
+          searchOrgRegistrySkills({ query, registryUrl, registryAuth }),
+        ]);
+        return { registryUrl, profileResult, skillResult };
+      })();
+
+      orgSearchPromises.push(orgSearchPromise);
+    }
+
+    // Wait for all org searches to complete
+    const orgResults = await Promise.all(orgSearchPromises);
+    results.push(...orgResults);
+  } else if (
+    // Legacy single-org flow (backwards compatibility)
     config?.auth != null &&
     config.auth.organizationUrl != null &&
     config.auth.refreshToken != null
@@ -349,16 +392,8 @@ export const registrySearchMain = async (args: {
 
       // Search both profiles and skills in parallel on org registry
       const [profileResult, skillResult] = await Promise.all([
-        searchOrgRegistryProfiles({
-          query,
-          registryUrl,
-          registryAuth,
-        }),
-        searchOrgRegistrySkills({
-          query,
-          registryUrl,
-          registryAuth,
-        }),
+        searchOrgRegistryProfiles({ query, registryUrl, registryAuth }),
+        searchOrgRegistrySkills({ query, registryUrl, registryAuth }),
       ]);
 
       results.push({ registryUrl, profileResult, skillResult });

@@ -557,6 +557,9 @@ export const registryDownloadMain = async (args: {
     return { success: false };
   }
   const { orgId, packageName, version } = parsed;
+  // Display name includes org prefix for namespaced packages (e.g., "myorg/my-profile")
+  const profileDisplayName =
+    orgId === "public" ? packageName : `${orgId}/${packageName}`;
 
   // Find installation directory
   let targetInstallDir: string;
@@ -744,7 +747,7 @@ export const registryDownloadMain = async (args: {
   // Handle search results
   if (searchResults.length === 0) {
     error({
-      message: `Profile "${packageName}" not found in any registry.`,
+      message: `Profile "${profileDisplayName}" not found in any registry.`,
     });
     return { success: false };
   }
@@ -848,7 +851,7 @@ export const registryDownloadMain = async (args: {
   // Download and extract the tarball
   try {
     if (!profileExists) {
-      info({ message: `Downloading profile "${packageName}"...` });
+      info({ message: `Downloading profile "${profileDisplayName}"...` });
     }
 
     const tarballData = await registrarApi.downloadTarball({
@@ -943,24 +946,24 @@ export const registryDownloadMain = async (args: {
     newline();
     if (profileExists) {
       success({
-        message: `Updated profile "${packageName}" to ${targetVersion}`,
+        message: `Updated profile "${profileDisplayName}" to ${targetVersion}`,
       });
     } else {
       success({
-        message: `Downloaded and installed profile "${packageName}"${versionStr}`,
+        message: `Downloaded and installed profile "${profileDisplayName}"${versionStr}`,
       });
     }
     info({ message: `Installed to: ${targetDir}` });
     newline();
     info({
-      message: `You can now use this profile with '${cliPrefix} ${commandNames.switchProfile} ${packageName}'.`,
+      message: `You can now use this profile with '${cliPrefix} ${commandNames.switchProfile} ${profileDisplayName}'.`,
     });
 
     return { success: true };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     error({
-      message: `Failed to download profile "${packageName}": ${errorMessage}`,
+      message: `Failed to download profile "${profileDisplayName}": ${errorMessage}`,
     });
     return { success: false };
   }

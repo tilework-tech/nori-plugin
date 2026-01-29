@@ -16,6 +16,10 @@ import {
 import { readSkillsJson } from "@/cli/features/claude-code/profiles/skills/resolver.js";
 import { substituteTemplatePaths } from "@/cli/features/claude-code/template.js";
 import { success, info, warn } from "@/cli/logger.js";
+import {
+  copyFilePreservingMode,
+  writeFilePreservingMode,
+} from "@/cli/utils/fileUtils.js";
 
 import type { ValidationResult } from "@/cli/features/agentRegistry.js";
 import type { ProfileLoader } from "@/cli/features/claude-code/profiles/profileLoaderRegistry.js";
@@ -55,13 +59,17 @@ const copyDirWithTemplateSubstitution = async (args: {
         installDir,
       });
     } else if (entry.name.endsWith(".md")) {
-      // Apply template substitution to markdown files
+      // Apply template substitution to markdown files, preserving source file mode
       const content = await fs.readFile(srcPath, "utf-8");
       const substituted = substituteTemplatePaths({ content, installDir });
-      await fs.writeFile(destPath, substituted);
+      await writeFilePreservingMode({
+        destPath,
+        content: substituted,
+        srcPath,
+      });
     } else {
-      // Copy other files directly
-      await fs.copyFile(srcPath, destPath);
+      // Copy other files directly, preserving file mode (e.g., executable bit)
+      await copyFilePreservingMode({ src: srcPath, dest: destPath });
     }
   }
 };
@@ -149,9 +157,13 @@ const installSkills = async (args: { config: Config }): Promise<void> => {
             content,
             installDir: config.installDir,
           });
-          await fs.writeFile(destPath, substituted);
+          await writeFilePreservingMode({
+            destPath,
+            content: substituted,
+            srcPath: sourcePath,
+          });
         } else {
-          await fs.copyFile(sourcePath, destPath);
+          await copyFilePreservingMode({ src: sourcePath, dest: destPath });
         }
         continue;
       }

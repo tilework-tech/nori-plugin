@@ -14,6 +14,10 @@ import {
 } from "@/cli/features/claude-code/paths.js";
 import { ProfileLoaderRegistry } from "@/cli/features/claude-code/profiles/profileLoaderRegistry.js";
 import { success, info, warn } from "@/cli/logger.js";
+import {
+  copyFilePreservingMode,
+  copyDirPreservingMode,
+} from "@/cli/utils/fileUtils.js";
 
 import type { Loader, ValidationResult } from "@/cli/features/agentRegistry.js";
 
@@ -119,9 +123,9 @@ const installProfiles = async (args: { config: Config }): Promise<void> => {
         const destPath = path.join(profileDestDir, profileEntry.name);
 
         if (profileEntry.isDirectory()) {
-          await fs.cp(srcPath, destPath, { recursive: true });
+          await copyDirPreservingMode({ src: srcPath, dest: destPath });
         } else {
-          await fs.copyFile(srcPath, destPath);
+          await copyFilePreservingMode({ src: srcPath, dest: destPath });
         }
       }
 

@@ -301,14 +301,13 @@ const extractTarball = async (args: {
   const buffer = Buffer.from(tarballData);
   const readable = Readable.from(buffer);
 
+  // Use preserveOwner: false to avoid permission errors while still preserving file modes
+  const extractOptions = { cwd: targetDir, preserveOwner: false };
+
   if (isGzipped({ buffer })) {
-    await pipeline(
-      readable,
-      zlib.createGunzip(),
-      tar.extract({ cwd: targetDir }),
-    );
+    await pipeline(readable, zlib.createGunzip(), tar.extract(extractOptions));
   } else {
-    await pipeline(readable, tar.extract({ cwd: targetDir }));
+    await pipeline(readable, tar.extract(extractOptions));
   }
 };
 

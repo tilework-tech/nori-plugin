@@ -34,7 +34,7 @@ Profiles are copied directly to `~/.nori/profiles/` without any composition or t
 }
 ```
 
-The `readProfileMetadata()` function reads `nori.json` first, falling back to legacy `profile.json` for backward compatibility with older profiles. Legacy `profile.json` files are not copied during installation.
+The `readProfileMetadata()` function reads `nori.json` first, falling back to legacy `profile.json` for backward compatibility with older profiles. Legacy `profile.json` files are not copied during installation. The `writeProfileMetadata()` function writes a `ProfileMetadata` object to `nori.json`. The `addSkillToNoriJson()` function reads an existing `nori.json` (or auto-creates one using the profile directory basename and version `"1.0.0"`), adds/updates a skill in `dependencies.skills`, and writes it back.
 
 **Skills as First-Class Citizens**: Skills can be declared in two ways:
 1. **Inline skills**: Stored in profile's `skills/` folder, bundled with the profile
@@ -153,7 +153,7 @@ The skills loader (@/src/cli/features/claude-code/profiles/skills/loader.ts) ins
    - Paid-prefixed skills are handled based on tier (stripped prefix for paid, skipped for free)
    - Template placeholders are substituted during copy
 
-External skills are downloaded to the profile's `skills/` directory by both the `registry-download` command (for profile dependencies declared in `nori.json`) and the `skill-download` command (for standalone skill installs). The skills loader treats all skills in the profile's `skills/` directory uniformly. The `skills.json` file serves as metadata for tracking which skills were downloaded, and is updated by the `skill-download` command when skills are downloaded.
+External skills are downloaded to the profile's `skills/` directory by both the `registry-download` command (for profile dependencies declared in `nori.json`) and the `skill-download` command (for standalone skill installs). The skills loader treats all skills in the profile's `skills/` directory uniformly. When `skill-download` installs a skill, it updates two manifests: `skills.json` (used by the skill loader/resolver) and `nori.json` (the canonical profile manifest, via `addSkillToNoriJson()` from @/src/cli/features/claude-code/profiles/metadata.ts). Both updates are non-fatal -- download succeeds even if either manifest write fails.
 
 The resolver module (@/src/cli/features/claude-code/profiles/skills/resolver.ts) provides read and write operations for skills.json:
 - `parseSkillsJson()` - Parse skills.json content into dependency array

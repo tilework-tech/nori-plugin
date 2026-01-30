@@ -59,3 +59,67 @@ export const readProfileMetadata = async (args: {
 
   return metadata;
 };
+
+/**
+ * Write profile metadata to nori.json in a profile directory
+ *
+ * @param args - Function arguments
+ * @param args.profileDir - Path to profile directory
+ * @param args.metadata - Profile metadata to write
+ */
+export const writeProfileMetadata = async (args: {
+  profileDir: string;
+  metadata: ProfileMetadata;
+}): Promise<void> => {
+  const { profileDir, metadata } = args;
+  const noriJsonPath = path.join(profileDir, "nori.json");
+  await fs.writeFile(noriJsonPath, JSON.stringify(metadata, null, 2));
+};
+
+/**
+ * Add or update a skill dependency in a profile's nori.json
+ *
+ * If nori.json does not exist, creates a basic one using the profile directory
+ * name as the profile name.
+ *
+ * @param args - Function arguments
+ * @param args.profileDir - Path to profile directory
+ * @param args.skillName - Name of the skill to add
+ * @param args.version - Version string (e.g., "*", "^1.0.0", "1.2.3")
+ */
+export const addSkillToNoriJson = async (args: {
+  profileDir: string;
+  skillName: string;
+  version: string;
+}): Promise<void> => {
+  const { profileDir, skillName, version } = args;
+  const noriJsonPath = path.join(profileDir, "nori.json");
+
+  let metadata: ProfileMetadata;
+  try {
+    const content = await fs.readFile(noriJsonPath, "utf-8");
+    metadata = JSON.parse(content) as ProfileMetadata;
+  } catch (err: unknown) {
+    if (err instanceof SyntaxError) {
+      throw new Error(
+        `nori.json exists but contains invalid JSON: ${err.message}`,
+      );
+    }
+    // File does not exist -- create a basic one
+    metadata = {
+      name: path.basename(profileDir),
+      version: "1.0.0",
+    };
+  }
+
+  if (metadata.dependencies == null) {
+    metadata.dependencies = {};
+  }
+  if (metadata.dependencies.skills == null) {
+    metadata.dependencies.skills = {};
+  }
+
+  metadata.dependencies.skills[skillName] = version;
+
+  await writeProfileMetadata({ profileDir, metadata });
+};

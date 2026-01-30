@@ -136,12 +136,16 @@ The login command provides helpful error messages based on Firebase AuthErrorCod
 
 The command creates `.claude/skills/` directory if it doesn't exist. This allows users to simply drop skills into any directory without running `nori-ai init` or `nori-ai install` first. Config is loaded only for private registry authentication (if it exists).
 
-**skill-download Manifest Update:** When a skill is downloaded, the command automatically adds it to a profile's `skills.json` manifest for dependency tracking. The target profile is determined by:
+**skill-download Manifest Update:** When a skill is downloaded, the command automatically adds it to both the profile's `skills.json` and `nori.json` manifests. The target profile is determined by:
 1. `--skillset <name>` option - explicitly specifies which profile to update
 2. Active profile from config - if no `--skillset` is provided, uses the currently active profile
-3. No manifest update - if neither is available, the skill downloads but no manifest is updated
+3. No manifest update - if neither is available, the skill downloads but no manifests are updated
 
-The skill is added with version `"*"` (always latest). If the skill already exists in `skills.json`, its version is updated. The manifest update uses `addSkillDependency()` from @/src/cli/features/claude-code/profiles/skills/resolver.ts. Manifest update failures are non-blocking - the skill download succeeds even if the manifest cannot be written.
+The skill is added with version `"*"` (always latest). Two manifests are updated:
+- **`skills.json`**: Updated via `addSkillDependency()` from @/src/cli/features/claude-code/profiles/skills/resolver.ts. Used by the skill loader/resolver for dependency tracking.
+- **`nori.json`**: Updated via `addSkillToNoriJson()` from @/src/cli/features/claude-code/profiles/metadata.ts. Adds the skill to `dependencies.skills` in the canonical profile manifest. If `nori.json` does not exist, it is auto-created using the profile directory basename and version `"1.0.0"`.
+
+Both manifest update failures are non-blocking - the skill download succeeds even if either manifest cannot be written.
 
 **skill-download Profile Persistence:** After extracting a skill to `~/.claude/skills/<name>/`, the command copies the raw (unsubstituted) skill files to the active profile's skills directory at `~/.nori/profiles/<profile>/skills/<name>/`. This ensures skills survive profile switches, because the skills loader (@/src/cli/features/claude-code/profiles/skills/loader.ts) wipes `~/.claude/skills/` entirely during install and rebuilds it from the profile's `skills/` directory. The profile is determined the same way as for manifest updates (`--skillset` option or active profile from config). If no profile is available, the profile copy is skipped. Profile copy failures emit a warning but do not fail the download.
 
@@ -152,6 +156,7 @@ The skill is added with version `"*"` (always latest). If the skill already exis
 3. Copy raw files to `~/.nori/profiles/<profile>/skills/<name>/` (profile persistence)
 4. Apply template substitution to `.md` files in the live copy
 5. Update `skills.json` manifest
+6. Update `nori.json` `dependencies.skills`
 
 **Upload Commands Registry Resolution:** Both `registry-upload` (for profiles) and `skill-upload` (for skills) use the same registry resolution logic:
 1. **Public registry (default):** When the user has unified auth (`config.auth`) with a `refreshToken`, the public registry (`https://noriskillsets.dev`) is automatically included as an available upload target. This is the default when no `--registry` flag is provided.

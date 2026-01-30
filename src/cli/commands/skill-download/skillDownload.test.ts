@@ -1277,17 +1277,643 @@ describe("--skillset option and manifest updates", () => {
   });
 });
 
+describe("profile directory persistence", () => {
+  let testDir: string;
+  let skillsDir: string;
+  let profilesDir: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    testDir = await fs.mkdtemp(
+      path.join(tmpdir(), "nori-profile-persist-test-"),
+    );
+    skillsDir = path.join(testDir, ".claude", "skills");
+    profilesDir = path.join(testDir, ".nori", "profiles");
+
+    await fs.mkdir(skillsDir, { recursive: true });
+    await fs.mkdir(profilesDir, { recursive: true });
+
+    // Create active profile directory with CLAUDE.md
+    const activeProfileDir = path.join(profilesDir, "active-profile");
+    await fs.mkdir(activeProfileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(activeProfileDir, "CLAUDE.md"),
+      "# Active Profile",
+    );
+  });
+
+  afterEach(async () => {
+    vi.clearAllMocks();
+    if (testDir) {
+      await fs.rm(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it("should copy downloaded skill to active profile's skills directory", async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "active-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "test-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "test-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "test-skill",
+      cwd: testDir,
+    });
+
+    // Verify skill exists in the live location (~/.claude/skills/)
+    const liveSkillDir = path.join(skillsDir, "test-skill");
+    const liveStats = await fs.stat(liveSkillDir);
+    expect(liveStats.isDirectory()).toBe(true);
+
+    // Verify skill also exists in the profile's skills directory
+    const profileSkillDir = path.join(
+      profilesDir,
+      "active-profile",
+      "skills",
+      "test-skill",
+    );
+    const profileStats = await fs.stat(profileSkillDir);
+    expect(profileStats.isDirectory()).toBe(true);
+
+    // Verify SKILL.md was copied to profile
+    const profileSkillMd = await fs.readFile(
+      path.join(profileSkillDir, "SKILL.md"),
+      "utf-8",
+    );
+    expect(profileSkillMd).toContain("test-skill");
+
+    // Verify .nori-version was written to profile copy
+    const profileVersionFile = path.join(profileSkillDir, ".nori-version");
+    const profileVersionContent = await fs.readFile(
+      profileVersionFile,
+      "utf-8",
+    );
+    const profileVersionInfo = JSON.parse(profileVersionContent);
+    expect(profileVersionInfo.version).toBe("1.0.0");
+    expect(profileVersionInfo.registryUrl).toBe(REGISTRAR_URL);
+  });
+
+  it("should copy skill to specified skillset's skills directory when --skillset used", async () => {
+    // Create specified profile
+    const specifiedProfileDir = path.join(profilesDir, "specified-profile");
+    await fs.mkdir(specifiedProfileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(specifiedProfileDir, "CLAUDE.md"),
+      "# Specified Profile",
+    );
+
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "active-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "test-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "test-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "test-skill",
+      cwd: testDir,
+      skillset: "specified-profile",
+    });
+
+    // Verify skill exists in the specified profile's skills directory
+    const profileSkillDir = path.join(
+      profilesDir,
+      "specified-profile",
+      "skills",
+      "test-skill",
+    );
+    const profileStats = await fs.stat(profileSkillDir);
+    expect(profileStats.isDirectory()).toBe(true);
+
+    const profileSkillMd = await fs.readFile(
+      path.join(profileSkillDir, "SKILL.md"),
+      "utf-8",
+    );
+    expect(profileSkillMd).toContain("test-skill");
+  });
+
+  it("should not crash when no active profile and no --skillset", async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      // No agents/profile configured
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "test-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "test-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "test-skill",
+      cwd: testDir,
+    });
+
+    // Verify skill was still downloaded to live location
+    const liveSkillDir = path.join(skillsDir, "test-skill");
+    const liveStats = await fs.stat(liveSkillDir);
+    expect(liveStats.isDirectory()).toBe(true);
+
+    // Verify no profile copy was attempted (no crash)
+    // No profile skills directory should exist for any profile
+    const activeProfileSkillsDir = path.join(
+      profilesDir,
+      "active-profile",
+      "skills",
+    );
+    const exists = await fs
+      .access(activeProfileSkillsDir)
+      .then(() => true)
+      .catch(() => false);
+    // It might or might not exist (the profile dir was created in beforeEach)
+    // but the skill should NOT be there
+    if (exists) {
+      const skillExists = await fs
+        .access(path.join(activeProfileSkillsDir, "test-skill"))
+        .then(() => true)
+        .catch(() => false);
+      expect(skillExists).toBe(false);
+    }
+  });
+
+  it("should create profile skills directory if it does not exist", async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "active-profile" },
+        },
+      },
+    });
+
+    // Verify no skills/ subdirectory exists in the profile yet
+    const profileSkillsDir = path.join(profilesDir, "active-profile", "skills");
+    const dirExistsBefore = await fs
+      .access(profileSkillsDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(dirExistsBefore).toBe(false);
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "test-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "test-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "test-skill",
+      cwd: testDir,
+    });
+
+    // Verify profile skills directory was created
+    const dirExistsAfter = await fs
+      .access(profileSkillsDir)
+      .then(() => true)
+      .catch(() => false);
+    expect(dirExistsAfter).toBe(true);
+
+    // Verify skill was copied there
+    const profileSkillMd = path.join(
+      profileSkillsDir,
+      "test-skill",
+      "SKILL.md",
+    );
+    const skillMdContent = await fs.readFile(profileSkillMd, "utf-8");
+    expect(skillMdContent).toContain("test-skill");
+  });
+
+  it("should update profile copy when updating an existing skill", async () => {
+    // Create existing skill in live location with old version
+    const existingLiveDir = path.join(skillsDir, "test-skill");
+    await fs.mkdir(existingLiveDir, { recursive: true });
+    await fs.writeFile(path.join(existingLiveDir, "SKILL.md"), "# Old version");
+    await fs.writeFile(
+      path.join(existingLiveDir, ".nori-version"),
+      JSON.stringify({ version: "1.0.0", registryUrl: REGISTRAR_URL }),
+    );
+
+    // Create existing skill in profile with old version
+    const existingProfileDir = path.join(
+      profilesDir,
+      "active-profile",
+      "skills",
+      "test-skill",
+    );
+    await fs.mkdir(existingProfileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(existingProfileDir, "SKILL.md"),
+      "# Old version",
+    );
+    await fs.writeFile(
+      path.join(existingProfileDir, ".nori-version"),
+      JSON.stringify({ version: "1.0.0", registryUrl: REGISTRAR_URL }),
+    );
+
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "active-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "test-skill",
+      "dist-tags": { latest: "2.0.0" },
+      versions: {
+        "1.0.0": { name: "test-skill", version: "1.0.0" },
+        "2.0.0": { name: "test-skill", version: "2.0.0" },
+      },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "test-skill",
+      cwd: testDir,
+    });
+
+    // Verify profile copy was updated
+    const profileVersionFile = path.join(existingProfileDir, ".nori-version");
+    const profileVersionContent = await fs.readFile(
+      profileVersionFile,
+      "utf-8",
+    );
+    const profileVersionInfo = JSON.parse(profileVersionContent);
+    expect(profileVersionInfo.version).toBe("2.0.0");
+  });
+
+  it("should store raw files in profile and apply template substitution to live copy", async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "active-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "templated-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: {
+        "1.0.0": { name: "templated-skill", version: "1.0.0" },
+      },
+    });
+
+    const mockTarball = await createMockSkillTarball({
+      skillContent: `---
+name: templated-skill
+description: A skill with templates
+---
+
+# templated-skill
+
+Skills directory: {{skills_dir}}
+Install directory: {{install_dir}}
+`,
+    });
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "templated-skill",
+      cwd: testDir,
+    });
+
+    // Profile copy should have RAW template variables (no substitution)
+    const profileSkillMd = await fs.readFile(
+      path.join(
+        profilesDir,
+        "active-profile",
+        "skills",
+        "templated-skill",
+        "SKILL.md",
+      ),
+      "utf-8",
+    );
+    expect(profileSkillMd).toContain("{{skills_dir}}");
+    expect(profileSkillMd).toContain("{{install_dir}}");
+
+    // Live copy should have substituted template variables
+    const liveSkillMd = await fs.readFile(
+      path.join(skillsDir, "templated-skill", "SKILL.md"),
+      "utf-8",
+    );
+    expect(liveSkillMd).not.toContain("{{skills_dir}}");
+    expect(liveSkillMd).not.toContain("{{install_dir}}");
+    // Verify the substituted paths are correct
+    expect(liveSkillMd).toContain(path.join(testDir, ".claude", "skills"));
+    expect(liveSkillMd).toContain(testDir);
+  });
+});
+
+describe("namespaced package support", () => {
+  let testDir: string;
+  let skillsDir: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    // Create test directory structure simulating a Nori installation
+    testDir = await fs.mkdtemp(path.join(tmpdir(), "nori-namespace-test-"));
+    skillsDir = path.join(testDir, ".claude", "skills");
+
+    // Create initial config
+    await fs.writeFile(
+      path.join(testDir, ".nori-config.json"),
+      JSON.stringify({
+        profile: {
+          baseProfile: "senior-swe",
+        },
+      }),
+    );
+
+    // Create skills directory
+    await fs.mkdir(skillsDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.clearAllMocks();
+    if (testDir) {
+      await fs.rm(testDir, { recursive: true, force: true });
+    }
+  });
+
+  describe("namespace parsing", () => {
+    it("should parse org/skill-name format and download from org registry", async () => {
+      const orgRegistryUrl = "https://myorg.noriskillsets.dev";
+
+      // Mock config with unified auth
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+        auth: {
+          username: "testuser",
+          organizationUrl: "https://noriskillsets.dev",
+          refreshToken: "test-refresh-token",
+          organizations: ["myorg", "public"],
+        },
+      });
+
+      // Mock auth token
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Skill exists in org registry
+      vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+        name: "my-skill",
+        "dist-tags": { latest: "1.0.0" },
+        versions: { "1.0.0": { name: "my-skill", version: "1.0.0" } },
+      });
+
+      const mockTarball = await createMockSkillTarball();
+      vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(
+        mockTarball,
+      );
+
+      await skillDownloadMain({
+        skillSpec: "myorg/my-skill",
+        cwd: testDir,
+      });
+
+      // Verify API was called with org registry URL
+      expect(registrarApi.getSkillPackument).toHaveBeenCalledWith({
+        skillName: "my-skill",
+        registryUrl: orgRegistryUrl,
+        authToken: "mock-auth-token",
+      });
+
+      // Verify download was from org registry
+      expect(registrarApi.downloadSkillTarball).toHaveBeenCalledWith({
+        skillName: "my-skill",
+        version: undefined,
+        registryUrl: orgRegistryUrl,
+        authToken: "mock-auth-token",
+      });
+
+      // Verify skill was installed to FLAT directory (not nested by org)
+      const skillDir = path.join(skillsDir, "my-skill");
+      const stats = await fs.stat(skillDir);
+      expect(stats.isDirectory()).toBe(true);
+
+      // Verify .nori-version includes orgId
+      const versionFilePath = path.join(skillDir, ".nori-version");
+      const versionFileContent = await fs.readFile(versionFilePath, "utf-8");
+      const versionInfo = JSON.parse(versionFileContent);
+      expect(versionInfo.orgId).toBe("myorg");
+      expect(versionInfo.version).toBe("1.0.0");
+      expect(versionInfo.registryUrl).toBe(orgRegistryUrl);
+    });
+
+    it("should parse org/skill-name@version format", async () => {
+      const orgRegistryUrl = "https://myorg.noriskillsets.dev";
+
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+        auth: {
+          username: "testuser",
+          organizationUrl: "https://noriskillsets.dev",
+          refreshToken: "test-refresh-token",
+          organizations: ["myorg", "public"],
+        },
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+        name: "my-skill",
+        "dist-tags": { latest: "2.0.0" },
+        versions: {
+          "1.0.0": { name: "my-skill", version: "1.0.0" },
+          "2.0.0": { name: "my-skill", version: "2.0.0" },
+        },
+      });
+
+      const mockTarball = await createMockSkillTarball();
+      vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(
+        mockTarball,
+      );
+
+      await skillDownloadMain({
+        skillSpec: "myorg/my-skill@1.0.0",
+        cwd: testDir,
+      });
+
+      // Verify download was called with specific version
+      expect(registrarApi.downloadSkillTarball).toHaveBeenCalledWith({
+        skillName: "my-skill",
+        version: "1.0.0",
+        registryUrl: orgRegistryUrl,
+        authToken: "mock-auth-token",
+      });
+    });
+  });
+
+  describe("unified auth and org access", () => {
+    it("should error when user does not have access to org", async () => {
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+        auth: {
+          username: "testuser",
+          organizationUrl: "https://noriskillsets.dev",
+          refreshToken: "test-refresh-token",
+          organizations: ["other-org", "public"], // Does NOT include "myorg"
+        },
+      });
+
+      await skillDownloadMain({
+        skillSpec: "myorg/my-skill",
+        cwd: testDir,
+      });
+
+      // Verify error message about no access to org
+      const allErrorOutput = mockConsoleError.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allErrorOutput).toContain("myorg");
+      expect(allErrorOutput.toLowerCase()).toContain("access");
+
+      // Verify no download occurred
+      expect(registrarApi.downloadSkillTarball).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("namespace and --registry conflict", () => {
+    it("should error when namespace is specified with --registry flag", async () => {
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+        auth: {
+          username: "testuser",
+          organizationUrl: "https://noriskillsets.dev",
+          refreshToken: "test-refresh-token",
+          organizations: ["myorg", "public"],
+        },
+      });
+
+      await skillDownloadMain({
+        skillSpec: "myorg/my-skill",
+        registryUrl: "https://other.registry.com",
+        cwd: testDir,
+      });
+
+      // Verify error about conflicting options
+      const allErrorOutput = mockConsoleError.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allErrorOutput.toLowerCase()).toMatch(
+        /namespace.*registry|registry.*namespace|cannot.*both/i,
+      );
+
+      // Verify no download occurred
+      expect(registrarApi.downloadSkillTarball).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("display names in messages", () => {
+    it("should show namespaced format in success messages", async () => {
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        registryAuths: [],
+        auth: {
+          username: "testuser",
+          organizationUrl: "https://noriskillsets.dev",
+          refreshToken: "test-refresh-token",
+          organizations: ["myorg", "public"],
+        },
+      });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+        name: "my-skill",
+        "dist-tags": { latest: "1.0.0" },
+        versions: { "1.0.0": { name: "my-skill", version: "1.0.0" } },
+      });
+
+      const mockTarball = await createMockSkillTarball();
+      vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(
+        mockTarball,
+      );
+
+      await skillDownloadMain({
+        skillSpec: "myorg/my-skill",
+        cwd: testDir,
+      });
+
+      // Verify success message includes namespaced format
+      const allOutput = mockConsoleLog.mock.calls
+        .map((call) => call.join(" "))
+        .join("\n");
+      expect(allOutput).toContain("myorg/my-skill");
+    });
+  });
+});
+
 /**
  * Creates a minimal mock skill tarball for testing
  * @param args - The tarball options
  * @param args.gzip - Whether to gzip the tarball (default: false)
+ * @param args.skillContent - Optional custom SKILL.md content
  *
  * @returns A valid tarball as ArrayBuffer
  */
 const createMockSkillTarball = async (args?: {
   gzip?: boolean | null;
+  skillContent?: string | null;
 }): Promise<ArrayBuffer> => {
   const gzip = args?.gzip ?? false;
+  const skillContent =
+    args?.skillContent ??
+    `---
+name: test-skill
+description: A test skill
+---
+
+# test-skill
+
+This is a test skill.
+`;
   const tempDir = await fs.mkdtemp(
     path.join(tmpdir(), "mock-skill-tarball-source-"),
   );
@@ -1298,18 +1924,7 @@ const createMockSkillTarball = async (args?: {
 
   try {
     // Create mock skill files
-    await fs.writeFile(
-      path.join(tempDir, "SKILL.md"),
-      `---
-name: test-skill
-description: A test skill
----
-
-# test-skill
-
-This is a test skill.
-`,
-    );
+    await fs.writeFile(path.join(tempDir, "SKILL.md"), skillContent);
 
     // Create the tarball synchronously to avoid race condition
     tar.create(

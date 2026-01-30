@@ -101,10 +101,24 @@ The install command sets `agents: { [agentName]: { profile } }` in the config, w
 Registry commands (registry-search, registry-download, registry-update, registry-upload) and `skill-upload` call this validation early in their main function. **Exception:** `skill-download` does not use this validation - it allows downloading skills without any prior Nori installation.
 
 **Skill Commands:** Two commands manage skills as first-class registry entities (mirroring the profile registry commands):
-- `skill-download` - Download and install skills directly to `.claude/skills/{skill-name}/` in the target directory. Searches public registry first, then private registries. Creates `.nori-version` file for version tracking. Supports `--list-versions`, `--registry`, and `--skillset` options.
+- `skill-download` - Download and install skills directly to `.claude/skills/{skill-name}/` in the target directory. Supports namespaced package specs for org-specific downloads (see below). Creates `.nori-version` file for version tracking. Persists raw skill files to the active profile's `skills/` directory and applies template substitution to the live copy. Supports `--list-versions`, `--registry`, and `--skillset` options.
 - `skill-upload` - Upload skills from `~/.claude/skills/` to a registry. Auto-bumps patch version when no version specified. Extracts description from SKILL.md frontmatter.
 
-Skills follow the same tarball-based upload/download pattern as profiles. Downloaded skills go directly to `.claude/skills/`, making them immediately available in the Claude Code profile. Skills require a SKILL.md file (with optional YAML frontmatter containing name and description).
+Skills follow the same tarball-based upload/download pattern as profiles. Downloaded skills go to both `.claude/skills/` (live copy with template substitution applied) and `~/.nori/profiles/<profile>/skills/` (raw copy for persistence across profile switches). Skills require a SKILL.md file (with optional YAML frontmatter containing name and description).
+
+**skill-download Namespaced Packages:** The `skill-download` command supports namespaced package specifications for organization-scoped skills. The package spec format is `[org/]skill-name[@version]`:
+- `my-skill` - downloads from public registry to `.claude/skills/my-skill/`
+- `my-skill@1.0.0` - downloads specific version from public registry
+- `myorg/my-skill` - downloads from `https://myorg.noriskillsets.dev` to `.claude/skills/my-skill/`
+- `myorg/my-skill@1.0.0` - downloads specific version from org registry
+
+The command uses `parseNamespacedPackage()` from @/src/utils/url.ts to extract the org ID, package name, and optional version. It then uses `buildOrganizationRegistryUrl()` to derive the target registry URL from the org ID. For authentication, the command checks `config.auth.organizations` (unified auth) to verify the user has access to the specified org's registry.
+
+**skill-download Flat Installation:** Unlike profiles which nest by org (`~/.nori/profiles/myorg/my-profile/`), skills install to a flat directory (`~/.claude/skills/my-skill/`) regardless of namespace. This maintains backward compatibility with the Claude Code skills directory structure.
+
+**skill-download Org Collision Warning:** When installing a skill from a different org than the currently installed version (tracked via `orgId` in `.nori-version`), the command warns the user about the overwrite. For example, installing `myorg/my-skill` over a previously installed `my-skill` (from public registry) will display a warning.
+
+**skill-download Namespace/Registry Conflict:** If user specifies both a namespace (`myorg/skill`) and `--registry`, the command errors since they are mutually exclusive - the namespace determines the registry automatically.
 
 **Authentication Commands:** Two commands manage authentication for the nori-skillsets CLI:
 - `login` - Authenticates with noriskillsets.dev using email/password, stores credentials in `.nori-config.json`
@@ -143,6 +157,16 @@ The command creates `.claude/skills/` directory if it doesn't exist. This allows
 
 The skill is added with version `"*"` (always latest). If the skill already exists in `skills.json`, its version is updated. The manifest update uses `addSkillDependency()` from @/src/cli/features/claude-code/profiles/skills/resolver.ts. Manifest update failures are non-blocking - the skill download succeeds even if the manifest cannot be written.
 
+**skill-download Profile Persistence:** After extracting a skill to `~/.claude/skills/<name>/`, the command copies the raw (unsubstituted) skill files to the active profile's skills directory at `~/.nori/profiles/<profile>/skills/<name>/`. This ensures skills survive profile switches, because the skills loader (@/src/cli/features/claude-code/profiles/skills/loader.ts) wipes `~/.claude/skills/` entirely during install and rebuilds it from the profile's `skills/` directory. The profile is determined the same way as for manifest updates (`--skillset` option or active profile from config). If no profile is available, the profile copy is skipped. Profile copy failures emit a warning but do not fail the download.
+
+**skill-download Template Substitution:** After persisting raw files to the profile, the command applies template substitution to all `.md` files in the live copy (`~/.claude/skills/<name>/`). This replaces template variables like `{{skills_dir}}`, `{{install_dir}}`, etc. with actual paths using `substituteTemplatePaths()` from @/src/cli/features/claude-code/template.ts. The profile copy retains raw template variables so they can be re-substituted during future installs. The complete download flow is:
+
+1. Extract tarball to `~/.claude/skills/<name>/` (live location)
+2. Write `.nori-version` file for update tracking
+3. Copy raw files to `~/.nori/profiles/<profile>/skills/<name>/` (profile persistence)
+4. Apply template substitution to `.md` files in the live copy
+5. Update `skills.json` manifest
+
 **Upload Commands Registry Resolution:** Both `registry-upload` (for profiles) and `skill-upload` (for skills) use the same registry resolution logic:
 1. **Public registry (default):** When the user has unified auth (`config.auth`) with a `refreshToken`, the public registry (`https://noriskillsets.dev`) is automatically included as an available upload target. This is the default when no `--registry` flag is provided.
 2. **Private registries:** Additional registries can be added via `registryAuths` in `.nori-config.json`. These are included alongside the public registry.
@@ -158,6 +182,18 @@ By using `nonInteractive: false`, the auto-init triggers the interactive existin
 
 This differs from `registry-install`, which calls the full `installMain()` (orchestrating init, onboard, and loaders). The `registry-download` command only calls `initMain()` because download just places profile files without activating them - the user still needs to run `switch-profile` to activate the downloaded profile.
 
+**registry-download Namespaced Packages:** The `registry-download` command supports namespaced package specifications for organization-scoped packages. The package spec format is `[org/]package-name[@version]`:
+- `my-profile` - downloads from public registry to `~/.nori/profiles/my-profile/`
+- `myorg/my-profile` - downloads from `https://myorg.noriskillsets.dev` to `~/.nori/profiles/myorg/my-profile/`
+
+The command uses `parseNamespacedPackage()` from @/src/utils/url.ts to extract the org ID, package name, and optional version from the package spec. It then uses `buildOrganizationRegistryUrl()` to derive the target registry URL from the org ID. For authentication, the command checks `config.auth.organizations` (unified auth) to verify the user has access to the specified org's registry, falling back to legacy `registryAuths` for backwards compatibility.
+
+**registry-upload Namespaced Packages:** The `registry-upload` command supports the same namespaced package specification format for uploading to organization registries. The profile directory structure mirrors the package namespace:
+- `my-profile` - uploads from `~/.nori/profiles/my-profile/` to public registry
+- `myorg/my-profile` - uploads from `~/.nori/profiles/myorg/my-profile/` to `https://myorg.noriskillsets.dev`
+
+When using unified auth (new flow), the command derives the target registry from the package namespace automatically. When no explicit `--registry` is provided and the user has unified auth with organizations, the command uploads to the org's registry matching the package namespace. Legacy flow (multiple `registryAuths`) requires explicit `--registry` selection when multiple registries are configured.
+
 **registry-download Skill Dependencies:** The `registry-download` command automatically installs skill dependencies declared in a profile's `nori.json` manifest. After extracting a profile tarball, the command checks for a `nori.json` file with a `dependencies.skills` field (mapping skill names to version strings). For each declared skill:
 1. Fetches the skill packument via `registrarApi.getSkillPackument()` to get the latest version
 2. Checks if the already-installed version equals the latest version (skips download if so)
@@ -168,6 +204,8 @@ Skills always download the latest version - version ranges in `nori.json` are cu
 ```json
 { "name": "profile-name", "version": "1.0.0", "dependencies": { "skills": { "skill-name": "*" } } }
 ```
+
+**Watch Command:** The `watch` command (@/src/cli/commands/watch/) monitors Claude Code sessions and saves transcripts to `~/.nori/transcripts/`. It runs as a background daemon that watches `~/.claude/projects/` for JSONL file changes and copies them to organized transcript storage. See @/src/cli/commands/watch/docs.md for details.
 
 ```
 nori-ai.ts (full CLI)
@@ -187,7 +225,7 @@ nori-ai.ts (full CLI)
   +-- registerSkillDownloadCommand({ program })--> commands/skill-download/skillDownload.ts
   +-- registerSkillUploadCommand({ program })  --> commands/skill-upload/skillUpload.ts
 
-nori-skillsets.ts (simplified CLI for registry read operations, skill downloads, profile switching, initialization, and authentication)
+nori-skillsets.ts (simplified CLI for registry read operations, skill downloads, profile switching, initialization, authentication, and session watching)
   |
   +-- registerNoriSkillsetsInitCommand({ program })          --> commands/noriSkillsetsCommands.ts --> initMain
   +-- registerNoriSkillsetsSearchCommand({ program })        --> commands/noriSkillsetsCommands.ts --> registrySearchMain
@@ -195,6 +233,7 @@ nori-skillsets.ts (simplified CLI for registry read operations, skill downloads,
   +-- registerNoriSkillsetsInstallCommand({ program })       --> commands/noriSkillsetsCommands.ts --> registryInstallMain
   +-- registerNoriSkillsetsSwitchSkillsetCommand({ program })--> commands/noriSkillsetsCommands.ts --> switchSkillsetAction
   +-- registerNoriSkillsetsDownloadSkillCommand({ program }) --> commands/noriSkillsetsCommands.ts --> skillDownloadMain
+  +-- registerNoriSkillsetsWatchCommand({ program })         --> commands/noriSkillsetsCommands.ts --> watchMain
   +-- registerNoriSkillsetsLoginCommand({ program })         --> commands/noriSkillsetsCommands.ts --> loginMain
   +-- registerNoriSkillsetsLogoutCommand({ program })        --> commands/noriSkillsetsCommands.ts --> logoutMain
 ```
@@ -245,7 +284,7 @@ The commands directory contains shared utilities at the top level:
 - `registryAgentCheck.ts` - Shared validation for registry commands. Checks if the installation has only cursor-agent (no claude-code) and rejects with a helpful error message. Used by registry-search, registry-download, registry-update, registry-upload, and skill-upload commands. Note: `skill-download` does not use this validation.
 - `cliCommandNames.ts` - CLI command name mapping for user-facing messages. Maps CLI names (`nori-ai`, `nori-skillsets`) to their respective command names (e.g., `registry-download` vs `download`, `switch-profile` vs `switch-skillset`). The `getCommandNames({ cliName })` function returns a `CommandNames` object with mappings for download, downloadSkill, search, update, upload, uploadSkill, and switchProfile. Defaults to nori-ai command names when `cliName` is null or undefined.
 
-The `noriSkillsetsCommands.ts` file contains thin command wrappers for the nori-skillsets CLI - registration functions that provide simplified command names (`init`, `search`, `download`, `install`, `switch-skillset`, `download-skill`) by delegating to the underlying implementation functions (`*Main` functions from init, registry-*, and skill-* commands, `switchSkillsetAction` for switch-skillset). Upload, update, and onboard commands are only available via the nori-ai CLI. Each wrapper passes `cliName: "nori-skillsets"` to the `*Main` functions so user-facing messages display nori-skillsets command names (e.g., "run nori-skillsets switch-skillset" instead of "run nori-ai switch-profile"). This allows the nori-skillsets CLI to use cleaner command names while sharing all business logic with the nori-ai CLI.
+The `noriSkillsetsCommands.ts` file contains thin command wrappers for the nori-skillsets CLI - registration functions that provide simplified command names (`init`, `search`, `download`, `install`, `switch-skillset`, `download-skill`, `watch`) by delegating to the underlying implementation functions (`*Main` functions from init, registry-*, skill-*, and watch commands, `switchSkillsetAction` for switch-skillset). Upload, update, and onboard commands are only available via the nori-ai CLI. Each wrapper passes `cliName: "nori-skillsets"` to the `*Main` functions so user-facing messages display nori-skillsets command names (e.g., "run nori-skillsets switch-skillset" instead of "run nori-ai switch-profile"). This allows the nori-skillsets CLI to use cleaner command names while sharing all business logic with the nori-ai CLI.
 
 The `install/` directory contains command-specific utilities:
 - `asciiArt.ts` - ASCII banners displayed during installation. All display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.

@@ -184,10 +184,18 @@ export const registerNoriSkillsetsDownloadSkillCommand = (args: {
       "--list-versions",
       "List available versions for the skill instead of downloading",
     )
+    .option(
+      "--skillset <name>",
+      "Add skill to the specified skillset's manifest (defaults to active skillset)",
+    )
     .action(
       async (
         skillSpec: string,
-        options: { registry?: string; listVersions?: boolean },
+        options: {
+          registry?: string;
+          listVersions?: boolean;
+          skillset?: string;
+        },
       ) => {
         const globalOpts = program.opts();
 
@@ -196,6 +204,7 @@ export const registerNoriSkillsetsDownloadSkillCommand = (args: {
           installDir: globalOpts.installDir || null,
           registryUrl: options.registry || null,
           listVersions: options.listVersions || null,
+          skillset: options.skillset || null,
           cliName: "nori-skillsets",
         });
       },

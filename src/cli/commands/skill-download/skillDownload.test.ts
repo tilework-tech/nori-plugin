@@ -1224,6 +1224,65 @@ describe("--skillset option and manifest updates", () => {
     await expect(fs.access(skillsJsonPath)).rejects.toThrow();
   });
 
+  it("should add skill to specified skillset when cliName is nori-skillsets", async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "other-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "test-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "test-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "test-skill",
+      cwd: testDir,
+      skillset: "test-profile",
+      cliName: "nori-skillsets",
+    });
+
+    // Verify skill was downloaded to live location
+    const skillDir = path.join(skillsDir, "test-skill");
+    const stats = await fs.stat(skillDir);
+    expect(stats.isDirectory()).toBe(true);
+
+    // Verify skill was persisted to the specified profile's skills directory
+    const profileSkillDir = path.join(
+      profilesDir,
+      "test-profile",
+      "skills",
+      "test-skill",
+    );
+    const profileStats = await fs.stat(profileSkillDir);
+    expect(profileStats.isDirectory()).toBe(true);
+
+    // Verify manifest was updated
+    const skillsJsonPath = path.join(
+      profilesDir,
+      "test-profile",
+      "skills.json",
+    );
+    const skillsJsonContent = await fs.readFile(skillsJsonPath, "utf-8");
+    const skillsJson = JSON.parse(skillsJsonContent);
+    expect(skillsJson["test-skill"]).toBe("*");
+
+    // Verify nori-skillsets-specific messaging
+    const allOutput = mockConsoleLog.mock.calls
+      .map((call) => call.join(" "))
+      .join("\n");
+    expect(allOutput).toContain("test-profile");
+  });
+
   it("should update existing skills.json preserving other entries", async () => {
     // Create profile with existing skills.json
     const existingSkillsJson = {

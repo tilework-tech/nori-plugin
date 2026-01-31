@@ -34,7 +34,7 @@ Profiles are copied directly to `~/.nori/profiles/` without any composition or t
 }
 ```
 
-The `readProfileMetadata()` function reads `nori.json` first, falling back to legacy `profile.json` for backward compatibility with older profiles. Legacy `profile.json` files are not copied during installation.
+The `readProfileMetadata()` function reads `nori.json` first, falling back to legacy `profile.json` for backward compatibility with older profiles. Legacy `profile.json` files are not copied during installation. The `writeProfileMetadata()` function writes a `ProfileMetadata` object to `nori.json`. The `addSkillToNoriJson()` function reads an existing `nori.json` (or auto-creates one using the profile directory basename and version `"1.0.0"`), adds/updates a skill in `dependencies.skills`, and writes it back.
 
 **Skills as First-Class Citizens**: Skills can be declared in two ways:
 1. **Inline skills**: Stored in profile's `skills/` folder, bundled with the profile
@@ -90,7 +90,7 @@ This logic is implemented in @/src/cli/features/claude-code/profiles/skills/load
 
 **CLAUDE.md as validation marker**: A directory is only a valid profile if it contains CLAUDE.md. This allows config/ to contain other directories (like internal configuration) without treating them as profiles.
 
-**Template placeholders in profile files**: Source markdown files use placeholders like `{{skills_dir}}` instead of hardcoded paths. Template substitution is applied by sub-loaders during installation via @/src/cli/features/claude-code/template.ts.
+**Template placeholders in profile files**: Source markdown files use placeholders like `{{skills_dir}}` instead of hardcoded paths. Template substitution is applied by sub-loaders during installation via @/src/cli/features/claude-code/template.ts. The `substituteTemplatePaths()` function in template.ts expects its `installDir` parameter to be the `.claude` directory (e.g., `~/.claude`), NOT the `Config.installDir` value which is the parent directory (e.g., `~`). All callers must compute the `.claude` directory first using `getClaudeDir({ installDir: config.installDir })` from @/src/cli/features/claude-code/paths.ts before passing it to template substitution functions.
 
 **Managed block marker idempotency**: The `insertClaudeMd()` function in @/src/cli/features/claude-code/profiles/claudemd/loader.ts strips any existing `# BEGIN NORI-AI MANAGED BLOCK` and `# END NORI-AI MANAGED BLOCK` markers from profile CLAUDE.md content before wrapping it with fresh markers. This ensures the final installed `~/.claude/CLAUDE.md` always has exactly one set of markers, even when the profile content was created by `captureExistingConfigAsProfile()` (which adds markers during capture). Without this stripping, captured profiles would end up with double-nested markers.
 
@@ -153,7 +153,7 @@ The skills loader (@/src/cli/features/claude-code/profiles/skills/loader.ts) ins
    - Paid-prefixed skills are handled based on tier (stripped prefix for paid, skipped for free)
    - Template placeholders are substituted during copy
 
-External skills are downloaded to the profile's `skills/` directory by both the `registry-download` command (for profile dependencies declared in `nori.json`) and the `skill-download` command (for standalone skill installs). The skills loader treats all skills in the profile's `skills/` directory uniformly. The `skills.json` file serves as metadata for tracking which skills were downloaded, and is updated by the `skill-download` command when skills are downloaded.
+External skills are downloaded to the profile's `skills/` directory by both the `registry-download` command (for profile dependencies declared in `nori.json`) and the `skill-download` command (for standalone skill installs). The skills loader treats all skills in the profile's `skills/` directory uniformly. When `skill-download` installs a skill, it updates two manifests: `skills.json` (used by the skill loader/resolver) and `nori.json` (the canonical profile manifest, via `addSkillToNoriJson()` from @/src/cli/features/claude-code/profiles/metadata.ts). Both updates are non-fatal -- download succeeds even if either manifest write fails.
 
 The resolver module (@/src/cli/features/claude-code/profiles/skills/resolver.ts) provides read and write operations for skills.json:
 - `parseSkillsJson()` - Parse skills.json content into dependency array

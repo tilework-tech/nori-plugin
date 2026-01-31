@@ -1646,6 +1646,205 @@ Install directory: {{install_dir}}
   });
 });
 
+describe("nori.json updates on skill download", () => {
+  let testDir: string;
+  let skillsDir: string;
+  let profilesDir: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    testDir = await fs.mkdtemp(path.join(tmpdir(), "nori-json-update-test-"));
+    skillsDir = path.join(testDir, ".claude", "skills");
+    profilesDir = path.join(testDir, ".nori", "profiles");
+
+    await fs.mkdir(skillsDir, { recursive: true });
+    await fs.mkdir(profilesDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.clearAllMocks();
+    if (testDir) {
+      await fs.rm(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it("should add skill to nori.json dependencies.skills when nori.json exists", async () => {
+    // Create profile with existing nori.json
+    const profileDir = path.join(profilesDir, "my-profile");
+    await fs.mkdir(profileDir, { recursive: true });
+    await fs.writeFile(path.join(profileDir, "CLAUDE.md"), "# My Profile");
+    await fs.writeFile(
+      path.join(profileDir, "nori.json"),
+      JSON.stringify({
+        name: "my-profile",
+        version: "1.0.0",
+        description: "Test profile",
+      }),
+    );
+
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "my-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "downloaded-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "downloaded-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "downloaded-skill",
+      cwd: testDir,
+    });
+
+    // Verify nori.json was updated with the skill dependency
+    const noriJsonPath = path.join(profileDir, "nori.json");
+    const noriJsonContent = await fs.readFile(noriJsonPath, "utf-8");
+    const noriJson = JSON.parse(noriJsonContent);
+    expect(noriJson.name).toBe("my-profile");
+    expect(noriJson.version).toBe("1.0.0");
+    expect(noriJson.description).toBe("Test profile");
+    expect(noriJson.dependencies?.skills?.["downloaded-skill"]).toBe("*");
+  });
+
+  it("should auto-create nori.json when it does not exist", async () => {
+    // Create profile WITHOUT nori.json
+    const profileDir = path.join(profilesDir, "no-nori-json-profile");
+    await fs.mkdir(profileDir, { recursive: true });
+    await fs.writeFile(
+      path.join(profileDir, "CLAUDE.md"),
+      "# No Nori JSON Profile",
+    );
+
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "no-nori-json-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "new-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "new-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "new-skill",
+      cwd: testDir,
+    });
+
+    // Verify nori.json was auto-created with the skill
+    const noriJsonPath = path.join(profileDir, "nori.json");
+    const noriJsonContent = await fs.readFile(noriJsonPath, "utf-8");
+    const noriJson = JSON.parse(noriJsonContent);
+    expect(noriJson.name).toBe("no-nori-json-profile");
+    expect(noriJson.version).toBe("1.0.0");
+    expect(noriJson.dependencies?.skills?.["new-skill"]).toBe("*");
+  });
+
+  it("should preserve existing nori.json dependencies when adding new skill", async () => {
+    // Create profile with nori.json that has existing skill dependencies
+    const profileDir = path.join(profilesDir, "deps-profile");
+    await fs.mkdir(profileDir, { recursive: true });
+    await fs.writeFile(path.join(profileDir, "CLAUDE.md"), "# Deps Profile");
+    await fs.writeFile(
+      path.join(profileDir, "nori.json"),
+      JSON.stringify({
+        name: "deps-profile",
+        version: "2.0.0",
+        dependencies: {
+          skills: {
+            "existing-skill": "^1.0.0",
+            "another-skill": "*",
+          },
+        },
+      }),
+    );
+
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      agents: {
+        "claude-code": {
+          profile: { baseProfile: "deps-profile" },
+        },
+      },
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "third-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "third-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "third-skill",
+      cwd: testDir,
+    });
+
+    // Verify nori.json has all entries
+    const noriJsonPath = path.join(profileDir, "nori.json");
+    const noriJsonContent = await fs.readFile(noriJsonPath, "utf-8");
+    const noriJson = JSON.parse(noriJsonContent);
+    expect(noriJson.dependencies.skills).toEqual({
+      "existing-skill": "^1.0.0",
+      "another-skill": "*",
+      "third-skill": "*",
+    });
+  });
+
+  it("should not update nori.json when no active skillset", async () => {
+    vi.mocked(loadConfig).mockResolvedValue({
+      installDir: testDir,
+      registryAuths: [],
+      // No agents/profile configured
+    });
+
+    vi.mocked(registrarApi.getSkillPackument).mockResolvedValue({
+      name: "orphan-skill",
+      "dist-tags": { latest: "1.0.0" },
+      versions: { "1.0.0": { name: "orphan-skill", version: "1.0.0" } },
+    });
+
+    const mockTarball = await createMockSkillTarball();
+    vi.mocked(registrarApi.downloadSkillTarball).mockResolvedValue(mockTarball);
+
+    await skillDownloadMain({
+      skillSpec: "orphan-skill",
+      cwd: testDir,
+    });
+
+    // Verify skill was still downloaded
+    const skillDir = path.join(skillsDir, "orphan-skill");
+    const stats = await fs.stat(skillDir);
+    expect(stats.isDirectory()).toBe(true);
+
+    // Verify no profile directories were created (and hence no nori.json)
+    const profileEntries = await fs.readdir(profilesDir);
+    expect(profileEntries).toHaveLength(0);
+  });
+});
+
 describe("namespaced package support", () => {
   let testDir: string;
   let skillsDir: string;

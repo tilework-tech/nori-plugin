@@ -23,6 +23,7 @@ import {
   getClaudeSkillsDir,
   getNoriProfilesDir,
 } from "@/cli/features/claude-code/paths.js";
+import { addSkillToNoriJson } from "@/cli/features/claude-code/profiles/metadata.js";
 import { addSkillDependency } from "@/cli/features/claude-code/profiles/skills/resolver.js";
 import { substituteTemplatePaths } from "@/cli/features/claude-code/template.js";
 import { error, success, info, newline, raw, warn } from "@/cli/logger.js";
@@ -845,6 +846,29 @@ export const skillDownloadMain = async (args: {
       info({
         message: `No active skillset - skill not added to any manifest`,
       });
+    }
+
+    // Update nori.json with the skill dependency
+    if (targetSkillset != null) {
+      const skillsetDir = path.join(profilesDir, targetSkillset);
+      try {
+        await addSkillToNoriJson({
+          profileDir: skillsetDir,
+          skillName,
+          version: "*",
+        });
+        info({
+          message: `Added "${skillName}" to ${targetSkillset} nori.json dependencies`,
+        });
+      } catch (noriJsonErr) {
+        const noriJsonErrMsg =
+          noriJsonErr instanceof Error
+            ? noriJsonErr.message
+            : String(noriJsonErr);
+        info({
+          message: `Warning: Could not update nori.json: ${noriJsonErrMsg}`,
+        });
+      }
     }
 
     newline();

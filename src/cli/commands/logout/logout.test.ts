@@ -118,5 +118,40 @@ describe("logout command", () => {
         }),
       );
     });
+
+    it("should clear auth from a Google SSO-authenticated session", async () => {
+      // Create config that looks like it came from Google SSO login
+      // (same fields as email/password, just different origin)
+      await saveConfig({
+        username: "googleuser@gmail.com",
+        refreshToken: "firebase-refresh-token-from-google-sso",
+        organizationUrl: "https://noriskillsets.dev",
+        organizations: ["google-org"],
+        isAdmin: false,
+        agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
+        autoupdate: "disabled",
+        installDir: tempDir,
+      });
+
+      // Verify auth exists before logout
+      const beforeLogout = await loadConfig({ installDir: tempDir });
+      expect(beforeLogout?.auth?.username).toBe("googleuser@gmail.com");
+      expect(beforeLogout?.auth?.refreshToken).toBe(
+        "firebase-refresh-token-from-google-sso",
+      );
+
+      // Perform logout
+      await logoutMain({ installDir: tempDir });
+
+      // Verify auth is cleared
+      const afterLogout = await loadConfig({ installDir: tempDir });
+      expect(afterLogout?.auth).toBeNull();
+
+      // Verify other fields are preserved
+      expect(afterLogout?.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "senior-swe",
+      );
+      expect(afterLogout?.autoupdate).toBe("disabled");
+    });
   });
 });

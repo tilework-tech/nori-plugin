@@ -7,6 +7,7 @@
     "commander",
     "firebase",
     "glob",
+    "open",
     "semver",
     "tar",
     "winston"

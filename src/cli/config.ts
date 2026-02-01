@@ -9,7 +9,6 @@ import * as path from "path";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
-import { warn } from "@/cli/logger.js";
 import { normalizeUrl, extractOrgId, buildRegistryUrl } from "@/utils/url.js";
 
 /**
@@ -19,9 +18,6 @@ import { normalizeUrl, extractOrgId, buildRegistryUrl } from "@/utils/url.js";
 export type RegistryAuth = {
   username: string;
   registryUrl: string;
-  // Legacy password-based auth
-  password?: string | null;
-  // Token-based auth (preferred)
   refreshToken?: string | null;
 };
 
@@ -60,7 +56,6 @@ export type Config = {
   sendSessionTranscript?: "enabled" | "disabled" | null;
   autoupdate?: "enabled" | "disabled" | null;
   installDir: string;
-  registryAuths?: Array<RegistryAuth> | null;
   /** Per-agent configuration settings. Keys indicate which agents are installed. */
   agents?: Record<string, AgentConfig> | null;
   /** Installed version of Nori */
@@ -93,7 +88,6 @@ type RawDiskConfig = {
   // Legacy profile field - kept for reading old configs (not written anymore)
   profile?: { baseProfile?: string | null } | null;
   installDir?: string | null;
-  registryAuths?: Array<RegistryAuth> | null;
   agents?: Record<string, AgentConfig> | null;
   version?: string | null;
 };
@@ -139,7 +133,6 @@ export const isLegacyPasswordConfig = (args: { config: Config }): boolean => {
 /**
  * Get registry authentication for a specific registry URL
  * Uses unified Nori auth (config.auth) to derive registry credentials
- * Falls back to legacy registryAuths for backwards compatibility
  *
  * @param args - Configuration arguments
  * @param args.config - The config to search
@@ -169,7 +162,6 @@ export const getRegistryAuth = (args: {
         return {
           registryUrl: derivedRegistryUrl,
           username: config.auth.username,
-          password: config.auth.password ?? null,
           refreshToken: config.auth.refreshToken ?? null,
         };
       }
@@ -183,20 +175,9 @@ export const getRegistryAuth = (args: {
       return {
         registryUrl: normalizedSearchUrl,
         username: config.auth.username,
-        password: config.auth.password ?? null,
         refreshToken: config.auth.refreshToken ?? null,
       };
     }
-  }
-
-  // Fall back to legacy registryAuths for backwards compatibility
-  if (config.registryAuths != null) {
-    return (
-      config.registryAuths.find(
-        (auth) =>
-          normalizeUrl({ baseUrl: auth.registryUrl }) === normalizedSearchUrl,
-      ) ?? null
-    );
   }
 
   return null;
@@ -244,39 +225,6 @@ export const getAgentProfile = (args: {
 };
 
 /**
- * Filter invalid registryAuths entries and warn if any were filtered
- * @param rawAuths - Raw registryAuths array from config file
- *
- * @returns Filtered array of valid registryAuths or undefined if empty
- */
-const filterRegistryAuths = (
-  rawAuths: unknown,
-): Array<RegistryAuth> | undefined => {
-  if (!Array.isArray(rawAuths)) {
-    return undefined;
-  }
-
-  const originalCount = rawAuths.length;
-  const validAuths = rawAuths.filter(
-    (auth: unknown): auth is RegistryAuth =>
-      auth != null &&
-      typeof auth === "object" &&
-      typeof (auth as Record<string, unknown>).username === "string" &&
-      typeof (auth as Record<string, unknown>).password === "string" &&
-      typeof (auth as Record<string, unknown>).registryUrl === "string",
-  );
-
-  const filteredCount = originalCount - validAuths.length;
-  if (filteredCount > 0) {
-    warn({
-      message: `Filtered ${filteredCount} invalid registryAuths entries (missing required fields)`,
-    });
-  }
-
-  return validAuths.length > 0 ? validAuths : undefined;
-};
-
-/**
  * Load existing configuration from disk
  * Uses JSON schema validation for strict type checking.
  * @param args - Configuration arguments
@@ -299,17 +247,8 @@ export const loadConfig = async (args: {
       return null;
     }
 
-    // Filter invalid registryAuths entries before schema validation (with warning)
-    // Schema validation would reject entire config for invalid items, but we want
-    // lenient behavior: filter invalid entries and warn
-    const filteredRegistryAuths = filterRegistryAuths(rawConfig.registryAuths);
-    const configToValidate = {
-      ...rawConfig,
-      registryAuths: filteredRegistryAuths,
-    };
-
     // Deep clone to avoid mutating the original during validation
-    const configClone = JSON.parse(JSON.stringify(configToValidate)) as Record<
+    const configClone = JSON.parse(JSON.stringify(rawConfig)) as Record<
       string,
       unknown
     >;
@@ -331,7 +270,6 @@ export const loadConfig = async (args: {
       installDir: validated.installDir ?? installDir,
       sendSessionTranscript: validated.sendSessionTranscript,
       autoupdate: validated.autoupdate,
-      registryAuths: filteredRegistryAuths,
       version: validated.version,
     };
 
@@ -401,7 +339,6 @@ export const loadConfig = async (args: {
  * @param args.sendSessionTranscript - Session transcript setting (null to skip)
  * @param args.autoupdate - Autoupdate setting (null to skip)
  * @param args.installDir - Installation directory
- * @param args.registryAuths - Array of registry authentication credentials (null to skip)
  * @param args.agents - Per-agent configuration settings (null to skip). Keys indicate installed agents.
  * @param args.version - Installed version of Nori (null to skip)
  * @param args.organizations - List of organizations the user has access to (null to skip)
@@ -416,7 +353,6 @@ export const saveConfig = async (args: {
   isAdmin?: boolean | null;
   sendSessionTranscript?: "enabled" | "disabled" | null;
   autoupdate?: "enabled" | "disabled" | null;
-  registryAuths?: Array<RegistryAuth> | null;
   agents?: Record<string, AgentConfig> | null;
   version?: string | null;
   installDir: string;
@@ -430,7 +366,6 @@ export const saveConfig = async (args: {
     isAdmin,
     sendSessionTranscript,
     autoupdate,
-    registryAuths,
     agents,
     version,
     installDir,
@@ -472,11 +407,6 @@ export const saveConfig = async (args: {
   // Add autoupdate if provided
   if (autoupdate != null) {
     config.autoupdate = autoupdate;
-  }
-
-  // Add registryAuths if provided and not empty
-  if (registryAuths != null && registryAuths.length > 0) {
-    config.registryAuths = registryAuths;
   }
 
   // Add version if provided
@@ -542,18 +472,6 @@ const configSchema = {
       },
     },
     installDir: { type: "string" },
-    registryAuths: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          username: { type: "string" },
-          password: { type: "string" },
-          registryUrl: { type: "string" },
-        },
-        required: ["username", "password", "registryUrl"],
-      },
-    },
     agents: {
       type: "object",
       additionalProperties: {

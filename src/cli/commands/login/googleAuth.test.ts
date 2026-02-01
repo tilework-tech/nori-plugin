@@ -313,9 +313,8 @@ describe("googleAuth", () => {
   });
 
   describe("validateOAuthCredentials", () => {
-    it("should throw when credentials are still placeholders", () => {
-      // The actual module has PLACEHOLDER values, so this should throw
-      expect(() => validateOAuthCredentials()).toThrow(/not configured/i);
+    it("should not throw when real credentials are configured", () => {
+      expect(() => validateOAuthCredentials()).not.toThrow();
     });
   });
 });

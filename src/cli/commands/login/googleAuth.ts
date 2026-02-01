@@ -16,8 +16,9 @@ import * as net from "net";
  * standard practice (same as firebase-tools, gcloud CLI, etc.).
  * Replace these with real values from Google Cloud Console.
  */
-export const GOOGLE_OAUTH_CLIENT_ID = "PLACEHOLDER_CLIENT_ID";
-export const GOOGLE_OAUTH_CLIENT_SECRET = "PLACEHOLDER_CLIENT_SECRET";
+export const GOOGLE_OAUTH_CLIENT_ID =
+  "199991289749-otcibgl0kp53qq2tn46n08iutm62pq6h.apps.googleusercontent.com";
+export const GOOGLE_OAUTH_CLIENT_SECRET = "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";
 
 /**
  * Validate that OAuth credentials have been configured.
@@ -27,12 +28,12 @@ export const GOOGLE_OAUTH_CLIENT_SECRET = "PLACEHOLDER_CLIENT_SECRET";
  */
 export const validateOAuthCredentials = (): void => {
   if (
-    GOOGLE_OAUTH_CLIENT_ID === "PLACEHOLDER_CLIENT_ID" ||
-    GOOGLE_OAUTH_CLIENT_SECRET === "PLACEHOLDER_CLIENT_SECRET"
+    GOOGLE_OAUTH_CLIENT_ID.startsWith("PLACEHOLDER") ||
+    GOOGLE_OAUTH_CLIENT_SECRET.startsWith("PLACEHOLDER")
   ) {
     throw new Error(
       "Google OAuth credentials are not configured. " +
-        "Replace PLACEHOLDER_CLIENT_ID and PLACEHOLDER_CLIENT_SECRET in googleAuth.ts " +
+        "Replace placeholder values in googleAuth.ts " +
         "with real values from the Google Cloud Console.",
     );
   }

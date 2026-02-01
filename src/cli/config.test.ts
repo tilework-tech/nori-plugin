@@ -145,6 +145,66 @@ describe("config with profile-based system", () => {
       expect(loaded).toBeNull();
     });
 
+    it("should load config from .nori subdirectory when primary path does not exist", async () => {
+      // Simulates home directory installations where config is at ~/.nori/.nori-config.json
+      const noriSubdir = path.join(tempDir, ".nori");
+      await fs.mkdir(noriSubdir, { recursive: true });
+      await fs.writeFile(
+        path.join(noriSubdir, ".nori-config.json"),
+        JSON.stringify({
+          auth: {
+            username: "home-user@example.com",
+            refreshToken: "home-token",
+            organizationUrl: "https://example.com",
+          },
+          agents: {
+            "claude-code": { profile: { baseProfile: "senior-swe" } },
+          },
+        }),
+      );
+
+      // No .nori-config.json at tempDir itself
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      expect(loaded).not.toBeNull();
+      expect(loaded?.auth?.username).toBe("home-user@example.com");
+      expect(loaded?.auth?.refreshToken).toBe("home-token");
+      expect(loaded?.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "senior-swe",
+      );
+    });
+
+    it("should prefer primary config path over .nori subdirectory", async () => {
+      // Primary config at installDir/.nori-config.json
+      await fs.writeFile(
+        path.join(tempDir, ".nori-config.json"),
+        JSON.stringify({
+          agents: {
+            "claude-code": { profile: { baseProfile: "primary" } },
+          },
+        }),
+      );
+
+      // Also has config at installDir/.nori/.nori-config.json
+      const noriSubdir = path.join(tempDir, ".nori");
+      await fs.mkdir(noriSubdir, { recursive: true });
+      await fs.writeFile(
+        path.join(noriSubdir, ".nori-config.json"),
+        JSON.stringify({
+          agents: {
+            "claude-code": { profile: { baseProfile: "subdirectory" } },
+          },
+        }),
+      );
+
+      const loaded = await loadConfig({ installDir: tempDir });
+
+      // Should use primary path, not subdirectory
+      expect(loaded?.agents?.["claude-code"]?.profile?.baseProfile).toBe(
+        "primary",
+      );
+    });
+
     it("should handle malformed config gracefully", async () => {
       await fs.writeFile(mockConfigPath, "invalid json {");
 

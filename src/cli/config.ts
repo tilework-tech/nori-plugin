@@ -238,9 +238,30 @@ export const loadConfig = async (args: {
   const { installDir } = args;
   const configPath = getConfigPath({ installDir });
 
+  // Also check .nori subdirectory for home directory installations
+  // (e.g., ~/.nori/.nori-config.json when installDir is ~)
+  const noriSubdirConfigPath = path.join(
+    installDir,
+    ".nori",
+    ".nori-config.json",
+  );
+
+  let effectiveConfigPath = configPath;
   try {
     await fs.access(configPath);
-    const content = await fs.readFile(configPath, "utf-8");
+  } catch {
+    // Primary path not found, try .nori subdirectory fallback
+    try {
+      await fs.access(noriSubdirConfigPath);
+      effectiveConfigPath = noriSubdirConfigPath;
+    } catch {
+      // Neither path exists
+      return null;
+    }
+  }
+
+  try {
+    const content = await fs.readFile(effectiveConfigPath, "utf-8");
     const rawConfig = JSON.parse(content);
 
     if (rawConfig == null || typeof rawConfig !== "object") {

@@ -130,8 +130,6 @@ const installConfig = async (args: { config: Config }): Promise<void> => {
     agents: Object.keys(mergedAgents).length > 0 ? mergedAgents : null,
     sendSessionTranscript,
     autoupdate: existingConfig?.autoupdate,
-    registryAuths:
-      config.registryAuths ?? existingConfig?.registryAuths ?? null,
     version: currentVersion,
     installDir: config.installDir,
   });
@@ -201,7 +199,6 @@ const uninstallConfig = async (args: { config: Config }): Promise<void> => {
     organizationUrl: existingConfig?.auth?.organizationUrl ?? null,
     sendSessionTranscript: existingConfig?.sendSessionTranscript ?? null,
     autoupdate: existingConfig?.autoupdate ?? null,
-    registryAuths: existingConfig?.registryAuths ?? null,
     agents: remainingAgentsObj,
     version: existingConfig?.version ?? null,
     installDir: config.installDir,

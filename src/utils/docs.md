@@ -34,7 +34,7 @@ The url.ts module exports URL normalization and construction functions:
 
 Non-namespaced packages default to the "public" organization. Used by registry-upload, registry-download, and skill-download commands to extract org, package name, and version from user-provided package specifications. The orgId is then passed to buildOrganizationRegistryUrl to derive the correct registry URL.
 
-These URL construction functions are used by the install command (@/src/cli/commands/install/install.ts) and registry auth prompt (@/src/cli/commands/install/registryAuthPrompt.ts) to convert user-provided org IDs into full service URLs. The stored config format remains unchanged (full URLs), so this is purely a UX improvement at the user input layer.
+These URL construction functions are used by the install command (@/src/cli/commands/install/install.ts) and various registry commands to convert user-provided org IDs into full service URLs. The stored config format remains unchanged (full URLs), so this is purely a UX improvement at the user input layer.
 
 The path.ts module exports types (`InstallationType`, `InstallationInfo`) and functions (`normalizeInstallDir`, `getInstallDirs`, `getInstallDirsWithTypes`) for installation directory management. The `InstallationType` distinguishes between "source" installations (directories with `.nori-config.json`), "managed" installations (directories with `.claude/CLAUDE.md` containing "NORI-AI MANAGED BLOCK"), and "both" (directories with both markers).
 

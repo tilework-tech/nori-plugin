@@ -18,11 +18,11 @@ rm ~/.nori/.nori-config.json
 npm run build
 ```
 
-3. Download the amol skillset and the none skillset from public.
+3. Download the amol skillset and the onboarding skillset from public.
 
 ```bash
 node build/src/cli/nori-skillsets.js download amol
-node build/src/cli/nori-skillsets.js download none
+node build/src/cli/nori-skillsets.js download onboarding
 ```
 
 4. Confirm that the download worked by looking at the ~/.nori/profiles directory.
@@ -37,7 +37,7 @@ node build/src/cli/nori-skillsets.js switch-skillset amol
 
 - Make sure that the templating worked as expected.
 
-7. Switch to the none skillset.
+7. Switch to the onboarding skillset.
 
 8. Confirm that the switch worked by checking the CLAUDE.md file.
 

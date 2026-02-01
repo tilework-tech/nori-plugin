@@ -78,6 +78,24 @@ describe.sequential("build process", () => {
       path.join(os.tmpdir(), "nori-install-test-"),
     );
 
+    // Create stub profile (built-in profiles no longer bundled)
+    const noriProfilesDir = path.join(
+      tempDir,
+      ".nori",
+      "profiles",
+      "senior-swe",
+    );
+    fs.mkdirSync(noriProfilesDir, { recursive: true });
+    fs.writeFileSync(path.join(noriProfilesDir, "CLAUDE.md"), "# senior-swe\n");
+    fs.writeFileSync(
+      path.join(noriProfilesDir, "nori.json"),
+      JSON.stringify({
+        name: "senior-swe",
+        version: "1.0.0",
+        description: "Test profile",
+      }),
+    );
+
     try {
       // Run the installer pointing to our temp directory
       // Use the CLI entry point (cli.js) with --non-interactive flag
@@ -136,7 +154,7 @@ describe.sequential("build process", () => {
       // Note: skills, claudemd, slashcommands, subagents are now validated via profilesLoader
       expect(checkOutput).toContain("✓ hooks: Hooks are properly configured");
       expect(checkOutput).toContain(
-        "✓ profiles: All required profiles are properly installed",
+        "✓ profiles: Profiles directory exists and permissions are configured",
       );
     } catch (error: unknown) {
       if (error && typeof error === "object") {
@@ -226,7 +244,7 @@ ${stderr || "(empty)"}`,
 
       // Should contain success message about bundling
       expect(stdout).toContain("Bundling Hook Scripts");
-      expect(stdout).toMatch(/Successfully bundled \d+ script\(s\)/);
+      expect(stdout).toContain("Successfully bundled");
     });
 
     it("should execute bundled hook scripts without dynamic require errors", () => {

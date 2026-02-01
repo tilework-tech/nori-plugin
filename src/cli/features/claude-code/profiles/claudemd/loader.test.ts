@@ -9,8 +9,6 @@ import * as path from "path";
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { profilesLoader } from "@/cli/features/claude-code/profiles/loader.js";
-
 import type { Config } from "@/cli/config.js";
 
 // Mock the env module to use temp directories
@@ -34,10 +32,101 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
 // Import loaders after mocking env
 import { claudeMdLoader } from "./loader.js";
 
+// Stub profile content matching what the tests expect
+const SENIOR_SWE_CLAUDE_MD = `<required>
+# Tone
+
+Do not be deferential.
+
+# Coding Guidelines
+
+YAGNI. Do not add features that are not explicitly asked for.
+
+# Independence
+
+When starting a new task, ask me if I want to create a branch or a worktree.
+</required>
+`;
+
+const AMOL_CLAUDE_MD = `<required>
+# Tone
+
+Do not be deferential.
+
+# Coding Guidelines
+
+YAGNI.
+
+# Independence
+
+When starting a new task, automatically create a worktree.
+</required>
+`;
+
+/**
+ * Create a stub profile with CLAUDE.md and optional skills
+ *
+ * @param args - Function arguments
+ * @param args.profilesDir - Path to the profiles directory
+ * @param args.profileName - Name of the profile
+ * @param args.claudeMd - Content for the profile's CLAUDE.md
+ * @param args.skills - Optional map of skill name to frontmatter and body content
+ */
+const createStubProfile = async (args: {
+  profilesDir: string;
+  profileName: string;
+  claudeMd: string;
+  skills?: Record<string, { frontmatter: string; body: string }> | null;
+}): Promise<void> => {
+  const { profilesDir, profileName, claudeMd, skills } = args;
+  const profileDir = path.join(profilesDir, profileName);
+  await fs.mkdir(profileDir, { recursive: true });
+  await fs.writeFile(path.join(profileDir, "CLAUDE.md"), claudeMd);
+  await fs.writeFile(
+    path.join(profileDir, "nori.json"),
+    JSON.stringify({
+      name: profileName,
+      version: "1.0.0",
+      description: `${profileName} profile`,
+    }),
+  );
+
+  if (skills != null) {
+    for (const [skillName, content] of Object.entries(skills)) {
+      const skillDir = path.join(profileDir, "skills", skillName);
+      await fs.mkdir(skillDir, { recursive: true });
+      await fs.writeFile(
+        path.join(skillDir, "SKILL.md"),
+        `${content.frontmatter}\n${content.body}`,
+      );
+    }
+  }
+};
+
+// Standard test skills for senior-swe profile
+const TEST_SKILLS: Record<string, { frontmatter: string; body: string }> = {
+  "using-skills": {
+    frontmatter:
+      "---\nname: Getting Started with Abilities\ndescription: Describes how to use abilities. Read before any conversation.\n---",
+    body: "# Using Skills\n\nHow to use skills.",
+  },
+  brainstorming: {
+    frontmatter:
+      "---\nname: Brainstorming\ndescription: Refine ideas through Socratic questioning.\n---",
+    body: "# Brainstorming\n\nRefine ideas.",
+  },
+  "test-driven-development": {
+    frontmatter:
+      "---\nname: Test-Driven Development\ndescription: Write the test first.\n---",
+    body: "# TDD\n\nRed-green-refactor.",
+  },
+};
+
 describe("claudeMdLoader", () => {
   let tempDir: string;
   let claudeDir: string;
   let claudeMdPath: string;
+  let noriProfilesDir: string;
 
   beforeEach(async () => {
     // Create temp directory for testing
@@ -49,20 +138,31 @@ describe("claudeMdLoader", () => {
     mockClaudeDir = claudeDir;
     mockClaudeMdFile = claudeMdPath;
     mockNoriDir = path.join(tempDir, ".nori");
+    noriProfilesDir = path.join(mockNoriDir, "profiles");
 
     // Create .claude and .nori directories
     await fs.mkdir(claudeDir, { recursive: true });
-    await fs.mkdir(mockNoriDir, { recursive: true });
+    await fs.mkdir(noriProfilesDir, { recursive: true });
 
-    // Run profiles loader to populate ~/.nori/profiles/ directory with composed profiles
-    // This is required since feature loaders now read from ~/.nori/profiles/
-    const config: Config = {
-      installDir: tempDir,
-      agents: {
-        "claude-code": { profile: { baseProfile: "senior-swe" } },
-      },
-    };
-    await profilesLoader.run({ config });
+    // Create stub profiles (built-in profiles are no longer bundled)
+    await createStubProfile({
+      profilesDir: noriProfilesDir,
+      profileName: "senior-swe",
+      claudeMd: SENIOR_SWE_CLAUDE_MD,
+      skills: TEST_SKILLS,
+    });
+
+    await createStubProfile({
+      profilesDir: noriProfilesDir,
+      profileName: "amol",
+      claudeMd: AMOL_CLAUDE_MD,
+    });
+
+    await createStubProfile({
+      profilesDir: noriProfilesDir,
+      profileName: "product-manager",
+      claudeMd: "# Product Manager\n\nFocus on product decisions.\n",
+    });
   });
 
   afterEach(async () => {

@@ -8,12 +8,12 @@ import { build } from "esbuild";
 import { glob } from "glob";
 
 /**
- * Bundle a single skill script
+ * Bundle a single script with esbuild
  *
  * @param args - Bundle arguments
  * @param args.scriptPath - Path to the compiled script.js file
  */
-const bundleSkill = async (args: { scriptPath: string }): Promise<void> => {
+const bundleScript = async (args: { scriptPath: string }): Promise<void> => {
   const { scriptPath } = args;
 
   console.log(`Bundling: ${scriptPath}`);
@@ -82,22 +82,25 @@ const main = async (): Promise<void> => {
     (file: string) => !file.endsWith(".test.js"),
   );
 
-  if (filteredHookFiles.length === 0) {
+  const allFiles = [...filteredHookFiles];
+
+  if (allFiles.length === 0) {
     console.warn("⚠ No scripts found to bundle");
     console.warn("Expected patterns:");
     console.warn("  - build/src/cli/features/claude-code/hooks/config/*.js");
     return;
   }
 
-  console.log(`Found ${filteredHookFiles.length} hook script(s) to bundle\n`);
+  console.log(`Found ${filteredHookFiles.length} hook script(s) to bundle`);
+  console.log(`Total: ${allFiles.length} script(s)\n`);
 
   // Bundle each script
-  for (const scriptPath of filteredHookFiles) {
-    await bundleSkill({ scriptPath });
+  for (const scriptPath of allFiles) {
+    await bundleScript({ scriptPath });
   }
 
   console.log("\n" + "=".repeat(60));
-  console.log(`✓ Successfully bundled ${filteredHookFiles.length} script(s)`);
+  console.log(`✓ Successfully bundled ${allFiles.length} hook script(s)`);
   console.log("=".repeat(60));
 };
 
@@ -109,4 +112,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { bundleSkill, main };
+export { bundleScript, main };

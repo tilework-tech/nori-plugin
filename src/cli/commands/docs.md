@@ -121,22 +121,36 @@ The command uses `parseNamespacedPackage()` from @/src/utils/url.ts to extract t
 **skill-download Namespace/Registry Conflict:** If user specifies both a namespace (`myorg/skill`) and `--registry`, the command errors since they are mutually exclusive - the namespace determines the registry automatically.
 
 **Authentication Commands:** Two commands manage authentication for the nori-skillsets CLI:
-- `login` - Authenticates with noriskillsets.dev using email/password, stores credentials in `.nori-config.json`
+- `login` - Authenticates with noriskillsets.dev using email/password or Google SSO (`--google`), stores credentials in `.nori-config.json`
 - `logout` - Clears stored authentication credentials from config
 
-**Login Command Flow:** The login command (@/src/cli/commands/login/login.ts) authenticates users directly against noriskillsets.dev:
+**Login Command Flow:** The login command (@/src/cli/commands/login/login.ts) authenticates users against noriskillsets.dev via two flows: email/password (default) and Google SSO (`--google` flag). Both flows produce the same Firebase credentials and store identical config fields, so the entire downstream pipeline (token refresh, registry auth, logout) works unchanged regardless of which flow was used.
+
+The `--google` flag is mutually exclusive with `--email` and `--password` -- the command rejects the combination with an error.
+
+*Email/password flow (default):*
 1. Prompts for email and password (or accepts `--email` and `--password` flags in non-interactive mode)
-2. Authenticates with Firebase using `signInWithEmailAndPassword()` from the Firebase SDK
-3. Calls `https://noriskillsets.dev/api/auth/check-access` with the Firebase ID token to fetch user's organizations and admin status
-4. Stores credentials in `.nori-config.json`:
+2. Authenticates with Firebase using `signInWithEmailAndPassword()`
+
+*Google SSO flow (`--google`):*
+1. The Google OAuth helper module (@/src/cli/commands/login/googleAuth.ts) implements the localhost HTTP server callback pattern (same pattern used by firebase-tools, gcloud CLI)
+2. Finds an available port starting from 9876 (tries up to 10 ports), generates a cryptographic CSRF state nonce, and builds the Google OAuth authorization URL
+3. Starts a temporary HTTP server on localhost to capture the OAuth callback, then opens the user's browser to Google's consent screen via the `open` npm package (falls back to printing the URL if browser launch fails)
+4. The local server validates the CSRF state parameter, extracts the authorization code, and serves a success/error HTML page to the browser. The server has a 2-minute timeout
+5. Exchanges the authorization code for Google tokens via `https://oauth2.googleapis.com/token` using the Desktop app OAuth client credentials
+6. Calls Firebase `signInWithCredential()` with `GoogleAuthProvider.credential(idToken)` to obtain Firebase credentials
+
+*After authentication (both flows):*
+1. Calls `https://noriskillsets.dev/api/auth/check-access` with the Firebase ID token to fetch user's organizations and admin status
+2. Stores credentials in `.nori-config.json`:
    - `auth.username` - User's email
    - `auth.refreshToken` - Firebase refresh token for session persistence
    - `auth.organizationUrl` - Defaults to `https://noriskillsets.dev`
    - `auth.organizations` - Array of organization IDs the user has access to (for private registry operations)
    - `auth.isAdmin` - Whether the user has admin privileges
-5. Preserves existing config fields (agents, autoupdate, registryAuths, etc.) when logging in
+3. Preserves existing config fields (agents, autoupdate, registryAuths, etc.) when logging in
 
-The login command provides helpful error messages based on Firebase AuthErrorCodes (invalid credentials, user not found, too many attempts, network errors).
+The login command provides helpful error messages based on Firebase AuthErrorCodes (invalid credentials, user not found, too many attempts, network errors). For Google SSO specifically, it handles `auth/operation-not-allowed` (Google sign-in not enabled) and `Authentication denied` (user rejected consent).
 
 **Logout Command Flow:** The logout command (@/src/cli/commands/logout/logout.ts) clears authentication:
 1. Loads existing config

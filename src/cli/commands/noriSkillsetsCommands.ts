@@ -280,15 +280,23 @@ export const registerNoriSkillsetsLoginCommand = (args: {
     .description("Authenticate with noriskillsets.dev")
     .option("-e, --email <email>", "Email address (for non-interactive mode)")
     .option("-p, --password <password>", "Password (for non-interactive mode)")
-    .action(async (options: { email?: string; password?: string }) => {
-      const globalOpts = program.opts();
-      await loginMain({
-        installDir: globalOpts.installDir || null,
-        nonInteractive: globalOpts.nonInteractive || null,
-        email: options.email || null,
-        password: options.password || null,
-      });
-    });
+    .option("-g, --google", "Sign in with Google SSO")
+    .action(
+      async (options: {
+        email?: string;
+        password?: string;
+        google?: boolean;
+      }) => {
+        const globalOpts = program.opts();
+        await loginMain({
+          installDir: globalOpts.installDir || null,
+          nonInteractive: globalOpts.nonInteractive || null,
+          email: options.email || null,
+          password: options.password || null,
+          google: options.google || null,
+        });
+      },
+    );
 };
 
 /**

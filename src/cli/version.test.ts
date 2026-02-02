@@ -34,18 +34,17 @@ describe("version", () => {
       }
     });
 
-    it("should return version from package.json with name nori-ai", () => {
-      // Create test package.json with correct name
+    it("should return null for package.json with name nori-ai (no longer recognized)", () => {
+      // nori-ai is no longer a valid package name
       const testPackage = {
         name: "nori-ai",
         version: "13.5.2",
       };
       fs.writeFileSync(testPackageJsonPath, JSON.stringify(testPackage));
 
-      // Pass startDir to control where the function looks for package.json
       const version = getCurrentPackageVersion({ startDir: testRoot });
 
-      expect(version).toBe("13.5.2");
+      expect(version).toBeNull();
     });
 
     it("should return null if package.json has wrong name", () => {
@@ -89,7 +88,7 @@ describe("version", () => {
 
       // Put package.json in root, start search from grandchild
       const testPackage = {
-        name: "nori-ai",
+        name: "nori-skillsets",
         version: "14.0.0",
       };
       fs.writeFileSync(testPackageJsonPath, JSON.stringify(testPackage));
@@ -100,7 +99,7 @@ describe("version", () => {
     });
 
     it("should use import.meta.url location when startDir not provided", () => {
-      // When called without startDir, it should find the real nori-ai package.json
+      // When called without startDir, it should find the real package.json
       // This verifies the default behavior works
       const version = getCurrentPackageVersion();
 

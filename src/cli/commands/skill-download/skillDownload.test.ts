@@ -856,7 +856,7 @@ describe("skill-download", () => {
       expect(allOutput).not.toContain("nori-ai skill-download");
     });
 
-    it("should use nori-ai command names when cliName is nori-ai", async () => {
+    it("should default to nori-skillsets command names with nori-ai prefix when cliName is not provided", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
       });
@@ -871,15 +871,13 @@ describe("skill-download", () => {
         skillSpec: "test-skill",
         cwd: testDir,
         listVersions: true,
-        cliName: "nori-ai",
       });
 
-      // Verify version hint uses nori-ai command names
+      // When no cliName is provided, prefix defaults to nori-ai but command names are nori-skillsets
       const allOutput = mockConsoleLog.mock.calls
         .map((call) => call.join(" "))
         .join("\n");
-      expect(allOutput).toContain("nori-ai skill-download");
-      expect(allOutput).not.toContain("nori-skillsets download-skill");
+      expect(allOutput).toContain("nori-ai download-skill");
     });
   });
 });

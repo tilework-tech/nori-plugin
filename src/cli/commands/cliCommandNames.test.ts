@@ -8,18 +8,6 @@ import { getCommandNames } from "./cliCommandNames.js";
 
 describe("cliCommandNames", () => {
   describe("getCommandNames", () => {
-    it("should return nori-ai command names when cliName is nori-ai", () => {
-      const names = getCommandNames({ cliName: "nori-ai" });
-
-      expect(names.download).toBe("registry-download");
-      expect(names.downloadSkill).toBe("skill-download");
-      expect(names.search).toBe("registry-search");
-      expect(names.update).toBe("registry-update");
-      expect(names.upload).toBe("registry-upload");
-      expect(names.uploadSkill).toBe("skill-upload");
-      expect(names.switchProfile).toBe("switch-profile");
-    });
-
     it("should return nori-skillsets command names when cliName is nori-skillsets", () => {
       const names = getCommandNames({ cliName: "nori-skillsets" });
 
@@ -32,18 +20,18 @@ describe("cliCommandNames", () => {
       expect(names.switchProfile).toBe("switch-skillset");
     });
 
-    it("should default to nori-ai command names when cliName is null", () => {
+    it("should default to nori-skillsets command names when cliName is null", () => {
       const names = getCommandNames({ cliName: null });
 
-      expect(names.download).toBe("registry-download");
-      expect(names.switchProfile).toBe("switch-profile");
+      expect(names.download).toBe("download");
+      expect(names.switchProfile).toBe("switch-skillset");
     });
 
-    it("should default to nori-ai command names when cliName is undefined", () => {
+    it("should default to nori-skillsets command names when cliName is undefined", () => {
       const names = getCommandNames({});
 
-      expect(names.download).toBe("registry-download");
-      expect(names.switchProfile).toBe("switch-profile");
+      expect(names.download).toBe("download");
+      expect(names.switchProfile).toBe("switch-skillset");
     });
   });
 });

@@ -1,5 +1,5 @@
 {
-  "name": "nori-ai",
+  "name": "nori-skillsets",
   "version": "19.1.8",
   "keywords": [
     "claude code",
@@ -11,7 +11,6 @@
   "description": "Nori Profiles plugin for Claude Code",
   "type": "module",
   "bin": {
-    "nori-ai": "./build/src/cli/nori-ai.js",
     "nori-skillsets": "./build/src/cli/nori-skillsets.js"
   },
   "scripts": {

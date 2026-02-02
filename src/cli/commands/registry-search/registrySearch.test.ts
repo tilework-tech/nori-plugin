@@ -351,8 +351,9 @@ describe("registry-search", () => {
       await registrySearchMain({ query: "test", installDir: testDir });
 
       const output = getAllOutput();
-      expect(output).toContain("registry-download");
-      expect(output).toContain("skill-download");
+      // getCommandNames() now returns nori-skillsets commands: "download" and "download-skill"
+      expect(output).toContain("download");
+      expect(output).toContain("download-skill");
     });
 
     it("should only show profile download hint when only profiles found", async () => {
@@ -374,8 +375,8 @@ describe("registry-search", () => {
       await registrySearchMain({ query: "test", installDir: testDir });
 
       const output = getAllOutput();
-      expect(output).toContain("registry-download");
-      expect(output).not.toContain("skill-download");
+      expect(output).toContain("download");
+      expect(output).not.toContain("download-skill");
     });
 
     it("should only show skill download hint when only skills found", async () => {
@@ -400,8 +401,7 @@ describe("registry-search", () => {
       await registrySearchMain({ query: "test", installDir: testDir });
 
       const output = getAllOutput();
-      expect(output).not.toContain("registry-download");
-      expect(output).toContain("skill-download");
+      expect(output).toContain("download-skill");
     });
   });
 
@@ -677,47 +677,7 @@ describe("registry-search", () => {
       expect(output).not.toContain("nori-ai skill-download");
     });
 
-    it("should use nori-ai command names in install hints when cliName is nori-ai", async () => {
-      vi.mocked(loadConfig).mockResolvedValue({
-        installDir: testDir,
-        agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
-      });
-
-      // Mock public registry search functions (no org auth = only public registry is searched)
-      vi.mocked(registrarApi.searchPackages).mockResolvedValue([
-        {
-          id: "1",
-          name: "test-profile",
-          description: "A test profile",
-          authorEmail: "test@example.com",
-          createdAt: "2024-01-01",
-          updatedAt: "2024-01-01",
-        },
-      ]);
-      vi.mocked(registrarApi.searchSkills).mockResolvedValue([
-        {
-          id: "2",
-          name: "test-skill",
-          description: "A test skill",
-          authorEmail: "test@example.com",
-          createdAt: "2024-01-01",
-          updatedAt: "2024-01-01",
-        },
-      ]);
-
-      await registrySearchMain({
-        query: "test",
-        installDir: testDir,
-        cliName: "nori-ai",
-      });
-
-      const output = getAllOutput();
-      expect(output).toContain("nori-ai registry-download");
-      expect(output).toContain("nori-ai skill-download");
-      expect(output).not.toContain("nori-skillsets download");
-    });
-
-    it("should default to nori-ai command names when cliName is not provided", async () => {
+    it("should default to nori-skillsets command names with nori-ai prefix when cliName is not provided", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
         agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
@@ -741,8 +701,9 @@ describe("registry-search", () => {
         installDir: testDir,
       });
 
+      // When no cliName is provided, prefix defaults to nori-ai but command names are nori-skillsets
       const output = getAllOutput();
-      expect(output).toContain("nori-ai registry-download");
+      expect(output).toContain("nori-ai download");
     });
   });
 });

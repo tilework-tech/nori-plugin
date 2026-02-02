@@ -1,11 +1,11 @@
 /**
  * CLI command name mapping for user-facing messages
  *
- * Maps CLI names (nori-ai, nori-skillsets) to their respective command names.
+ * Maps CLI name to command names.
  * Used to display correct command hints in output messages.
  */
 
-export type CliName = "nori-ai" | "nori-skillsets";
+export type CliName = "nori-skillsets";
 
 export type CommandNames = {
   download: string;
@@ -15,16 +15,6 @@ export type CommandNames = {
   upload: string;
   uploadSkill: string;
   switchProfile: string;
-};
-
-const NORI_AI_COMMANDS: CommandNames = {
-  download: "registry-download",
-  downloadSkill: "skill-download",
-  search: "registry-search",
-  update: "registry-update",
-  upload: "registry-upload",
-  uploadSkill: "skill-upload",
-  switchProfile: "switch-profile",
 };
 
 const NORI_SKILLSETS_COMMANDS: CommandNames = {
@@ -38,20 +28,14 @@ const NORI_SKILLSETS_COMMANDS: CommandNames = {
 };
 
 /**
- * Get the command names for the given CLI
- * @param args - The function arguments
- * @param args.cliName - The CLI name (nori-ai or nori-skillsets). Defaults to nori-ai.
+ * Get the command names for the CLI
+ * @param _args - The function arguments
+ * @param _args.cliName - The CLI name. Defaults to nori-skillsets.
  *
  * @returns The command names for the CLI
  */
-export const getCommandNames = (args: {
+export const getCommandNames = (_args: {
   cliName?: CliName | null;
 }): CommandNames => {
-  const { cliName } = args;
-
-  if (cliName === "nori-skillsets") {
-    return NORI_SKILLSETS_COMMANDS;
-  }
-
-  return NORI_AI_COMMANDS;
+  return NORI_SKILLSETS_COMMANDS;
 };

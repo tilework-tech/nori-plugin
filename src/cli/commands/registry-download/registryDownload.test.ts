@@ -2006,35 +2006,7 @@ describe("registry-download", () => {
       expect(allOutput).not.toContain("nori-ai switch-profile");
     });
 
-    it("should use nori-ai command names when cliName is nori-ai", async () => {
-      vi.mocked(loadConfig).mockResolvedValue({
-        installDir: testDir,
-      });
-
-      vi.mocked(registrarApi.getPackument).mockResolvedValue({
-        name: "test-profile",
-        "dist-tags": { latest: "1.0.0" },
-        versions: { "1.0.0": { name: "test-profile", version: "1.0.0" } },
-      });
-
-      const mockTarball = await createMockTarball();
-      vi.mocked(registrarApi.downloadTarball).mockResolvedValue(mockTarball);
-
-      await registryDownloadMain({
-        packageSpec: "test-profile",
-        cwd: testDir,
-        cliName: "nori-ai",
-      });
-
-      // Verify success message uses nori-ai command names
-      const allOutput = mockConsoleLog.mock.calls
-        .map((call) => call.join(" "))
-        .join("\n");
-      expect(allOutput).toContain("nori-ai switch-profile");
-      expect(allOutput).not.toContain("nori-skillsets switch-skillset");
-    });
-
-    it("should default to nori-ai command names when cliName is not provided", async () => {
+    it("should default to nori-skillsets command names with nori-ai prefix when cliName is not provided", async () => {
       vi.mocked(loadConfig).mockResolvedValue({
         installDir: testDir,
       });
@@ -2053,11 +2025,11 @@ describe("registry-download", () => {
         cwd: testDir,
       });
 
-      // Verify success message defaults to nori-ai command names
+      // When no cliName is provided, prefix defaults to nori-ai but command names are nori-skillsets
       const allOutput = mockConsoleLog.mock.calls
         .map((call) => call.join(" "))
         .join("\n");
-      expect(allOutput).toContain("nori-ai switch-profile");
+      expect(allOutput).toContain("switch-skillset");
     });
 
     it("should use nori-skillsets command names in version list hint when cliName is nori-skillsets", async () => {

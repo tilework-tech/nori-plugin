@@ -493,7 +493,7 @@ describe("Analytics API Spec Compliance (PLAN_ANALYTICS_PROXY.md)", () => {
 
       const params = buildBaseEventParams();
 
-      // Default source is "nori-ai", but the key point is that it's defined
+      // tilework_source is configurable, just verify it's present
       expect(params).toHaveProperty("tilework_source");
       expect(params).toHaveProperty("tilework_session_id");
       expect(params).toHaveProperty("tilework_timestamp");
@@ -775,7 +775,10 @@ describe("Analytics API Spec Compliance (PLAN_ANALYTICS_PROXY.md)", () => {
       expect(params).toHaveProperty("tilework_timestamp");
 
       // Required CLI fields
-      expect(params).toHaveProperty("tilework_cli_executable_name", "nori-ai");
+      expect(params).toHaveProperty(
+        "tilework_cli_executable_name",
+        "nori-skillsets",
+      );
       expect(params).toHaveProperty("tilework_cli_installed_version", "1.0.0");
       expect(params).toHaveProperty("tilework_cli_install_source");
       expect(params).toHaveProperty("tilework_cli_days_since_install");
@@ -828,7 +831,10 @@ describe("buildCLIEventParams", () => {
     expect(params).toHaveProperty("tilework_timestamp");
 
     // CLI-specific params
-    expect(params).toHaveProperty("tilework_cli_executable_name", "nori-ai");
+    expect(params).toHaveProperty(
+      "tilework_cli_executable_name",
+      "nori-skillsets",
+    );
     expect(params).toHaveProperty("tilework_cli_installed_version");
     expect(params).toHaveProperty("tilework_cli_install_source");
     expect(typeof params.tilework_cli_days_since_install).toBe("number");
@@ -1022,16 +1028,13 @@ describe("Type exports", () => {
 describe("tilework_source configuration", () => {
   afterEach(() => {
     // Reset to default after each test
-    setTileworkSource({ source: "nori-ai" });
+    setTileworkSource({ source: "nori-skillsets" });
   });
 
   describe("getTileworkSource", () => {
-    it("returns the default value 'nori-ai' when not explicitly set", () => {
-      // Reset to default first
-      setTileworkSource({ source: "nori-ai" });
-
+    it("returns the default value 'nori-skillsets' when not explicitly set", () => {
       const source = getTileworkSource();
-      expect(source).toBe("nori-ai");
+      expect(source).toBe("nori-skillsets");
     });
   });
 
@@ -1041,14 +1044,6 @@ describe("tilework_source configuration", () => {
 
       const source = getTileworkSource();
       expect(source).toBe("nori-skillsets");
-    });
-
-    it("allows setting to nori-ai", () => {
-      setTileworkSource({ source: "nori-skillsets" });
-      setTileworkSource({ source: "nori-ai" });
-
-      const source = getTileworkSource();
-      expect(source).toBe("nori-ai");
     });
   });
 
@@ -1063,7 +1058,7 @@ describe("tilework_source configuration", () => {
     afterEach(() => {
       vi.restoreAllMocks();
       vi.unstubAllGlobals();
-      setTileworkSource({ source: "nori-ai" });
+      setTileworkSource({ source: "nori-skillsets" });
     });
 
     it("includes tilework_source from getTileworkSource when set to nori-skillsets", async () => {
@@ -1074,16 +1069,6 @@ describe("tilework_source configuration", () => {
       const params = buildBaseEventParams();
 
       expect(params.tilework_source).toBe("nori-skillsets");
-    });
-
-    it("includes tilework_source from getTileworkSource when set to nori-ai", async () => {
-      const { buildBaseEventParams, setTileworkSource: setSrc } =
-        await import("./installTracking.js");
-
-      setSrc({ source: "nori-ai" });
-      const params = buildBaseEventParams();
-
-      expect(params.tilework_source).toBe("nori-ai");
     });
   });
 
@@ -1098,7 +1083,7 @@ describe("tilework_source configuration", () => {
     afterEach(() => {
       vi.restoreAllMocks();
       vi.unstubAllGlobals();
-      setTileworkSource({ source: "nori-ai" });
+      setTileworkSource({ source: "nori-skillsets" });
     });
 
     it("sends events with the configured tilework_source", async () => {
@@ -1128,7 +1113,7 @@ describe("tilework_source configuration", () => {
     afterEach(() => {
       vi.restoreAllMocks();
       vi.unstubAllGlobals();
-      setTileworkSource({ source: "nori-ai" });
+      setTileworkSource({ source: "nori-skillsets" });
     });
 
     it("includes tilework_cli_executable_name from getTileworkSource when set to nori-skillsets", async () => {
@@ -1139,16 +1124,6 @@ describe("tilework_source configuration", () => {
       const params = await buildCLIEventParams();
 
       expect(params.tilework_cli_executable_name).toBe("nori-skillsets");
-    });
-
-    it("includes tilework_cli_executable_name from getTileworkSource when set to nori-ai", async () => {
-      const { buildCLIEventParams, setTileworkSource: setSrc } =
-        await import("./installTracking.js");
-
-      setSrc({ source: "nori-ai" });
-      const params = await buildCLIEventParams();
-
-      expect(params.tilework_cli_executable_name).toBe("nori-ai");
     });
   });
 });

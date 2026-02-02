@@ -1,6 +1,6 @@
 /**
  * CLI command for downloading profile packages from the Nori registrar
- * Handles: nori-ai registry-download <package>[@version] [--registry <url>]
+ * Handles: nori-skillsets download <package>[@version] [--registry <url>]
  */
 
 import * as fs from "fs/promises";
@@ -24,11 +24,7 @@ import {
   type CliName,
 } from "@/cli/commands/cliCommandNames.js";
 import { initMain } from "@/cli/commands/init/init.js";
-import {
-  checkRegistryAgentSupport,
-  showCursorAgentNotSupportedError,
-} from "@/cli/commands/registryAgentCheck.js";
-import { getRegistryAuth } from "@/cli/config.js";
+import { getRegistryAuth, loadConfig } from "@/cli/config.js";
 import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline, raw } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
@@ -415,7 +411,7 @@ const formatVersionList = (args: {
     lines.push(`  ${version}${tagStr}${timeStr}`);
   }
 
-  const cliPrefix = cliName ?? "nori-ai";
+  const cliPrefix = cliName ?? "nori-skillsets";
   lines.push(
     `\nTo download a specific version:\n  ${cliPrefix} ${commandNames.download} ${packageName}@<version>`,
   );
@@ -439,7 +435,7 @@ const formatMultiplePackagesError = (args: {
 }): string => {
   const { packageName, results, cliName } = args;
   const commandNames = getCommandNames({ cliName });
-  const cliPrefix = cliName ?? "nori-ai";
+  const cliPrefix = cliName ?? "nori-skillsets";
 
   const lines = ["Multiple packages with the same name found.\n"];
 
@@ -475,7 +471,7 @@ export type RegistryDownloadResult = {
  * @param args.installDir - Optional explicit install directory
  * @param args.registryUrl - Optional registry URL to download from
  * @param args.listVersions - If true, list available versions instead of downloading
- * @param args.cliName - CLI name for user-facing messages (nori-ai or nori-skillsets)
+ * @param args.cliName - CLI name for user-facing messages (defaults to nori-skillsets)
  *
  * @returns Result indicating success or failure
  */
@@ -490,7 +486,7 @@ export const registryDownloadMain = async (args: {
   const { packageSpec, installDir, registryUrl, listVersions, cliName } = args;
   const cwd = args.cwd ?? process.cwd();
   const commandNames = getCommandNames({ cliName });
-  const cliPrefix = cliName ?? "nori-ai";
+  const cliPrefix = cliName ?? "nori-skillsets";
 
   // Parse the namespaced package spec (e.g., "myorg/my-profile@1.0.0")
   const parsed = parseNamespacedPackage({ packageSpec });
@@ -572,17 +568,8 @@ export const registryDownloadMain = async (args: {
     }
   }
 
-  // Check if cursor-agent-only installation (not supported for registry commands)
-  const agentCheck = await checkRegistryAgentSupport({
-    installDir: targetInstallDir,
-  });
-  if (!agentCheck.supported) {
-    showCursorAgentNotSupportedError();
-    return { success: false };
-  }
-
-  // Use config from agentCheck (already loaded during support check)
-  const config = agentCheck.config;
+  // Load config for registry auth
+  const config = await loadConfig({ installDir: targetInstallDir });
 
   const profilesDir = getNoriProfilesDir({ installDir: targetInstallDir });
   // For namespaced packages, the profile is in a nested directory (e.g., profiles/myorg/my-profile)
@@ -711,7 +698,7 @@ export const registryDownloadMain = async (args: {
     // Namespaced package without unified auth: require login
     const displayName = `${orgId}/${packageName}`;
     error({
-      message: `Profile "${displayName}" not found. To download from organization "${orgId}", log in with:\n\n  nori-ai login`,
+      message: `Profile "${displayName}" not found. To download from organization "${orgId}", log in with:\n\n  nori-skillsets login`,
     });
     return { success: false };
   }

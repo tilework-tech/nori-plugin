@@ -24,9 +24,8 @@ const MIN_AGENT_FLAG_VERSION = "19.0.0";
 
 /**
  * Valid package names that this version module can detect.
- * Includes both the main nori-ai package and the standalone nori-skillsets package.
  */
-const VALID_PACKAGE_NAMES = ["nori-ai", "nori-skillsets"];
+const VALID_PACKAGE_NAMES = ["nori-skillsets"];
 
 /**
  * Find the package root by walking up from the start directory

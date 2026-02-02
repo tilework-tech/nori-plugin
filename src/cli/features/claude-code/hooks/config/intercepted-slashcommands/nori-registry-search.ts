@@ -286,7 +286,9 @@ const buildDownloadHints = (args: {
     );
   }
   if (hasSkills) {
-    hints.push("To install a skill, use: /nori-skill-download <skill-name>");
+    hints.push(
+      "To install a skill, run: nori-skillsets download-skill <skill-name>",
+    );
   }
 
   return hints.join("\n");
@@ -321,7 +323,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatError({
-        message: `No Nori installation found.\n\nRun 'npx nori-ai install' to install Nori Profiles.`,
+        message: `No Nori installation found.\n\nRun 'npx nori-skillsets init' to install Nori Profiles.`,
       }),
     };
   }

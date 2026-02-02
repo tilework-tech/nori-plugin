@@ -17,16 +17,16 @@ const RESURRECTION_THRESHOLD_DAYS = 30;
 
 /**
  * Mutable tilework source identifier.
- * Default is "nori-ai" for backwards compatibility.
+ * Default is "nori-skillsets".
  * Entry points should call setTileworkSource() to configure this.
  */
-let tileworkSource: CliName = "nori-ai";
+let tileworkSource: CliName = "nori-skillsets";
 
 /**
  * Set the tilework source identifier for analytics events.
  * Call this early in your entry point before any analytics calls.
  * @param args - Arguments
- * @param args.source - The source identifier ("nori-ai" or "nori-skillsets")
+ * @param args.source - The source identifier ("nori-skillsets")
  */
 export const setTileworkSource = (args: { source: CliName }): void => {
   tileworkSource = args.source;

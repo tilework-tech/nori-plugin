@@ -11,6 +11,7 @@ import { Command } from "commander";
 import {
   registerNoriSkillsetsDownloadCommand,
   registerNoriSkillsetsDownloadSkillCommand,
+  registerNoriSkillsetsExternalCommand,
   registerNoriSkillsetsInitCommand,
   registerNoriSkillsetsInstallCommand,
   registerNoriSkillsetsInstallLocationCommand,
@@ -69,6 +70,9 @@ Examples:
   $ nori-skillsets download-skill my-skill
   $ nori-skillsets download-skill my-skill@1.0.0
   $ nori-skillsets download-skill my-skill --list-versions
+  $ nori-skillsets external owner/repo
+  $ nori-skillsets external https://github.com/owner/repo --skill my-skill
+  $ nori-skillsets external owner/repo --all --ref main
   $ nori-skillsets watch              # start watching Claude Code sessions
   $ nori-skillsets watch stop         # stop the watch daemon
   $ nori-skillsets install-location   # show all installation directories
@@ -88,6 +92,7 @@ registerNoriSkillsetsInstallCommand({ program });
 registerNoriSkillsetsSwitchSkillsetCommand({ program });
 registerNoriSkillsetsListSkillsetsCommand({ program });
 registerNoriSkillsetsDownloadSkillCommand({ program });
+registerNoriSkillsetsExternalCommand({ program });
 registerNoriSkillsetsWatchCommand({ program });
 registerNoriSkillsetsInstallLocationCommand({ program });
 

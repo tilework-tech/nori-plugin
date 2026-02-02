@@ -7,6 +7,7 @@
  * The registry-* prefixed commands are also available as aliases.
  */
 
+import { externalMain } from "@/cli/commands/external/external.js";
 import { initMain } from "@/cli/commands/init/init.js";
 import { installLocationMain } from "@/cli/commands/install-location/installLocation.js";
 import { listSkillsetsMain } from "@/cli/commands/list-skillsets/listSkillsets.js";
@@ -318,6 +319,54 @@ export const registerNoriSkillsetsLogoutCommand = (args: {
         installDir: globalOpts.installDir || null,
       });
     });
+};
+
+/**
+ * Register the 'external' command for nori-skillsets CLI
+ * @param args - Configuration arguments
+ * @param args.program - Commander program instance
+ */
+export const registerNoriSkillsetsExternalCommand = (args: {
+  program: Command;
+}): void => {
+  const { program } = args;
+
+  program
+    .command("external <source>")
+    .description("Install skills from an external GitHub repository")
+    .option(
+      "--skillset <name>",
+      "Add skill to the specified skillset's manifest (defaults to active skillset)",
+    )
+    .option(
+      "--skill <name>",
+      "Install only the named skill from the repository",
+    )
+    .option("--all", "Install all discovered skills from the repository")
+    .option("--ref <ref>", "Branch or tag to checkout")
+    .action(
+      async (
+        source: string,
+        options: {
+          skillset?: string;
+          skill?: string;
+          all?: boolean;
+          ref?: string;
+        },
+      ) => {
+        const globalOpts = program.opts();
+
+        await externalMain({
+          source,
+          installDir: globalOpts.installDir || null,
+          skillset: options.skillset || null,
+          skill: options.skill || null,
+          all: options.all || null,
+          ref: options.ref || null,
+          cliName: "nori-skillsets",
+        });
+      },
+    );
 };
 
 /**

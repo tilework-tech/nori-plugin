@@ -50,6 +50,7 @@ src/cli/
     registry-download/   # Download from registrar
     registry-install/    # Download + install + activate from public registrar
     skill-download/      # Download a skill from registrar
+    external/            # Install skills from external GitHub repos
     watch/               # Monitor Claude Code sessions and save transcripts
 ```
 
@@ -62,6 +63,7 @@ src/cli/
 | `search` | commands/registry-search/registrySearch.ts | Search registries for packages |
 | `download` | commands/registry-download/registryDownload.ts | Download a skillset from registrar |
 | `download-skill` | commands/skill-download/skillDownload.ts | Download a skill from registrar |
+| `external` | commands/external/external.ts | Install skills from an external GitHub repository |
 | `switch-skillset` | commands/switch-profile/profiles.ts | Switch the active skillset |
 | `list-skillsets` | commands/list-skillsets/ | List available skillsets |
 | `login` | commands/login/ | Authenticate with Nori backend |

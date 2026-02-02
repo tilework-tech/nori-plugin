@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Hook handler for auto-updating nori-ai package
+ * Hook handler for checking nori-skillsets updates
  *
  * This script is called by Claude Code SessionStart hook.
- * It checks npm registry for updates and installs them in the background.
+ * It checks npm registry for updates and notifies the user.
  */
 
-import { execSync, spawn } from "child_process";
-import { openSync, closeSync, existsSync } from "fs";
+import { execSync } from "child_process";
+import { existsSync } from "fs";
 
 import semver from "semver";
 
@@ -18,10 +18,10 @@ import {
   getUserId,
   sendAnalyticsEvent,
 } from "@/cli/installTracking.js";
-import { debug, LOG_FILE } from "@/cli/logger.js";
+import { debug } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
-const PACKAGE_NAME = "nori-ai";
+const PACKAGE_NAME = "nori-skillsets";
 
 /**
  * Get the latest version from npm registry
@@ -37,58 +37,6 @@ const getLatestVersion = async (): Promise<string | null> => {
   } catch {
     return null;
   }
-};
-
-/**
- * Install the latest version in the background
- * @param args - Configuration arguments
- * @param args.version - Version to install
- * @param args.installDir - Custom installation directory (optional)
- */
-const installUpdate = (args: {
-  version: string;
-  installDir?: string | null;
-}): void => {
-  const { version, installDir } = args;
-
-  // Build command args for nori-ai install
-  const installArgs = ["install", "--non-interactive"];
-  if (installDir != null && installDir !== "") {
-    installArgs.push("--install-dir", installDir);
-  }
-
-  // Build full shell command: first update global package, then run install
-  const fullCommand = `npm install -g ${PACKAGE_NAME}@${version} && nori-ai ${installArgs.join(" ")}`;
-
-  // Log to consolidated log file using Winston
-  const logHeader = `=== Nori Autoupdate: ${new Date().toISOString()} ===\nInstalling v${version}...\nCommand: ${fullCommand}`;
-  debug({ message: logHeader });
-
-  // Use openSync to get file descriptor for spawn stdio
-  const logFd = openSync(LOG_FILE, "a");
-
-  // Spawn background process with output redirected to log
-  // Use shell to run npm install -g followed by nori-ai install
-  const child = spawn("sh", ["-c", fullCommand], {
-    detached: true,
-    stdio: ["ignore", logFd, logFd],
-  });
-
-  // Listen for spawn errors
-  child.on("error", (err) => {
-    debug({ message: `Autoupdate spawn failed: ${err.message}` });
-  });
-
-  // Close file descriptor when process exits to prevent leak
-  child.on("exit", () => {
-    try {
-      closeSync(logFd);
-    } catch {
-      // Ignore close errors
-    }
-  });
-
-  child.unref();
 };
 
 /**
@@ -194,27 +142,9 @@ const main = async (): Promise<void> => {
     return;
   }
 
-  // Check if autoupdate is explicitly enabled in config (default is disabled)
-  if (diskConfig?.autoupdate !== "enabled") {
-    // Notify user that update is available but autoupdate is not enabled
-    logToClaudeSession({
-      message: `🔔 Nori Profiles v${latestVersion} available (current: v${installedVersion}). Autoupdate is disabled. Run 'npx nori-ai install' to update manually.`,
-    });
-    return;
-  }
-
-  // New version available - install in background
-  installUpdate({
-    version: latestVersion,
-    installDir: diskConfig?.installDir,
-  });
-
-  // Notify user via additionalContext
-  // Note: Hook errors at session exit are expected because Claude Code caches hook paths
-  // at session start. The update replaces those files, causing MODULE_NOT_FOUND errors.
-  // This is harmless - the user just needs to restart Claude to use the new version.
+  // Notify user that an update is available
   logToClaudeSession({
-    message: `🔄 Nori Profiles updating: v${installedVersion} → v${latestVersion}. You may see hook errors when this session ends - this is expected. Restart Claude to use the new version.`,
+    message: `Nori Skillsets v${latestVersion} available (current: v${installedVersion}). Run 'npm install -g nori-skillsets' to update, then 'nori-skillsets switch-skillset <your-skillset>' to apply.`,
   });
 };
 
@@ -225,7 +155,7 @@ export { main };
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
     logToClaudeSession({
-      message: `❌ Nori Error: ${err instanceof Error ? err.message : String(err)}`,
+      message: `Nori Error: ${err instanceof Error ? err.message : String(err)}`,
     });
   });
 }

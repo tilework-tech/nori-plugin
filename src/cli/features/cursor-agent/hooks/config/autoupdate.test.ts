@@ -1,21 +1,18 @@
 /**
- * Tests for autoupdate hook
+ * Tests for autoupdate hook (notification-only)
  */
 
-import { execSync, spawn } from "child_process";
+import { execSync } from "child_process";
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Mock child_process
+// Mock child_process (only execSync needed now)
 vi.mock("child_process", () => ({
   execSync: vi.fn(),
-  spawn: vi.fn(),
 }));
 
-// Mock filesystem
+// Mock filesystem (only existsSync needed now)
 vi.mock("fs", () => ({
-  openSync: vi.fn(),
-  closeSync: vi.fn(),
   existsSync: vi.fn(),
 }));
 
@@ -75,25 +72,12 @@ describe("autoupdate", () => {
       vi.mocked(existsSync).mockReturnValue(true);
     });
 
-    it("should trigger installation when new version is available", async () => {
-      // Mock openSync to return fake file descriptor
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
+    it("should show notification when update is available", async () => {
       // Mock execSync to return latest version from npm
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.2.0\n");
 
-      // Mock spawn to capture the installation call
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with version (version now comes from config)
+      // Mock loadConfig with version
       const { loadConfig } = await import("@/cli/config.js");
       const mockLoadConfig = vi.mocked(loadConfig);
       mockLoadConfig.mockResolvedValue({
@@ -102,11 +86,6 @@ describe("autoupdate", () => {
         version: "14.1.0",
         installDir: process.cwd(),
       });
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
 
       // Spy on console.log to capture output
       const consoleLogSpy = vi
@@ -119,45 +98,30 @@ describe("autoupdate", () => {
 
       // Verify execSync was called to get latest version
       expect(mockExecSync).toHaveBeenCalledWith(
-        "npm view nori-ai version",
+        "npm view nori-skillsets version",
         expect.objectContaining({
           encoding: "utf-8",
         }),
       );
 
-      // Verify spawn was called with shell command to install globally then run install
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.2.0")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
-      );
-      // Also verify the command includes running nori-ai install
-      const spawnCall = mockSpawn.mock.calls[0];
-      expect(spawnCall[1][1]).toContain("nori-ai install --non-interactive");
-
-      // Verify child.unref was called
-      expect(mockChild.unref).toHaveBeenCalled();
-
-      // Verify user notification was logged with warning about hook errors
+      // Verify user notification was logged with the new notification message
       expect(consoleLogSpy).toHaveBeenCalled();
       const logOutput = consoleLogSpy.mock.calls[0][0];
       const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain("14.1.0"); // current version
-      expect(parsed.systemMessage).toContain("14.2.0"); // new version
-      expect(parsed.systemMessage).toContain("updating");
+      expect(parsed.systemMessage).toContain(
+        "Nori Skillsets v14.2.0 available",
+      );
+      expect(parsed.systemMessage).toContain("current: v14.1.0");
+      expect(parsed.systemMessage).toContain("npm install -g nori-skillsets");
+      expect(parsed.systemMessage).toContain("nori-skillsets switch-skillset");
 
       consoleLogSpy.mockRestore();
     });
 
-    it("should not trigger installation when already on latest version", async () => {
+    it("should not show notification when already on latest version", async () => {
       // Mock npm to return same version
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.1.0\n");
-
-      const mockSpawn = vi.mocked(spawn);
 
       // Mock loadConfig with version
       const { loadConfig } = await import("@/cli/config.js");
@@ -169,11 +133,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       const consoleLogSpy = vi
         .spyOn(console, "log")
         .mockImplementation(() => undefined);
@@ -183,9 +142,6 @@ describe("autoupdate", () => {
 
       // Verify version check happened
       expect(mockExecSync).toHaveBeenCalled();
-
-      // Verify spawn was NOT called
-      expect(mockSpawn).not.toHaveBeenCalled();
 
       // Verify no notification
       expect(consoleLogSpy).not.toHaveBeenCalled();
@@ -200,8 +156,6 @@ describe("autoupdate", () => {
         throw new Error("Network error");
       });
 
-      const mockSpawn = vi.mocked(spawn);
-
       // Mock loadConfig with version
       const { loadConfig } = await import("@/cli/config.js");
       const mockLoadConfig = vi.mocked(loadConfig);
@@ -212,11 +166,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       const consoleLogSpy = vi
         .spyOn(console, "log")
         .mockImplementation(() => undefined);
@@ -224,8 +173,7 @@ describe("autoupdate", () => {
       const autoupdate = await import("./autoupdate.js");
       await autoupdate.main();
 
-      // Verify no installation was triggered
-      expect(mockSpawn).not.toHaveBeenCalled();
+      // Verify no notification was shown
       expect(consoleLogSpy).not.toHaveBeenCalled();
 
       consoleLogSpy.mockRestore();
@@ -236,8 +184,6 @@ describe("autoupdate", () => {
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("");
 
-      const mockSpawn = vi.mocked(spawn);
-
       // Mock loadConfig with version
       const { loadConfig } = await import("@/cli/config.js");
       const mockLoadConfig = vi.mocked(loadConfig);
@@ -248,11 +194,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       const consoleLogSpy = vi
         .spyOn(console, "log")
         .mockImplementation(() => undefined);
@@ -260,8 +201,7 @@ describe("autoupdate", () => {
       const autoupdate = await import("./autoupdate.js");
       await autoupdate.main();
 
-      // Verify no installation was triggered
-      expect(mockSpawn).not.toHaveBeenCalled();
+      // Verify no notification was shown
       expect(consoleLogSpy).not.toHaveBeenCalled();
 
       consoleLogSpy.mockRestore();
@@ -314,14 +254,6 @@ describe("autoupdate", () => {
       // Mock execSync to return newer version
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.2.0\n");
-
-      // Mock spawn
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
 
       // Mock loadConfig to return config with version
       const { loadConfig } = await import("@/cli/config.js");
@@ -408,33 +340,19 @@ describe("autoupdate", () => {
       );
     });
 
-    it("should check installed version from config not build constant", async () => {
+    it("should show notification with correct versions from config", async () => {
       // This test verifies the core fix: autoupdate should read version from
       // config.version instead of using the build-time __PACKAGE_VERSION__ constant.
       //
       // Scenario: Hook file is v14.3.6 but install failed previously,
       // so config.version still says "14.0.0"
-      // Expected: Autoupdate should trigger for 14.3.6 (config version vs npm)
-      // not compare 14.3.6 vs 14.3.6 (build constant vs npm)
-
-      // Mock openSync to return fake file descriptor
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
+      // Expected: Notification shows config version (14.0.0), not build constant
 
       // Mock execSync to return latest version
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.3.6\n");
 
-      // Mock spawn to verify installation is triggered
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with old version (version now comes from config)
+      // Mock loadConfig with old version 14.0.0
       const { loadConfig } = await import("@/cli/config.js");
       const mockLoadConfig = vi.mocked(loadConfig);
       mockLoadConfig.mockResolvedValue({
@@ -444,11 +362,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       // Spy on console.log
       const consoleLogSpy = vi
         .spyOn(console, "log")
@@ -457,162 +370,15 @@ describe("autoupdate", () => {
       // Import and run main function
       const autoupdate = await import("./autoupdate.js");
       await autoupdate.main();
-
-      // Verify loadConfig was called
-      expect(mockLoadConfig).toHaveBeenCalled();
-
-      // Verify spawn was called to install v14.3.6
-      // This proves we're comparing config version (14.0.0) vs npm (14.3.6),
-      // not build constant (14.1.0) vs npm (14.3.6)
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.3.6")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
-      );
-      // Also verify the command includes running nori-ai install
-      const spawnCall = mockSpawn.mock.calls[0];
-      expect(spawnCall[1][1]).toContain("nori-ai install --non-interactive");
 
       // Verify notification shows correct version transition
+      expect(consoleLogSpy).toHaveBeenCalled();
       const logOutput = consoleLogSpy.mock.calls[0][0];
       const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain("14.0.0"); // file version
-      expect(parsed.systemMessage).toContain("14.3.6"); // new version
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it("should log install output via Winston debug", async () => {
-      // This test verifies that background install output is logged via
-      // Winston debug() for debugging
-
-      // Mock filesystem functions
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
-      // Mock execSync to return newer version
-      const mockExecSync = vi.mocked(execSync);
-      mockExecSync.mockReturnValue("14.3.6\n");
-
-      // Mock spawn
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with old version
-      const { loadConfig } = await import("@/cli/config.js");
-      const mockLoadConfig = vi.mocked(loadConfig);
-      mockLoadConfig.mockResolvedValue({
-        auth: null,
-        agents: null,
-        version: "14.0.0",
-        installDir: process.cwd(),
-      });
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
-      // Spy on console.log
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => undefined);
-
-      // Import and run main function
-      const autoupdate = await import("./autoupdate.js");
-      await autoupdate.main();
-
-      // Verify debug() was called to write log header
-      const { debug } = await import("@/cli/logger.js");
-      const mockDebug = vi.mocked(debug);
-      expect(mockDebug).toHaveBeenCalled();
-      const debugCall = mockDebug.mock.calls[0];
-      const logContent = debugCall[0].message;
-
-      // Verify log content includes timestamp, version, and command
-      expect(logContent).toContain("Nori Autoupdate");
-      expect(logContent).toContain("14.3.6"); // version being installed
-      expect(logContent).toContain("npm install -g nori-ai@14.3.6");
-      expect(logContent).toContain("nori-ai install --non-interactive");
-
-      // Verify openSync was called for append mode (still needed for spawn stdio)
-      expect(mockOpenSync).toHaveBeenCalledWith("/tmp/nori.log", "a");
-
-      // Verify spawn was called with stdio redirected to log file descriptor
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.3.6")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
+      expect(parsed.systemMessage).toContain(
+        "Nori Skillsets v14.3.6 available",
       );
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it("should use openSync for file descriptor instead of createWriteStream", async () => {
-      // Mock openSync to return fake file descriptor
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
-      // Mock execSync to return newer version
-      const mockExecSync = vi.mocked(execSync);
-      mockExecSync.mockReturnValue("14.3.6\n");
-
-      // Mock spawn
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with old version
-      const { loadConfig } = await import("@/cli/config.js");
-      const mockLoadConfig = vi.mocked(loadConfig);
-      mockLoadConfig.mockResolvedValue({
-        auth: null,
-        agents: null,
-        version: "14.0.0",
-        installDir: process.cwd(),
-      });
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
-      // Spy on console.log
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => undefined);
-
-      // Import and run main function
-      const autoupdate = await import("./autoupdate.js");
-      await autoupdate.main();
-
-      // Verify openSync was called with append flag
-      expect(mockOpenSync).toHaveBeenCalledWith("/tmp/nori.log", "a");
-
-      // Verify spawn was called with file descriptor, not stream
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.3.6")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
-      );
+      expect(parsed.systemMessage).toContain("current: v14.0.0");
 
       consoleLogSpy.mockRestore();
     });
@@ -650,24 +416,6 @@ describe("autoupdate", () => {
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.2.0\n");
 
-      // Mock spawn
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock openSync
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       // Spy on console.log
       const consoleLogSpy = vi
         .spyOn(console, "log")
@@ -682,20 +430,14 @@ describe("autoupdate", () => {
         installDir: "/home/user",
       });
 
-      // Verify spawn was called with correct installDir
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        [
-          "-c",
-          expect.stringMatching(
-            /npm install -g nori-ai@14\.2\.0 && nori-ai install --non-interactive --install-dir \/home\/user\/\.claude/,
-          ),
-        ],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
+      // Verify notification was shown (not an install)
+      expect(consoleLogSpy).toHaveBeenCalled();
+      const logOutput = consoleLogSpy.mock.calls[0][0];
+      const parsed = JSON.parse(logOutput);
+      expect(parsed.systemMessage).toContain(
+        "Nori Skillsets v14.2.0 available",
       );
+      expect(parsed.systemMessage).toContain("current: v14.1.0");
 
       // Restore
       process.cwd = originalCwd;
@@ -703,15 +445,13 @@ describe("autoupdate", () => {
       getInstallDirsSpy.mockRestore();
     });
 
-    it("should NOT trigger installation when installed version is greater than npm version", async () => {
+    it("should NOT show notification when installed version is greater than npm version", async () => {
       // This test verifies downgrade prevention: if local has v14.2.0 and npm has v14.1.0,
-      // autoupdate should NOT install the older version.
+      // autoupdate should NOT show any notification.
 
       // Mock npm to return older version
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.1.0\n");
-
-      const mockSpawn = vi.mocked(spawn);
 
       // Mock loadConfig with newer version
       const { loadConfig } = await import("@/cli/config.js");
@@ -723,11 +463,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       const consoleLogSpy = vi
         .spyOn(console, "log")
         .mockImplementation(() => undefined);
@@ -738,26 +473,21 @@ describe("autoupdate", () => {
       // Verify version check happened
       expect(mockExecSync).toHaveBeenCalled();
 
-      // Verify spawn was NOT called (no downgrade)
-      expect(mockSpawn).not.toHaveBeenCalled();
-
       // Verify no notification
       expect(consoleLogSpy).not.toHaveBeenCalled();
 
       consoleLogSpy.mockRestore();
     });
 
-    it("should NOT update when local nightly is newer than npm stable", async () => {
+    it("should NOT show notification when local nightly is newer than npm stable", async () => {
       // This test verifies nightly build scenario: local v14.2.0-nightly.20250120 is
-      // semantically greater than npm v14.1.0, so no update should occur.
+      // semantically greater than npm v14.1.0, so no notification should appear.
 
       // Mock npm to return stable version
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("14.1.0\n");
 
-      const mockSpawn = vi.mocked(spawn);
-
-      // Mock loadConfig with nightly version
+      // Mock loadConfig with nightly version that is newer than npm stable
       const { loadConfig } = await import("@/cli/config.js");
       const mockLoadConfig = vi.mocked(loadConfig);
       mockLoadConfig.mockResolvedValue({
@@ -767,11 +497,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       const consoleLogSpy = vi
         .spyOn(console, "log")
         .mockImplementation(() => undefined);
@@ -781,9 +506,6 @@ describe("autoupdate", () => {
 
       // Verify version check happened
       expect(mockExecSync).toHaveBeenCalled();
-
-      // Verify spawn was NOT called (nightly is newer)
-      expect(mockSpawn).not.toHaveBeenCalled();
 
       // Verify no notification
       expect(consoleLogSpy).not.toHaveBeenCalled();
@@ -791,81 +513,13 @@ describe("autoupdate", () => {
       consoleLogSpy.mockRestore();
     });
 
-    it("should update when npm stable is newer than local nightly", async () => {
-      // This test verifies upgrade from nightly: local v14.1.0-nightly.20250120 is
-      // semantically less than npm v14.1.0, so update should occur.
-
-      // Mock openSync to return fake file descriptor
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
-      // Mock npm to return stable version
-      const mockExecSync = vi.mocked(execSync);
-      mockExecSync.mockReturnValue("14.1.0\n");
-
-      // Mock spawn to capture the installation call
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with nightly version
-      const { loadConfig } = await import("@/cli/config.js");
-      const mockLoadConfig = vi.mocked(loadConfig);
-      mockLoadConfig.mockResolvedValue({
-        auth: null,
-        agents: null,
-        version: "14.1.0-nightly.20250120",
-        installDir: process.cwd(),
-      });
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => undefined);
-
-      const autoupdate = await import("./autoupdate.js");
-      await autoupdate.main();
-
-      // Verify version check happened
-      expect(mockExecSync).toHaveBeenCalled();
-
-      // Verify spawn WAS called to upgrade to stable
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.1.0")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
-      );
-
-      // Verify notification
-      expect(consoleLogSpy).toHaveBeenCalled();
-      const logOutput = consoleLogSpy.mock.calls[0][0];
-      const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain("14.1.0-nightly.20250120");
-      expect(parsed.systemMessage).toContain("14.1.0");
-
-      consoleLogSpy.mockRestore();
-    });
-
     it("should handle invalid version strings gracefully", async () => {
       // This test verifies that malformed versions from npm are handled gracefully
-      // without crashing or triggering an update.
+      // without crashing or showing a notification.
 
       // Mock npm to return invalid version
       const mockExecSync = vi.mocked(execSync);
       mockExecSync.mockReturnValue("not-a-valid-version\n");
-
-      const mockSpawn = vi.mocked(spawn);
 
       // Mock loadConfig with version
       const { loadConfig } = await import("@/cli/config.js");
@@ -877,11 +531,6 @@ describe("autoupdate", () => {
         installDir: process.cwd(),
       });
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
       const consoleLogSpy = vi
         .spyOn(console, "log")
         .mockImplementation(() => undefined);
@@ -892,189 +541,69 @@ describe("autoupdate", () => {
       // Verify version check happened
       expect(mockExecSync).toHaveBeenCalled();
 
-      // Verify spawn was NOT called (invalid version)
-      expect(mockSpawn).not.toHaveBeenCalled();
-
-      // Verify no notification
+      // Verify no notification (invalid version)
       expect(consoleLogSpy).not.toHaveBeenCalled();
 
       consoleLogSpy.mockRestore();
     });
 
-    it("should NOT trigger installation when autoupdate config is disabled", async () => {
-      // Mock execSync to return newer version available
-      const mockExecSync = vi.mocked(execSync);
-      mockExecSync.mockReturnValue("14.2.0\n");
+    it("should show notification regardless of autoupdate config setting", async () => {
+      // Whether autoupdate is "enabled", "disabled", or not set,
+      // the notification should always be shown when an update is available.
 
-      const mockSpawn = vi.mocked(spawn);
+      const configs = [
+        { autoupdate: "enabled" as const },
+        { autoupdate: "disabled" as const },
+        { autoupdate: undefined },
+      ];
 
-      // Mock loadConfig with version and autoupdate disabled
-      const { loadConfig } = await import("@/cli/config.js");
-      const mockLoadConfig = vi.mocked(loadConfig);
-      mockLoadConfig.mockResolvedValue({
-        auth: null,
-        agents: null,
-        version: "14.1.0",
-        autoupdate: "disabled",
-        installDir: process.cwd(),
-      });
+      for (const configOverride of configs) {
+        vi.clearAllMocks();
+        vi.resetModules();
 
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
+        // Re-setup default mocks after resetModules
+        const { getInstallDirs } = await import("@/utils/path.js");
+        vi.mocked(getInstallDirs).mockReturnValue(["/home/user/project"]);
+        const { existsSync } = await import("fs");
+        vi.mocked(existsSync).mockReturnValue(true);
 
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => undefined);
+        // Mock execSync to return newer version available
+        const mockExecSync = vi.mocked(execSync);
+        mockExecSync.mockReturnValue("14.2.0\n");
 
-      const autoupdate = await import("./autoupdate.js");
-      await autoupdate.main();
+        // Mock loadConfig with the specific autoupdate setting
+        const { loadConfig } = await import("@/cli/config.js");
+        const mockLoadConfig = vi.mocked(loadConfig);
+        mockLoadConfig.mockResolvedValue({
+          auth: null,
+          agents: null,
+          version: "14.1.0",
+          ...configOverride,
+          installDir: process.cwd(),
+        });
 
-      // Verify version check happened
-      expect(mockExecSync).toHaveBeenCalled();
+        const consoleLogSpy = vi
+          .spyOn(console, "log")
+          .mockImplementation(() => undefined);
 
-      // Verify spawn was NOT called (autoupdate disabled)
-      expect(mockSpawn).not.toHaveBeenCalled();
+        const autoupdate = await import("./autoupdate.js");
+        await autoupdate.main();
 
-      // Verify user was notified about available update
-      expect(consoleLogSpy).toHaveBeenCalled();
-      const logOutput = consoleLogSpy.mock.calls[0][0];
-      const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain("14.2.0"); // new version
-      expect(parsed.systemMessage).toContain("14.1.0"); // current version
-      expect(parsed.systemMessage).toContain("Autoupdate is disabled");
+        // Verify notification was shown regardless of autoupdate config
+        expect(consoleLogSpy).toHaveBeenCalled();
+        const logOutput = consoleLogSpy.mock.calls[0][0];
+        const parsed = JSON.parse(logOutput);
+        expect(parsed.systemMessage).toContain(
+          "Nori Skillsets v14.2.0 available",
+        );
+        expect(parsed.systemMessage).toContain("current: v14.1.0");
+        expect(parsed.systemMessage).toContain("npm install -g nori-skillsets");
+        expect(parsed.systemMessage).toContain(
+          "nori-skillsets switch-skillset",
+        );
 
-      consoleLogSpy.mockRestore();
-    });
-
-    it("should trigger installation when autoupdate config is enabled", async () => {
-      // Mock openSync to return fake file descriptor
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
-      // Mock execSync to return newer version available
-      const mockExecSync = vi.mocked(execSync);
-      mockExecSync.mockReturnValue("14.2.0\n");
-
-      // Mock spawn to capture the installation call
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with version and autoupdate enabled
-      const { loadConfig } = await import("@/cli/config.js");
-      const mockLoadConfig = vi.mocked(loadConfig);
-      mockLoadConfig.mockResolvedValue({
-        auth: null,
-        agents: null,
-        version: "14.1.0",
-        autoupdate: "enabled",
-        installDir: process.cwd(),
-      });
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => undefined);
-
-      const autoupdate = await import("./autoupdate.js");
-      await autoupdate.main();
-
-      // Verify spawn WAS called with shell command (autoupdate enabled)
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.2.0")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
-      );
-      // Also verify the command includes running nori-ai install
-      const spawnCall = mockSpawn.mock.calls[0];
-      expect(spawnCall[1][1]).toContain("nori-ai install --non-interactive");
-
-      // Verify notification warns about hook errors at session end
-      expect(consoleLogSpy).toHaveBeenCalled();
-      const logOutput = consoleLogSpy.mock.calls[0][0];
-      const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain(
-        "Restart Claude to use the new version",
-      );
-
-      consoleLogSpy.mockRestore();
-    });
-
-    it("should trigger installation when autoupdate config is not set (defaults to enabled)", async () => {
-      // Mock openSync to return fake file descriptor
-      const { openSync } = await import("fs");
-      const mockOpenSync = vi.mocked(openSync);
-      mockOpenSync.mockReturnValue(3 as any);
-
-      // Mock execSync to return newer version available
-      const mockExecSync = vi.mocked(execSync);
-      mockExecSync.mockReturnValue("14.2.0\n");
-
-      // Mock spawn to capture the installation call
-      const mockSpawn = vi.mocked(spawn);
-      const mockChild = {
-        unref: vi.fn(),
-        on: vi.fn(),
-      };
-      mockSpawn.mockReturnValue(mockChild as any);
-
-      // Mock loadConfig with version but WITHOUT autoupdate field (should default to enabled)
-      const { loadConfig } = await import("@/cli/config.js");
-      const mockLoadConfig = vi.mocked(loadConfig);
-      mockLoadConfig.mockResolvedValue({
-        auth: null,
-        agents: null,
-        version: "14.1.0",
-        installDir: process.cwd(),
-      });
-
-      // Mock sendAnalyticsEvent
-      const { sendAnalyticsEvent } = await import("@/cli/installTracking.js");
-      const _mockSendAnalyticsEvent = vi.mocked(sendAnalyticsEvent);
-      // sendAnalyticsEvent is fire-and-forget, no mock setup needed
-
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => undefined);
-
-      const autoupdate = await import("./autoupdate.js");
-      await autoupdate.main();
-
-      // Verify version check happened
-      expect(mockExecSync).toHaveBeenCalled();
-
-      // Verify spawn WAS called (cursor-agent defaults to enabled, unlike claude-code)
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "sh",
-        ["-c", expect.stringContaining("npm install -g nori-ai@14.2.0")],
-        {
-          detached: true,
-          stdio: ["ignore", 3, 3],
-        },
-      );
-
-      // Verify notification warns about hook errors at session end
-      expect(consoleLogSpy).toHaveBeenCalled();
-      const logOutput = consoleLogSpy.mock.calls[0][0];
-      const parsed = JSON.parse(logOutput);
-      expect(parsed.systemMessage).toContain(
-        "Restart Claude to use the new version",
-      );
-
-      consoleLogSpy.mockRestore();
+        consoleLogSpy.mockRestore();
+      }
     });
   });
 });

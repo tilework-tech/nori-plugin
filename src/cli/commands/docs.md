@@ -75,12 +75,7 @@ The install command sets `agents: { [agentName]: { profile } }` in the config, w
 
 **Install Non-Interactive Profile Requirement:** Non-interactive installs require either an existing configuration with a profile OR the `--profile` flag. This requirement is enforced by the onboard command. When no existing config is found, the onboard command errors with a helpful message listing available profiles and example usage. Example: `nori-ai install --non-interactive --profile my-skillset`.
 
-**Install Agent-Specific Uninstall Logic:** The install command only runs uninstall cleanup when reinstalling the SAME agent (upgrade scenario). When installing a different agent (e.g., cursor-agent when claude-code is already installed), it skips uninstall to preserve the existing agent's installation. The logic:
-1. Reads config at start to get installed agents via `getInstalledAgents({ config })` (keys of `agents` object)
-2. For backwards compatibility: if no agents are installed but an installation exists (detected via hasExistingInstallation), assumes `["claude-code"]` (old installs didn't track agents)
-3. Only runs uninstall if the agent being installed is already installed
-4. Logs "Adding new agent (preserving existing X installation)..." when installing a different agent alongside existing ones
-5. The `getInstalledVersion()` call is made ONLY inside the `if (!skipUninstall && agentAlreadyInstalled)` block - this ensures the function is only called when an installation is known to exist, since `getInstalledVersion()` throws an error if no version can be determined (checks config `version` field first, then falls back to deprecated `.nori-installed-version` file)
+**Install Simplified Flow:** The install command's `main()` function always delegates to `noninteractive()` mode. The interactive mode and `handleExistingInstallationCleanup` (which shelled out to `nori-ai uninstall`) have been removed since all callers pass `nonInteractive: true`. The `main()` function signature retains `nonInteractive` and `skipUninstall` parameters for caller compatibility but does not use them. The non-interactive flow runs: init -> onboard -> feature loaders (via `completeInstallation`).
 
 **Uninstall Agent Detection:** In non-interactive mode (used during upgrades), the uninstall command auto-detects the agent from config when `--agent` is not explicitly provided. It uses `getInstalledAgents({ config })` to determine installed agents from the `agents` object keys. If exactly one agent is installed, it uses that agent; otherwise it defaults to `claude-code`. This ensures the correct agent is uninstalled during autoupdate scenarios without requiring explicit `--agent` flags in older installed versions.
 
@@ -227,7 +222,6 @@ Skills always download the latest version - version ranges in `nori.json` are cu
 ```
 nori-ai.ts (full CLI)
   |
-  +-- registerInstallCommand({ program })      --> commands/install/install.ts
   +-- registerInitCommand({ program })         --> commands/init/init.ts
   +-- registerOnboardCommand({ program })      --> commands/onboard/onboard.ts
   +-- registerUninstallCommand({ program })    --> commands/uninstall/uninstall.ts
@@ -304,11 +298,11 @@ The commands directory contains shared utilities at the top level:
 The `noriSkillsetsCommands.ts` file contains thin command wrappers for the nori-skillsets CLI - registration functions that provide simplified command names (`init`, `search`, `download`, `install`, `switch-skillset`, `download-skill`, `watch`) by delegating to the underlying implementation functions (`*Main` functions from init, registry-*, skill-*, and watch commands, `switchSkillsetAction` for switch-skillset). Upload, update, and onboard commands are only available via the nori-ai CLI. Each wrapper passes `cliName: "nori-skillsets"` to the `*Main` functions so user-facing messages display nori-skillsets command names (e.g., "run nori-skillsets switch-skillset" instead of "run nori-ai switch-profile"). This allows the nori-skillsets CLI to use cleaner command names while sharing all business logic with the nori-ai CLI.
 
 The `install/` directory contains command-specific utilities:
-- `asciiArt.ts` - ASCII banners displayed during installation. All display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.
+- `asciiArt.ts` - ASCII banners displayed during installation. Display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled. Note: `displayNoriBanner` is no longer imported by install.ts (was only used in the removed interactive mode) but remains available in asciiArt.ts.
 - `installState.ts` - Helper to check for existing installations (wraps version.ts)
 - `existingConfigCapture.ts` - Detects and captures existing Claude Code configurations as named profiles. The `detectExistingConfig()` function scans `~/.claude/` for CLAUDE.md, skills directory, agents directory, and commands directory. The `promptForExistingConfigCapture()` function displays what was found and requires the user to provide a valid profile name (lowercase alphanumeric with hyphens) - the user cannot decline and must either provide a name or abort with Ctrl+C. The `captureExistingConfigAsProfile()` function creates a profile directory at `~/.nori/profiles/<profileName>/` with: nori.json (unified manifest format with skill dependencies), CLAUDE.md (with managed block markers added if not present), and copies of skills/, agents/ (renamed to subagents/), and commands/ (renamed to slashcommands/).
 
-**Install Command Silent Mode:** The `main()` function in install.ts accepts a `silent` parameter. When `silent: true`, the function calls `setSilentMode({ silent: true })` before execution and restores it to false in a `finally` block to prevent state leakage. Silent mode implies non-interactive mode. This is used by intercepted slash commands (e.g., `/nori-switch-profile` in both claude-code and cursor-agent) that call `installMain()` and need clean stdout to return JSON responses without corruption from installation messages like ASCII art banners.
+**Install Command Silent Mode:** The `main()` function in install.ts accepts a `silent` parameter. When `silent: true`, the function calls `setSilentMode({ silent: true })` before execution and restores it to false in a `finally` block to prevent state leakage. This is used by intercepted slash commands (e.g., `/nori-switch-profile` in both claude-code and cursor-agent) that call `installMain()` and need clean stdout to return JSON responses without corruption from installation messages like ASCII art banners.
 
 The install command uses `agent.listProfiles({ installDir })` to get available profiles from the user's installed profiles directory. Since no built-in profiles are shipped with the package, only profiles downloaded from the registry or created by users are shown.
 

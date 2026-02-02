@@ -9,20 +9,17 @@
  * 3. switch-profile - Apply the profile (runs feature loaders)
  */
 
-import { execSync } from "child_process";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
 import * as os from "os";
 import * as path from "path";
 
 import { initMain } from "@/cli/commands/init/init.js";
 import {
-  displayNoriBanner,
   displayWelcomeBanner,
   displaySeaweedBed,
 } from "@/cli/commands/install/asciiArt.js";
-import { hasExistingInstallation } from "@/cli/commands/install/installState.js";
 import { onboardMain } from "@/cli/commands/onboard/onboard.js";
-import { loadConfig, getInstalledAgents, type Config } from "@/cli/config.js";
+import { loadConfig, type Config } from "@/cli/config.js";
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 import {
   buildCLIEventParams,
@@ -30,14 +27,8 @@ import {
   sendAnalyticsEvent,
 } from "@/cli/installTracking.js";
 import { error, success, info, newline, setSilentMode } from "@/cli/logger.js";
-import {
-  getCurrentPackageVersion,
-  getInstalledVersion,
-  supportsAgentFlag,
-} from "@/cli/version.js";
+import { getCurrentPackageVersion } from "@/cli/version.js";
 import { normalizeInstallDir } from "@/utils/path.js";
-
-import type { Command } from "commander";
 
 /**
  * Get the path for the progress marker file
@@ -176,200 +167,23 @@ const completeInstallation = async (args: {
 };
 
 /**
- * Handle cleanup of existing installation if needed
- *
- * @param args - Configuration arguments
- * @param args.skipUninstall - Whether to skip uninstall step
- * @param args.installDir - Installation directory
- * @param args.agentImpl - AI agent implementation
- * @param args.installedAgents - List of currently installed agents
- * @param args.agentAlreadyInstalled - Whether the target agent is already installed
- */
-const handleExistingInstallationCleanup = async (args: {
-  skipUninstall: boolean;
-  installDir: string;
-  agentImpl: ReturnType<typeof AgentRegistry.prototype.get>;
-  installedAgents: Array<string>;
-  agentAlreadyInstalled: boolean;
-}): Promise<void> => {
-  const {
-    skipUninstall,
-    installDir,
-    agentImpl,
-    installedAgents,
-    agentAlreadyInstalled,
-  } = args;
-
-  if (!skipUninstall && agentAlreadyInstalled) {
-    const previousVersion = await getInstalledVersion({
-      installDir,
-    });
-    info({
-      message: `Cleaning up previous installation (v${previousVersion})...`,
-    });
-
-    try {
-      let uninstallCmd = `nori-ai uninstall --non-interactive --install-dir="${installDir}"`;
-      if (supportsAgentFlag({ version: previousVersion })) {
-        uninstallCmd += ` --agent="${agentImpl.name}"`;
-      }
-      execSync(uninstallCmd, { stdio: "inherit" });
-    } catch {
-      info({
-        message: `Note: Uninstall at v${previousVersion} failed (may not exist). Continuing with installation...`,
-      });
-    }
-  } else if (skipUninstall) {
-    info({
-      message: "Skipping uninstall step (preserving existing installation)...",
-    });
-  } else if (installedAgents.length > 0) {
-    info({
-      message: `Adding new agent (preserving existing ${installedAgents.join(", ")} installation)...`,
-    });
-  } else {
-    info({ message: "First-time installation detected. No cleanup needed." });
-  }
-};
-
-/**
- * Get information about installed agents
- *
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
- * @param args.agentImpl - AI agent implementation
- *
- * @returns Object with installedAgents array and agentAlreadyInstalled boolean
- */
-const getInstalledAgentInfo = async (args: {
-  installDir: string;
-  agentImpl: ReturnType<typeof AgentRegistry.prototype.get>;
-}): Promise<{
-  installedAgents: Array<string>;
-  agentAlreadyInstalled: boolean;
-  existingConfig: Config | null;
-}> => {
-  const { installDir, agentImpl } = args;
-
-  const existingConfig = await loadConfig({ installDir });
-  let installedAgents = existingConfig
-    ? getInstalledAgents({ config: existingConfig })
-    : [];
-  const existingInstall = hasExistingInstallation({ installDir });
-  if (installedAgents.length === 0 && existingInstall) {
-    installedAgents = ["claude-code"];
-  }
-  const agentAlreadyInstalled = installedAgents.includes(agentImpl.name);
-
-  return { installedAgents, agentAlreadyInstalled, existingConfig };
-};
-
-/**
- * Interactive installation mode
- * Delegates to init → onboard → feature loaders
- *
- * @param args - Configuration arguments
- * @param args.skipUninstall - Whether to skip uninstall step
- * @param args.installDir - Installation directory (optional)
- * @param args.agent - AI agent to use (defaults to claude-code)
- */
-export const interactive = async (args?: {
-  skipUninstall?: boolean | null;
-  installDir?: string | null;
-  agent?: string | null;
-}): Promise<void> => {
-  const { skipUninstall, installDir, agent } = args || {};
-  const normalizedInstallDir = normalizeInstallDir({ installDir });
-  const agentImpl = AgentRegistry.getInstance().get({
-    name: agent ?? "claude-code",
-  });
-
-  // Get installed agent info
-  const { installedAgents, agentAlreadyInstalled } =
-    await getInstalledAgentInfo({
-      installDir: normalizedInstallDir,
-      agentImpl,
-    });
-
-  // Handle existing installation cleanup
-  await handleExistingInstallationCleanup({
-    skipUninstall: skipUninstall ?? false,
-    installDir: normalizedInstallDir,
-    agentImpl,
-    installedAgents,
-    agentAlreadyInstalled,
-  });
-
-  // Display banner
-  displayNoriBanner();
-  newline();
-  info({ message: "Let's personalize Nori to your needs." });
-  newline();
-
-  // Step 1: Init - Set up folders and capture existing config
-  await initMain({
-    installDir: normalizedInstallDir,
-    nonInteractive: false,
-  });
-
-  // Step 2: Onboard - Select profile and configure auth
-  await onboardMain({
-    installDir: normalizedInstallDir,
-    nonInteractive: false,
-    agent: agentImpl.name,
-  });
-
-  // Load the updated config after onboard
-  const config = await loadConfig({ installDir: normalizedInstallDir });
-  if (config == null) {
-    error({ message: "Failed to load configuration after onboarding." });
-    process.exit(1);
-  }
-
-  // Step 3: Complete installation (run loaders, track analytics, display banners)
-  await completeInstallation({
-    config,
-    agent: agentImpl,
-    nonInteractive: false,
-  });
-};
-
-/**
  * Non-interactive installation mode
  * Delegates to init → onboard → feature loaders
  *
  * @param args - Configuration arguments
- * @param args.skipUninstall - Whether to skip uninstall step
  * @param args.installDir - Installation directory (optional)
  * @param args.agent - AI agent to use (defaults to claude-code)
  * @param args.profile - Profile to use (required if no existing config)
  */
 export const noninteractive = async (args?: {
-  skipUninstall?: boolean | null;
   installDir?: string | null;
   agent?: string | null;
   profile?: string | null;
 }): Promise<void> => {
-  const { skipUninstall, installDir, agent, profile } = args || {};
+  const { installDir, agent, profile } = args || {};
   const normalizedInstallDir = normalizeInstallDir({ installDir });
   const agentImpl = AgentRegistry.getInstance().get({
     name: agent ?? "claude-code",
-  });
-
-  // Get installed agent info
-  const { installedAgents, agentAlreadyInstalled } =
-    await getInstalledAgentInfo({
-      installDir: normalizedInstallDir,
-      agentImpl,
-    });
-
-  // Handle existing installation cleanup
-  await handleExistingInstallationCleanup({
-    skipUninstall: skipUninstall ?? false,
-    installDir: normalizedInstallDir,
-    agentImpl,
-    installedAgents,
-    agentAlreadyInstalled,
   });
 
   // Step 1: Init - Set up folders (non-interactive skips existing config capture)
@@ -403,14 +217,13 @@ export const noninteractive = async (args?: {
 
 /**
  * Main installer entry point
- * Routes to interactive or non-interactive mode
  * @param args - Configuration arguments
- * @param args.nonInteractive - Whether to run in non-interactive mode
- * @param args.skipUninstall - Whether to skip uninstall step (useful for profile switching)
+ * @param args.nonInteractive - Whether to run in non-interactive mode (kept for caller compatibility)
+ * @param args.skipUninstall - Whether to skip uninstall step (kept for caller compatibility)
  * @param args.installDir - Custom installation directory (optional)
  * @param args.agent - AI agent to use (defaults to claude-code)
- * @param args.silent - Whether to suppress all output (implies nonInteractive)
- * @param args.profile - Profile to use for non-interactive install (required if no existing config)
+ * @param args.silent - Whether to suppress all output
+ * @param args.profile - Profile to use (required if no existing config)
  */
 export const main = async (args?: {
   nonInteractive?: boolean | null;
@@ -420,8 +233,7 @@ export const main = async (args?: {
   silent?: boolean | null;
   profile?: string | null;
 }): Promise<void> => {
-  const { nonInteractive, skipUninstall, installDir, agent, silent, profile } =
-    args || {};
+  const { installDir, agent, silent, profile } = args || {};
 
   // Save original console.log and suppress all output if silent mode requested
   const originalConsoleLog = console.log;
@@ -431,21 +243,11 @@ export const main = async (args?: {
   }
 
   try {
-    // Silent mode implies non-interactive
-    if (nonInteractive || silent) {
-      await noninteractive({
-        skipUninstall,
-        installDir,
-        agent,
-        profile,
-      });
-    } else {
-      await interactive({
-        skipUninstall,
-        installDir,
-        agent,
-      });
-    }
+    await noninteractive({
+      installDir,
+      agent,
+      profile,
+    });
   } catch (err: any) {
     error({ message: err.message });
     process.exit(1);
@@ -456,38 +258,4 @@ export const main = async (args?: {
       setSilentMode({ silent: false });
     }
   }
-};
-
-/**
- * Register the 'install' command with commander
- * @param args - Configuration arguments
- * @param args.program - Commander program instance
- */
-export const registerInstallCommand = (args: { program: Command }): void => {
-  const { program } = args;
-
-  program
-    .command("install")
-    .description("Install Nori Profiles")
-    .option(
-      "-p, --profile <name>",
-      "Profile to install (required for non-interactive install without existing config)",
-    )
-    .option(
-      "--skip-uninstall",
-      "Skip uninstall step (useful for profile switching to preserve user customizations)",
-    )
-    .action(async (options) => {
-      // Get global options from parent
-      const globalOpts = program.opts();
-
-      await main({
-        nonInteractive: globalOpts.nonInteractive || null,
-        skipUninstall: options.skipUninstall || null,
-        installDir: globalOpts.installDir || null,
-        agent: globalOpts.agent || null,
-        silent: globalOpts.silent || null,
-        profile: options.profile || null,
-      });
-    });
 };

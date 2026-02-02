@@ -7,24 +7,9 @@ import * as net from "net";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Hoisted mock for proxyFetch
-const { mockProxyFetch } = vi.hoisted(() => ({
-  mockProxyFetch: vi.fn(),
-}));
-
-vi.mock("@/utils/fetch.js", () => ({
-  proxyFetch: mockProxyFetch,
-  NetworkError: class NetworkError extends Error {
-    readonly isNetworkError = true;
-    constructor(
-      message: string,
-      readonly code: string,
-    ) {
-      super(message);
-      this.name = "NetworkError";
-    }
-  },
-}));
+// Mock global fetch
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
 
 import {
   exchangeCodeForTokens,
@@ -249,7 +234,7 @@ describe("googleAuth", () => {
 
   describe("exchangeCodeForTokens", () => {
     it("should exchange an authorization code for Google tokens", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -271,7 +256,7 @@ describe("googleAuth", () => {
       expect(result.accessToken).toBe("google-access-token-xyz");
 
       // Verify the token exchange request was made correctly
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://oauth2.googleapis.com/token",
         expect.objectContaining({
           method: "POST",
@@ -282,7 +267,7 @@ describe("googleAuth", () => {
       );
 
       // Verify request body contains required parameters
-      const callArgs = mockProxyFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0];
       const body = callArgs[1].body as string;
       expect(body).toContain("code=auth-code-123");
       expect(body).toContain("client_id=test-client-id");
@@ -294,7 +279,7 @@ describe("googleAuth", () => {
     });
 
     it("should throw when token exchange fails", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         json: () =>
           Promise.resolve({
@@ -314,7 +299,7 @@ describe("googleAuth", () => {
     });
 
     it("should throw when network request fails", async () => {
-      mockProxyFetch.mockRejectedValue(new Error("Network error"));
+      mockFetch.mockRejectedValue(new Error("Network error"));
 
       await expect(
         exchangeCodeForTokens({

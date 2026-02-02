@@ -1,35 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-// Hoisted mock for proxyFetch
-const { mockProxyFetch } = vi.hoisted(() => ({
-  mockProxyFetch: vi.fn(),
-}));
-
-vi.mock("@/utils/fetch.js", () => ({
-  proxyFetch: mockProxyFetch,
-  NetworkError: class NetworkError extends Error {
-    readonly isNetworkError = true;
-    constructor(
-      message: string,
-      readonly code: string,
-    ) {
-      super(message);
-      this.name = "NetworkError";
-    }
-  },
-  ApiError: class ApiError extends Error {
-    readonly isApiError = true;
-    constructor(
-      message: string,
-      readonly statusCode: number,
-    ) {
-      super(message);
-      this.name = "ApiError";
-    }
-  },
-}));
-
 import { registrarApi } from "./registrar.js";
+
+// Mock global fetch
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
 
 describe("registrarApi", () => {
   beforeEach(() => {
@@ -61,7 +36,7 @@ describe("registrarApi", () => {
         },
       ];
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockPackages),
       });
@@ -69,8 +44,8 @@ describe("registrarApi", () => {
       const result = await registrarApi.searchPackages({ query: "test" });
 
       expect(result).toEqual(mockPackages);
-      expect(mockProxyFetch).toHaveBeenCalledTimes(1);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/profiles/search?q=test",
         expect.objectContaining({
           method: "GET",
@@ -79,7 +54,7 @@ describe("registrarApi", () => {
     });
 
     it("should return empty array when no results", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -92,7 +67,7 @@ describe("registrarApi", () => {
     });
 
     it("should pass limit and offset query params", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -103,7 +78,7 @@ describe("registrarApi", () => {
         offset: 20,
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/profiles/search?q=test&limit=10&offset=20",
         expect.objectContaining({
           method: "GET",
@@ -112,7 +87,7 @@ describe("registrarApi", () => {
     });
 
     it("should use custom registryUrl when provided", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -122,7 +97,7 @@ describe("registrarApi", () => {
         registryUrl: "https://private-registry.example.com",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/search?q=test",
         expect.objectContaining({
           method: "GET",
@@ -131,7 +106,7 @@ describe("registrarApi", () => {
     });
 
     it("should include auth token header when provided", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -142,7 +117,7 @@ describe("registrarApi", () => {
         authToken: "test-auth-token",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/search?q=test",
         expect.objectContaining({
           method: "GET",
@@ -154,7 +129,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error on non-OK response", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         json: () => Promise.resolve({ error: "Internal server error" }),
@@ -183,7 +158,7 @@ describe("registrarApi", () => {
         },
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockPackument),
       });
@@ -193,7 +168,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toEqual(mockPackument);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/profiles/test-profile",
         expect.objectContaining({
           method: "GET",
@@ -202,7 +177,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error when package not found", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
         json: () => Promise.resolve({ error: "Package not found" }),
@@ -222,7 +197,7 @@ describe("registrarApi", () => {
         },
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockPackument),
       });
@@ -232,7 +207,7 @@ describe("registrarApi", () => {
         registryUrl: "https://private-registry.example.com",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/test-profile",
         expect.objectContaining({
           method: "GET",
@@ -249,7 +224,7 @@ describe("registrarApi", () => {
         },
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockPackument),
       });
@@ -260,7 +235,7 @@ describe("registrarApi", () => {
         authToken: "test-auth-token",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/test-profile",
         expect.objectContaining({
           method: "GET",
@@ -276,7 +251,7 @@ describe("registrarApi", () => {
     it("should return ArrayBuffer on successful download", async () => {
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         arrayBuffer: () => Promise.resolve(mockTarballData),
       });
@@ -287,7 +262,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toBe(mockTarballData);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/profiles/test-profile/tarball/test-profile-1.0.0.tgz",
         expect.objectContaining({
           method: "GET",
@@ -296,7 +271,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error when tarball not found", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
         json: () => Promise.resolve({ error: "Tarball not found" }),
@@ -323,7 +298,7 @@ describe("registrarApi", () => {
 
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockPackument),
@@ -340,7 +315,7 @@ describe("registrarApi", () => {
       expect(result).toBe(mockTarballData);
 
       // First call should be to get packument
-      expect(mockProxyFetch).toHaveBeenNthCalledWith(
+      expect(mockFetch).toHaveBeenNthCalledWith(
         1,
         "https://noriskillsets.dev/api/profiles/test-profile",
         expect.objectContaining({
@@ -349,7 +324,7 @@ describe("registrarApi", () => {
       );
 
       // Second call should be to download tarball with resolved version
-      expect(mockProxyFetch).toHaveBeenNthCalledWith(
+      expect(mockFetch).toHaveBeenNthCalledWith(
         2,
         "https://noriskillsets.dev/api/profiles/test-profile/tarball/test-profile-2.0.0.tgz",
         expect.objectContaining({
@@ -361,7 +336,7 @@ describe("registrarApi", () => {
     it("should use custom registryUrl when provided", async () => {
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         arrayBuffer: () => Promise.resolve(mockTarballData),
       });
@@ -372,7 +347,7 @@ describe("registrarApi", () => {
         registryUrl: "https://private-registry.example.com",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/test-profile/tarball/test-profile-1.0.0.tgz",
         expect.objectContaining({
           method: "GET",
@@ -383,7 +358,7 @@ describe("registrarApi", () => {
     it("should include auth token header when provided", async () => {
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         arrayBuffer: () => Promise.resolve(mockTarballData),
       });
@@ -395,7 +370,7 @@ describe("registrarApi", () => {
         authToken: "test-auth-token",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/test-profile/tarball/test-profile-1.0.0.tgz",
         expect.objectContaining({
           method: "GET",
@@ -417,7 +392,7 @@ describe("registrarApi", () => {
 
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockPackument),
@@ -434,7 +409,7 @@ describe("registrarApi", () => {
       });
 
       // First call should be to get packument with auth
-      expect(mockProxyFetch).toHaveBeenNthCalledWith(
+      expect(mockFetch).toHaveBeenNthCalledWith(
         1,
         "https://private-registry.example.com/api/profiles/test-profile",
         expect.objectContaining({
@@ -446,7 +421,7 @@ describe("registrarApi", () => {
       );
 
       // Second call should be to download tarball with auth
-      expect(mockProxyFetch).toHaveBeenNthCalledWith(
+      expect(mockFetch).toHaveBeenNthCalledWith(
         2,
         "https://private-registry.example.com/api/profiles/test-profile/tarball/test-profile-2.0.0.tgz",
         expect.objectContaining({
@@ -472,7 +447,7 @@ describe("registrarApi", () => {
         },
       ];
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockPackages),
       });
@@ -483,7 +458,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toEqual(mockPackages);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://custom.registry.com/api/profiles/search?q=custom",
         expect.objectContaining({
           method: "GET",
@@ -492,7 +467,7 @@ describe("registrarApi", () => {
     });
 
     it("should include Authorization header when authToken is provided", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -503,7 +478,7 @@ describe("registrarApi", () => {
         authToken: "secret-token-123",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private.registry.com/api/profiles/search?q=test",
         expect.objectContaining({
           method: "GET",
@@ -515,7 +490,7 @@ describe("registrarApi", () => {
     });
 
     it("should not include Authorization header when authToken is null", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -526,12 +501,12 @@ describe("registrarApi", () => {
         authToken: null,
       });
 
-      const callArgs = mockProxyFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0];
       expect(callArgs[1].headers).toEqual({});
     });
 
     it("should pass limit and offset query params", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -543,14 +518,14 @@ describe("registrarApi", () => {
         offset: 10,
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://custom.registry.com/api/profiles/search?q=test&limit=5&offset=10",
         expect.anything(),
       );
     });
 
     it("should throw error on non-OK response", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 401,
         json: () => Promise.resolve({ error: "Unauthorized" }),
@@ -576,7 +551,7 @@ describe("registrarApi", () => {
         createdAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -590,7 +565,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toEqual(mockResponse);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/profiles/test-profile/profile",
         expect.objectContaining({
           method: "PUT",
@@ -601,7 +576,7 @@ describe("registrarApi", () => {
       );
 
       // Verify the body is FormData
-      const callArgs = mockProxyFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0];
       expect(callArgs[1].body).toBeInstanceOf(FormData);
     });
 
@@ -614,7 +589,7 @@ describe("registrarApi", () => {
         createdAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -629,13 +604,13 @@ describe("registrarApi", () => {
       });
 
       // Verify FormData includes description
-      const callArgs = mockProxyFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0];
       const formData = callArgs[1].body as FormData;
       expect(formData.get("description")).toBe("Custom description");
     });
 
     it("should throw error on unauthorized (401)", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 401,
         json: () => Promise.resolve({ error: "Unauthorized" }),
@@ -653,7 +628,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error on forbidden (403)", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
         json: () =>
@@ -674,7 +649,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error on version conflict (409)", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 409,
         json: () =>
@@ -695,7 +670,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error on validation failure (400)", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 400,
         json: () =>
@@ -721,7 +696,7 @@ describe("registrarApi", () => {
         createdAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -735,7 +710,7 @@ describe("registrarApi", () => {
         registryUrl: "https://private-registry.example.com",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/profiles/test-profile/profile",
         expect.objectContaining({
           method: "PUT",
@@ -754,7 +729,7 @@ describe("registrarApi", () => {
         createdAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -767,7 +742,7 @@ describe("registrarApi", () => {
         authToken: "test-token",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/profiles/test-profile/profile",
         expect.anything(),
       );
@@ -788,7 +763,7 @@ describe("registrarApi", () => {
         },
       ];
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockSkills),
       });
@@ -796,7 +771,7 @@ describe("registrarApi", () => {
       const result = await registrarApi.searchSkills({ query: "writing" });
 
       expect(result).toEqual(mockSkills);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/skills/search?q=writing",
         expect.objectContaining({
           method: "GET",
@@ -805,7 +780,7 @@ describe("registrarApi", () => {
     });
 
     it("should use custom registryUrl when provided", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -815,7 +790,7 @@ describe("registrarApi", () => {
         registryUrl: "https://private-registry.example.com",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://private-registry.example.com/api/skills/search?q=test",
         expect.objectContaining({
           method: "GET",
@@ -824,7 +799,7 @@ describe("registrarApi", () => {
     });
 
     it("should include auth token header when provided", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve([]),
       });
@@ -834,7 +809,7 @@ describe("registrarApi", () => {
         authToken: "test-auth-token",
       });
 
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -862,7 +837,7 @@ describe("registrarApi", () => {
         },
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockPackument),
       });
@@ -872,7 +847,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toEqual(mockPackument);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/skills/writing-plans",
         expect.objectContaining({
           method: "GET",
@@ -881,7 +856,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error when skill not found", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
         json: () => Promise.resolve({ error: "Skill not found" }),
@@ -897,7 +872,7 @@ describe("registrarApi", () => {
     it("should return ArrayBuffer on successful download", async () => {
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         arrayBuffer: () => Promise.resolve(mockTarballData),
       });
@@ -908,7 +883,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toBe(mockTarballData);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/skills/writing-plans/tarball/writing-plans-1.0.0.tgz",
         expect.objectContaining({
           method: "GET",
@@ -928,7 +903,7 @@ describe("registrarApi", () => {
 
       const mockTarballData = new ArrayBuffer(100);
 
-      mockProxyFetch
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockPackument),
@@ -945,7 +920,7 @@ describe("registrarApi", () => {
       expect(result).toBe(mockTarballData);
 
       // First call should be to get packument
-      expect(mockProxyFetch).toHaveBeenNthCalledWith(
+      expect(mockFetch).toHaveBeenNthCalledWith(
         1,
         "https://noriskillsets.dev/api/skills/writing-plans",
         expect.objectContaining({
@@ -954,7 +929,7 @@ describe("registrarApi", () => {
       );
 
       // Second call should be to download tarball with resolved version
-      expect(mockProxyFetch).toHaveBeenNthCalledWith(
+      expect(mockFetch).toHaveBeenNthCalledWith(
         2,
         "https://noriskillsets.dev/api/skills/writing-plans/tarball/writing-plans-2.0.0.tgz",
         expect.objectContaining({
@@ -964,7 +939,7 @@ describe("registrarApi", () => {
     });
 
     it("should throw error when tarball not found", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
         json: () => Promise.resolve({ error: "Tarball not found" }),
@@ -989,7 +964,7 @@ describe("registrarApi", () => {
         createdAt: "2024-01-01T00:00:00.000Z",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -1003,7 +978,7 @@ describe("registrarApi", () => {
       });
 
       expect(result).toEqual(mockResponse);
-      expect(mockProxyFetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         "https://noriskillsets.dev/api/skills/writing-plans/skill",
         expect.objectContaining({
           method: "PUT",
@@ -1014,12 +989,12 @@ describe("registrarApi", () => {
       );
 
       // Verify the body is FormData
-      const callArgs = mockProxyFetch.mock.calls[0];
+      const callArgs = mockFetch.mock.calls[0];
       expect(callArgs[1].body).toBeInstanceOf(FormData);
     });
 
     it("should throw error on unauthorized (401)", async () => {
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 401,
         json: () => Promise.resolve({ error: "Unauthorized" }),

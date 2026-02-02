@@ -6,7 +6,7 @@
  * Write operations (upload) require authentication.
  */
 
-import { proxyFetch, ApiError } from "@/utils/fetch.js";
+import { ApiError } from "@/utils/fetch.js";
 
 export { NetworkError, ApiError } from "@/utils/fetch.js";
 
@@ -159,7 +159,7 @@ export const registrarApi = {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
@@ -203,7 +203,7 @@ export const registrarApi = {
       headers["Authorization"] = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       headers,
     });
@@ -238,7 +238,7 @@ export const registrarApi = {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
@@ -293,7 +293,7 @@ export const registrarApi = {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
@@ -339,7 +339,7 @@ export const registrarApi = {
 
     const url = `${baseUrl}/api/profiles/${packageName}/profile`;
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${authToken}`,
@@ -387,7 +387,7 @@ export const registrarApi = {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
@@ -424,7 +424,7 @@ export const registrarApi = {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
@@ -479,7 +479,7 @@ export const registrarApi = {
       headers.Authorization = `Bearer ${authToken}`;
     }
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "GET",
       ...(Object.keys(headers).length > 0 ? { headers } : {}),
     });
@@ -525,7 +525,7 @@ export const registrarApi = {
 
     const url = `${baseUrl}/api/skills/${skillName}/skill`;
 
-    const response = await proxyFetch(url, {
+    const response = await fetch(url, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${authToken}`,

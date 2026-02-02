@@ -10,7 +10,7 @@ import * as crypto from "crypto";
 import * as http from "http";
 import * as net from "net";
 
-import { proxyFetch, NetworkError } from "@/utils/fetch.js";
+import { formatNetworkError } from "@/utils/fetch.js";
 
 /**
  * Google OAuth client credentials (Desktop app type).
@@ -272,7 +272,7 @@ export const exchangeCodeForTokens = async (args: {
 
   let response: Response;
   try {
-    response = await proxyFetch(GOOGLE_TOKEN_ENDPOINT, {
+    response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -280,8 +280,13 @@ export const exchangeCodeForTokens = async (args: {
       body,
     });
   } catch (err) {
-    if (err instanceof NetworkError) {
-      throw new Error(`Google token exchange failed: ${err.message}`);
+    // Network errors from fetch - wrap with helpful message
+    if (err instanceof Error) {
+      const networkError = formatNetworkError({
+        error: err,
+        url: GOOGLE_TOKEN_ENDPOINT,
+      });
+      throw new Error(`Google token exchange failed: ${networkError.message}`);
     }
     throw err;
   }

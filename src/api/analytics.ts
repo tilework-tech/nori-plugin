@@ -1,4 +1,3 @@
-import { proxyFetch } from "@/utils/fetch.js";
 import { normalizeUrl } from "@/utils/url.js";
 
 import { ConfigManager } from "./base.js";
@@ -47,7 +46,7 @@ export const analyticsApi = {
     const url = normalizeUrl({ baseUrl, path: "/api/analytics/track" });
 
     try {
-      const response = await proxyFetch(url, {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(args),

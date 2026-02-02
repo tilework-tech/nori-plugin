@@ -4,29 +4,14 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-// Hoisted mock for proxyFetch
-const { mockProxyFetch } = vi.hoisted(() => ({
-  mockProxyFetch: vi.fn(),
-}));
-
-vi.mock("@/utils/fetch.js", () => ({
-  proxyFetch: mockProxyFetch,
-  NetworkError: class NetworkError extends Error {
-    readonly isNetworkError = true;
-    constructor(
-      message: string,
-      readonly code: string,
-    ) {
-      super(message);
-      this.name = "NetworkError";
-    }
-  },
-}));
-
 import {
   exchangeRefreshToken,
   clearRefreshTokenCache,
 } from "./refreshToken.js";
+
+// Mock global fetch
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
 
 describe("refreshToken", () => {
   beforeEach(() => {
@@ -47,7 +32,7 @@ describe("refreshToken", () => {
         expires_in: "3600",
       };
 
-      mockProxyFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -61,8 +46,8 @@ describe("refreshToken", () => {
       expect(result.expiresIn).toBe(3600);
 
       // Verify the correct Firebase REST API endpoint was called
-      expect(mockProxyFetch).toHaveBeenCalledTimes(1);
-      const [url, options] = mockProxyFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("securetoken.googleapis.com/v1/token");
       expect(options.method).toBe("POST");
       expect(options.body).toContain("grant_type=refresh_token");
@@ -70,7 +55,7 @@ describe("refreshToken", () => {
     });
 
     it("should throw an error for an expired or invalid refresh token", async () => {
-      mockProxyFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         json: () =>
           Promise.resolve({
@@ -87,7 +72,7 @@ describe("refreshToken", () => {
     });
 
     it("should throw an error for a revoked refresh token", async () => {
-      mockProxyFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         json: () =>
           Promise.resolve({
@@ -104,11 +89,11 @@ describe("refreshToken", () => {
     });
 
     it("should throw an error on network failure", async () => {
-      mockProxyFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
       await expect(
         exchangeRefreshToken({ refreshToken: "valid-token" }),
-      ).rejects.toThrow("Network error");
+      ).rejects.toThrow();
     });
 
     it("should cache the ID token and return cached value on subsequent calls", async () => {
@@ -118,7 +103,7 @@ describe("refreshToken", () => {
         expires_in: "3600",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -137,7 +122,7 @@ describe("refreshToken", () => {
       expect(result2.idToken).toBe("cached-id-token");
 
       // Should only call fetch once due to caching
-      expect(mockProxyFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it("should refresh token when cache expires", async () => {
@@ -153,7 +138,7 @@ describe("refreshToken", () => {
         expires_in: "3600",
       };
 
-      mockProxyFetch
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockResponse1),
@@ -179,7 +164,7 @@ describe("refreshToken", () => {
       expect(result2.idToken).toBe("second-id-token");
 
       // Should call fetch twice
-      expect(mockProxyFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -191,7 +176,7 @@ describe("refreshToken", () => {
         expires_in: "3600",
       };
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -205,7 +190,7 @@ describe("refreshToken", () => {
       // Second call - should fetch again
       await exchangeRefreshToken({ refreshToken: "test-token" });
 
-      expect(mockProxyFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });

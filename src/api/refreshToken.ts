@@ -10,7 +10,7 @@
  * Sign-in with email/password uses the Firebase SDK (see loader.ts).
  */
 
-import { proxyFetch, NetworkError } from "@/utils/fetch.js";
+import { formatNetworkError } from "@/utils/fetch.js";
 
 // Firebase API key from tilework-e18c5 project
 const FIREBASE_API_KEY = "AIzaSyC54HqlGrkyANVFKGDQi3LobO5moDOuafk";
@@ -75,7 +75,7 @@ export const exchangeRefreshToken = async (args: {
   // Exchange refresh token for new ID token via Firebase REST API
   let response: Response;
   try {
-    response = await proxyFetch(TOKEN_ENDPOINT, {
+    response = await fetch(TOKEN_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -83,8 +83,13 @@ export const exchangeRefreshToken = async (args: {
       body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`,
     });
   } catch (err) {
-    if (err instanceof NetworkError) {
-      throw new Error(`Token exchange failed: ${err.message}`);
+    // Network errors from fetch - wrap with helpful message
+    if (err instanceof Error) {
+      const networkError = formatNetworkError({
+        error: err,
+        url: TOKEN_ENDPOINT,
+      });
+      throw new Error(`Token exchange failed: ${networkError.message}`);
     }
     throw err;
   }

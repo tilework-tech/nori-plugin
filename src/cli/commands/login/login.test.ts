@@ -8,12 +8,11 @@ import * as path from "path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Hoisted mock for proxyFetch
-const { mockProxyFetch } = vi.hoisted(() => ({
-  mockProxyFetch: vi.fn(),
-}));
-
 import { getConfigPath, loadConfig } from "@/cli/config.js";
+
+// Mock global fetch
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
 
 import { loginMain } from "./login.js";
 
@@ -75,21 +74,6 @@ vi.mock("./googleAuth.js", () => ({
   GOOGLE_OAUTH_CLIENT_SECRET: "test-client-secret",
 }));
 
-// Mock proxyFetch from utils - for check-access endpoint
-vi.mock("@/utils/fetch.js", () => ({
-  proxyFetch: mockProxyFetch,
-  NetworkError: class NetworkError extends Error {
-    readonly isNetworkError = true;
-    constructor(
-      message: string,
-      readonly code: string,
-    ) {
-      super(message);
-      this.name = "NetworkError";
-    }
-  },
-}));
-
 describe("login command", () => {
   let tempDir: string;
 
@@ -121,7 +105,7 @@ describe("login command", () => {
       } as any);
 
       // Mock check-access endpoint
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -155,7 +139,7 @@ describe("login command", () => {
       } as any);
 
       // Mock check-access endpoint
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -239,7 +223,7 @@ describe("login command", () => {
         },
       } as any);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -278,7 +262,7 @@ describe("login command", () => {
       } as any);
 
       // Mock check-access to fail
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         json: () => Promise.resolve({ error: "Internal server error" }),
@@ -313,7 +297,7 @@ describe("login command", () => {
       } as any);
 
       // Mock fetch to throw network error
-      mockProxyFetch.mockRejectedValue(new Error("Network error"));
+      mockFetch.mockRejectedValue(new Error("Network error"));
 
       await loginMain({ installDir: tempDir });
 
@@ -382,7 +366,7 @@ describe("login command", () => {
       } as any);
 
       // Mock check-access endpoint
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -453,7 +437,7 @@ describe("login command", () => {
         },
       } as any);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -624,7 +608,7 @@ describe("login command", () => {
         },
       } as any);
 
-      mockProxyFetch.mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({

@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { exchangeRefreshToken } from "@/api/refreshToken.js";
 import { getConfigPath } from "@/cli/config.js";
 import { getFirebase, configureFirebase } from "@/providers/firebase.js";
-import { proxyFetch, NetworkError } from "@/utils/fetch.js";
+import { formatNetworkError } from "@/utils/fetch.js";
 import { getInstallDirs } from "@/utils/path.js";
 import { normalizeUrl } from "@/utils/url.js";
 
@@ -199,7 +199,7 @@ export const apiRequest = async <T>(args: {
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await proxyFetch(url, {
+      const response = await fetch(url, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
@@ -224,8 +224,16 @@ export const apiRequest = async <T>(args: {
       lastError = error as Error;
 
       // Don't retry on network errors - they're likely permanent (proxy/DNS issues)
-      if (error instanceof NetworkError) {
-        throw error;
+      const errorCode = (error as NodeJS.ErrnoException)?.code;
+      const isNetworkErr =
+        errorCode === "ECONNREFUSED" ||
+        errorCode === "ENOTFOUND" ||
+        errorCode === "ETIMEDOUT" ||
+        errorCode === "ECONNRESET";
+
+      if (isNetworkErr) {
+        const networkError = formatNetworkError({ error: error as Error, url });
+        throw networkError;
       }
 
       // Retry on other errors

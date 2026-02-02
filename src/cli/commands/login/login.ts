@@ -19,7 +19,7 @@ import { loadConfig, saveConfig } from "@/cli/config.js";
 import { error, info, success, warn, newline } from "@/cli/logger.js";
 import { promptUser } from "@/cli/prompt.js";
 import { configureFirebase, getFirebase } from "@/providers/firebase.js";
-import { proxyFetch, NetworkError } from "@/utils/fetch.js";
+import { formatNetworkError } from "@/utils/fetch.js";
 
 import type { Command } from "commander";
 import type { AuthError } from "firebase/auth";
@@ -61,7 +61,7 @@ const fetchUserAccess = async (args: {
   const { idToken } = args;
 
   try {
-    const response = await proxyFetch(
+    const response = await fetch(
       `${NORI_SKILLSETS_API_URL}/api/auth/check-access`,
       {
         headers: {
@@ -77,8 +77,12 @@ const fetchUserAccess = async (args: {
     return (await response.json()) as CheckAccessResponse;
   } catch (err) {
     // Log network errors for debugging but don't fail the login
-    if (err instanceof NetworkError) {
-      console.error(`Network error checking access: ${err.message}`);
+    if (err instanceof Error) {
+      const networkError = formatNetworkError({
+        error: err,
+        url: `${NORI_SKILLSETS_API_URL}/api/auth/check-access`,
+      });
+      console.error(`Network error checking access: ${networkError.message}`);
     }
     return null;
   }

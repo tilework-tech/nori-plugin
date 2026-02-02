@@ -37,6 +37,56 @@ vi.mock("@/api/registrar.js", () => ({
   },
 }));
 
+// Mock fetch utilities with SkillCollisionError
+vi.mock("@/utils/fetch.js", () => {
+  // Define the class inside the factory to avoid hoisting issues
+  class SkillCollisionError extends Error {
+    readonly conflicts: Array<{
+      skillId: string;
+      exists: boolean;
+      canPublish: boolean;
+      latestVersion?: string | null;
+      owner?: string | null;
+      availableActions: Array<string>;
+      contentUnchanged?: boolean | null;
+    }>;
+    readonly requiresVersions: boolean;
+    readonly isSkillCollisionError = true;
+
+    constructor(args: {
+      message: string;
+      conflicts: Array<{
+        skillId: string;
+        exists: boolean;
+        canPublish: boolean;
+        latestVersion?: string | null;
+        owner?: string | null;
+        availableActions: Array<string>;
+        contentUnchanged?: boolean | null;
+      }>;
+      requiresVersions?: boolean | null;
+    }) {
+      super(args.message);
+      this.name = "SkillCollisionError";
+      this.conflicts = args.conflicts;
+      this.requiresVersions = args.requiresVersions ?? false;
+    }
+  }
+
+  return {
+    isSkillCollisionError: (err: unknown): boolean => {
+      return (
+        err instanceof SkillCollisionError ||
+        (err as { isSkillCollisionError?: boolean })?.isSkillCollisionError ===
+          true
+      );
+    },
+    SkillCollisionError,
+  };
+});
+
+// Import SkillCollisionError from the mock for use in tests
+
 // Mock the registry auth module
 vi.mock("@/api/registryAuth.js", () => ({
   getRegistryAuthToken: vi.fn(),
@@ -45,6 +95,7 @@ vi.mock("@/api/registryAuth.js", () => ({
 import { registrarApi } from "@/api/registrar.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { stripAnsi } from "@/cli/features/test-utils/index.js";
+import { SkillCollisionError } from "@/utils/fetch.js";
 
 import type { HookInput } from "./types.js";
 
@@ -690,6 +741,291 @@ describe("nori-registry-upload", () => {
           version: "2.0.0",
         }),
       );
+    });
+  });
+
+  describe("skill collision handling", () => {
+    it("should auto-resolve and retry when all conflicts have contentUnchanged: true", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // First call throws SkillCollisionError with all unchanged conflicts
+      const collisionError = new SkillCollisionError({
+        message:
+          "Skill conflicts detected: skill-a, skill-b. Resolution required.",
+        conflicts: [
+          {
+            skillId: "skill-a",
+            exists: true,
+            canPublish: true,
+            latestVersion: "1.0.0",
+            owner: "user@example.com",
+            availableActions: ["cancel", "namespace", "link", "updateVersion"],
+            contentUnchanged: true,
+          },
+          {
+            skillId: "skill-b",
+            exists: true,
+            canPublish: false,
+            latestVersion: "2.0.0",
+            owner: "other@example.com",
+            availableActions: ["cancel", "namespace", "link"],
+            contentUnchanged: true,
+          },
+        ],
+        requiresVersions: false,
+      });
+
+      // First call throws collision, second call succeeds
+      vi.mocked(registrarApi.uploadProfile)
+        .mockRejectedValueOnce(collisionError)
+        .mockResolvedValueOnce({
+          name: "test-profile",
+          version: "1.0.0",
+          tarballSha: "sha512-abc123",
+          createdAt: "2024-01-01T00:00:00.000Z",
+        });
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Successfully uploaded");
+      expect(plainReason).toContain("Auto-resolved");
+      expect(plainReason).toContain("unchanged skill");
+
+      // Verify uploadProfile was called twice
+      expect(registrarApi.uploadProfile).toHaveBeenCalledTimes(2);
+
+      // Verify second call includes resolutionStrategy with all link actions
+      expect(registrarApi.uploadProfile).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          packageName: "test-profile",
+          resolutionStrategy: {
+            "skill-a": { action: "link" },
+            "skill-b": { action: "link" },
+          },
+        }),
+      );
+    });
+
+    it("should show error with conflict details when some conflicts have contentUnchanged: false", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Throw SkillCollisionError with mixed conflicts
+      const collisionError = new SkillCollisionError({
+        message:
+          "Skill conflicts detected: skill-a, skill-b. Resolution required.",
+        conflicts: [
+          {
+            skillId: "skill-a",
+            exists: true,
+            canPublish: true,
+            latestVersion: "1.0.0",
+            owner: "user@example.com",
+            availableActions: ["cancel", "namespace", "link", "updateVersion"],
+            contentUnchanged: true,
+          },
+          {
+            skillId: "skill-b",
+            exists: true,
+            canPublish: false,
+            latestVersion: "2.0.0",
+            owner: "other@example.com",
+            availableActions: ["cancel", "namespace", "link"],
+            contentUnchanged: false,
+          },
+        ],
+        requiresVersions: false,
+      });
+
+      vi.mocked(registrarApi.uploadProfile).mockRejectedValue(collisionError);
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      // Should show conflict details
+      expect(plainReason).toContain("skill-a");
+      expect(plainReason).toContain("skill-b");
+      expect(plainReason).toContain("unchanged");
+      expect(plainReason).toContain("MODIFIED");
+
+      // Should NOT retry (only called once)
+      expect(registrarApi.uploadProfile).toHaveBeenCalledTimes(1);
+    });
+
+    it("should show error with resolution instructions when conflicts require manual resolution", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Throw SkillCollisionError with all changed conflicts
+      const collisionError = new SkillCollisionError({
+        message:
+          "Skill conflicts detected: changed-skill. Resolution required.",
+        conflicts: [
+          {
+            skillId: "changed-skill",
+            exists: true,
+            canPublish: false,
+            latestVersion: "1.0.0",
+            owner: "other@example.com",
+            availableActions: ["cancel", "namespace", "link"],
+            contentUnchanged: false,
+          },
+        ],
+        requiresVersions: false,
+      });
+
+      vi.mocked(registrarApi.uploadProfile).mockRejectedValue(collisionError);
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      // Should show resolution instructions
+      expect(plainReason).toContain("Manual resolution required");
+      expect(plainReason).toContain("changed-skill");
+    });
+
+    it("should handle retry failure after auto-resolution", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // First call throws collision with unchanged conflicts
+      const collisionError = new SkillCollisionError({
+        message: "Skill conflicts detected",
+        conflicts: [
+          {
+            skillId: "skill-a",
+            exists: true,
+            canPublish: false,
+            latestVersion: "1.0.0",
+            owner: "other@example.com",
+            availableActions: ["cancel", "namespace", "link"],
+            contentUnchanged: true,
+          },
+        ],
+        requiresVersions: false,
+      });
+
+      // Both calls fail
+      vi.mocked(registrarApi.uploadProfile)
+        .mockRejectedValueOnce(collisionError)
+        .mockRejectedValueOnce(new Error("Server error during retry"));
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+      expect(plainReason).toContain("Upload failed");
+      expect(plainReason).toContain("retry");
+    });
+
+    it("should treat contentUnchanged: undefined as requiring manual resolution", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Throw SkillCollisionError with undefined contentUnchanged
+      const collisionError = new SkillCollisionError({
+        message: "Skill conflicts detected",
+        conflicts: [
+          {
+            skillId: "unknown-skill",
+            exists: true,
+            canPublish: false,
+            latestVersion: "1.0.0",
+            owner: "other@example.com",
+            availableActions: ["cancel", "namespace", "link"],
+            // contentUnchanged is undefined
+          },
+        ],
+        requiresVersions: false,
+      });
+
+      vi.mocked(registrarApi.uploadProfile).mockRejectedValue(collisionError);
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      // Should NOT auto-resolve (requires manual resolution)
+      expect(plainReason).toContain("Manual resolution required");
+      expect(registrarApi.uploadProfile).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not auto-resolve when link action is not available even if content unchanged", async () => {
+      await createConfigWithRegistryAuth();
+      await createTestProfile({ name: "test-profile" });
+
+      vi.mocked(getRegistryAuthToken).mockResolvedValue("mock-auth-token");
+
+      // Throw SkillCollisionError with unchanged content but no link action
+      const collisionError = new SkillCollisionError({
+        message: "Skill conflicts detected",
+        conflicts: [
+          {
+            skillId: "no-link-skill",
+            exists: true,
+            canPublish: false,
+            latestVersion: "1.0.0",
+            owner: "other@example.com",
+            availableActions: ["cancel", "namespace"], // No "link" action
+            contentUnchanged: true,
+          },
+        ],
+        requiresVersions: false,
+      });
+
+      vi.mocked(registrarApi.uploadProfile).mockRejectedValue(collisionError);
+
+      const input = createInput({
+        prompt: "/nori-registry-upload test-profile",
+      });
+      const result = await noriRegistryUpload.run({ input });
+
+      expect(result).not.toBeNull();
+      expect(result!.decision).toBe("block");
+      const plainReason = stripAnsi(result!.reason!);
+
+      // Should NOT auto-resolve because link action is not available
+      expect(plainReason).toContain("Manual resolution required");
+      expect(registrarApi.uploadProfile).toHaveBeenCalledTimes(1);
     });
   });
 });

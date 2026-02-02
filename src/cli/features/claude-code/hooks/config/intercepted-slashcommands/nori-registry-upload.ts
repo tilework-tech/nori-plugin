@@ -9,9 +9,14 @@ import * as path from "path";
 import * as semver from "semver";
 import * as tar from "tar";
 
-import { registrarApi } from "@/api/registrar.js";
+import {
+  registrarApi,
+  type SkillConflict,
+  type SkillResolutionStrategy,
+} from "@/api/registrar.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig, getRegistryAuth } from "@/cli/config.js";
+import { isSkillCollisionError } from "@/utils/fetch.js";
 import { getInstallDirs } from "@/utils/path.js";
 import { extractOrgId, buildRegistryUrl } from "@/utils/url.js";
 
@@ -23,6 +28,86 @@ import type {
 import type { Config, RegistryAuth } from "@/cli/config.js";
 
 import { formatError, formatSuccess } from "./format.js";
+
+/**
+ * Check if a conflict can be auto-resolved (content unchanged and link action available)
+ * @param args - The function arguments
+ * @param args.conflict - The skill conflict to check
+ *
+ * @returns True if the conflict can be auto-resolved
+ */
+const canAutoResolveConflict = (args: { conflict: SkillConflict }): boolean => {
+  const { conflict } = args;
+  return (
+    conflict.contentUnchanged === true &&
+    conflict.availableActions.includes("link")
+  );
+};
+
+/**
+ * Build auto-resolution strategy for conflicts that can be auto-resolved
+ * @param args - The function arguments
+ * @param args.conflicts - Array of skill conflicts
+ *
+ * @returns Resolution strategy and any unresolved conflicts
+ */
+const buildAutoResolutionStrategy = (args: {
+  conflicts: Array<SkillConflict>;
+}): {
+  strategy: SkillResolutionStrategy;
+  unresolvedConflicts: Array<SkillConflict>;
+} => {
+  const { conflicts } = args;
+  const strategy: SkillResolutionStrategy = {};
+  const unresolvedConflicts: Array<SkillConflict> = [];
+
+  for (const conflict of conflicts) {
+    if (canAutoResolveConflict({ conflict })) {
+      strategy[conflict.skillId] = { action: "link" };
+    } else {
+      unresolvedConflicts.push(conflict);
+    }
+  }
+
+  return { strategy, unresolvedConflicts };
+};
+
+/**
+ * Format skill conflicts for display
+ * @param args - The function arguments
+ * @param args.conflicts - Array of skill conflicts
+ *
+ * @returns Formatted conflict information string
+ */
+const formatSkillConflicts = (args: {
+  conflicts: Array<SkillConflict>;
+}): string => {
+  const { conflicts } = args;
+  const lines: Array<string> = ["Skill conflicts detected:\n"];
+
+  for (const conflict of conflicts) {
+    const status =
+      conflict.contentUnchanged === true
+        ? "✓ (unchanged) → will link to existing"
+        : "✗ (MODIFIED) → requires resolution";
+    lines.push(`  ${conflict.skillId} ${status}`);
+    if (conflict.latestVersion != null) {
+      lines.push(`    Current: v${conflict.latestVersion}`);
+    }
+    if (conflict.owner != null) {
+      lines.push(`    Owner: ${conflict.owner}`);
+    }
+    lines.push(`    Available: ${conflict.availableActions.join(", ")}\n`);
+  }
+
+  lines.push("\nManual resolution required for modified skills.");
+  lines.push(
+    "Consider renaming the skill in your profile to avoid the conflict,",
+  );
+  lines.push("or contact the skill owner to coordinate versioning.");
+
+  return lines.join("\n");
+};
 
 /**
  * Parse profile name, optional version, and optional registry URL from prompt
@@ -381,6 +466,55 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
       }),
     };
   } catch (err) {
+    // Handle skill collision errors
+    if (isSkillCollisionError(err)) {
+      const { strategy, unresolvedConflicts } = buildAutoResolutionStrategy({
+        conflicts: err.conflicts,
+      });
+
+      // If all conflicts can be auto-resolved, retry with resolution strategy
+      if (unresolvedConflicts.length === 0) {
+        try {
+          const tarballBuffer = await createProfileTarball({ profileDir });
+          const archiveData = new ArrayBuffer(tarballBuffer.byteLength);
+          new Uint8Array(archiveData).set(tarballBuffer);
+
+          const retryResult = await registrarApi.uploadProfile({
+            packageName: profileName,
+            version: uploadVersion,
+            archiveData,
+            authToken,
+            registryUrl: targetRegistryUrl,
+            resolutionStrategy: strategy,
+          });
+
+          return {
+            decision: "block",
+            reason: formatSuccess({
+              message: `Successfully uploaded "${profileName}@${retryResult.version}" to ${targetRegistryUrl}.\n\nAuto-resolved ${Object.keys(strategy).length} unchanged skill(s) by linking to existing versions.\n\nOthers can install it with:\n/nori-registry-download ${profileName}`,
+            }),
+          };
+        } catch (retryErr) {
+          return {
+            decision: "block",
+            reason: formatError({
+              message: `Upload failed on retry: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+            }),
+          };
+        }
+      }
+
+      // Some conflicts require manual resolution
+      return {
+        decision: "block",
+        reason: formatError({
+          message: formatSkillConflicts({
+            conflicts: err.conflicts,
+          }),
+        }),
+      };
+    }
+
     return {
       decision: "block",
       reason: formatError({

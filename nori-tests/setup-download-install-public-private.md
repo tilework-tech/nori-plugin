@@ -38,7 +38,7 @@ node build/src/cli/nori-skillsets.js download onboarding
 node build/src/cli/nori-skillsets.js switch-skillset amol
 ```
 
-7. Confirm that the switch worked by checking the CLAUDE.md file at ~/.claude/CLAUDE.md.
+7. Confirm that the switch worked by checking the CLAUDE.md file at <tmppath>/.claude/CLAUDE.md.
 
 - Make sure that the templating worked as expected.
 

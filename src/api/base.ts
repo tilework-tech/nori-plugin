@@ -167,18 +167,29 @@ export const apiRequest = async <T>(args: {
   body?: any;
   queryParams?: Record<string, string>;
   retries?: number | null;
+  baseUrl?: string | null;
 }): Promise<T> => {
-  const { path, method = "GET", body, queryParams, retries = 3 } = args;
+  const {
+    path,
+    method = "GET",
+    body,
+    queryParams,
+    retries = 3,
+    baseUrl,
+  } = args;
 
   const config = ConfigManager.loadConfig();
 
-  if (config == null || !config.organizationUrl) {
+  // Use provided baseUrl, or fall back to config.organizationUrl
+  const effectiveBaseUrl = baseUrl ?? config?.organizationUrl;
+
+  if (effectiveBaseUrl == null) {
     throw new Error("Organization URL not configured");
   }
 
   // Build URL with query params (normalize to prevent double slashes)
   let url = normalizeUrl({
-    baseUrl: config.organizationUrl,
+    baseUrl: effectiveBaseUrl,
     path: `/api${path}`,
   });
   if (queryParams) {

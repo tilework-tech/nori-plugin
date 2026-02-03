@@ -60,6 +60,8 @@ export type Config = {
   agents?: Record<string, AgentConfig> | null;
   /** Installed version of Nori */
   version?: string | null;
+  /** Organization ID for transcript uploads (e.g., "myorg" -> https://myorg.noriskillsets.dev) */
+  transcriptDestination?: string | null;
 };
 
 /**
@@ -90,6 +92,8 @@ type RawDiskConfig = {
   installDir?: string | null;
   agents?: Record<string, AgentConfig> | null;
   version?: string | null;
+  // Transcript upload destination org ID
+  transcriptDestination?: string | null;
 };
 
 /**
@@ -276,6 +280,7 @@ export const loadConfig = async (args: {
       sendSessionTranscript: validated.sendSessionTranscript,
       autoupdate: validated.autoupdate,
       version: validated.version,
+      transcriptDestination: validated.transcriptDestination,
     };
 
     // Build auth - handle both nested format (v19+) and flat format (legacy)
@@ -348,6 +353,7 @@ export const loadConfig = async (args: {
  * @param args.version - Installed version of Nori (null to skip)
  * @param args.organizations - List of organizations the user has access to (null to skip)
  * @param args.isAdmin - Whether the user is an admin for their organization (null to skip)
+ * @param args.transcriptDestination - Organization ID for transcript uploads (null to skip)
  */
 export const saveConfig = async (args: {
   username: string | null;
@@ -360,6 +366,7 @@ export const saveConfig = async (args: {
   autoupdate?: "enabled" | "disabled" | null;
   agents?: Record<string, AgentConfig> | null;
   version?: string | null;
+  transcriptDestination?: string | null;
   installDir: string;
 }): Promise<void> => {
   const {
@@ -373,6 +380,7 @@ export const saveConfig = async (args: {
     autoupdate,
     agents,
     version,
+    transcriptDestination,
     installDir,
   } = args;
   const configPath = getConfigPath({ installDir });
@@ -417,6 +425,11 @@ export const saveConfig = async (args: {
   // Add version if provided
   if (version != null) {
     config.version = version;
+  }
+
+  // Add transcriptDestination if provided
+  if (transcriptDestination != null) {
+    config.transcriptDestination = transcriptDestination;
   }
 
   // Always save installDir
@@ -492,6 +505,7 @@ const configSchema = {
       },
     },
     version: { type: "string" },
+    transcriptDestination: { type: "string" },
   },
   additionalProperties: false,
 };

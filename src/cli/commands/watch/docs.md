@@ -4,9 +4,10 @@ Path: @/src/cli/commands/watch
 
 ### Overview
 
-- Background daemon that monitors Claude Code sessions, saves transcripts to `~/.nori/transcripts/`, and uploads them to the user's private registry
+- Background daemon that monitors Claude Code sessions, saves transcripts to `~/.nori/transcripts/`, and uploads them to a user-selected private organization
 - Watches `~/.claude/projects/` for JSONL file changes using chokidar with polling mode
 - Uses a hybrid upload strategy: marker-based for immediate upload when sessions end, staleness-based fallback for agents without hook support
+- Prompts user to select transcript destination organization on first run (if multiple orgs available)
 
 ### How it fits into the larger codebase
 
@@ -20,9 +21,15 @@ Path: @/src/cli/commands/watch
 
 **Daemon Lifecycle:**
 ```
-nori-skillsets watch
+nori-skillsets watch [--set-destination]
     |
     +-- Check if already running (via PID file)
+    +-- Load config and determine transcript destination org
+    |   +-- Filter out "public" org from user's organizations
+    |   +-- If --set-destination flag: force re-selection
+    |   +-- If single private org: auto-select
+    |   +-- If multiple private orgs: prompt user to select
+    |   +-- Save selection to config.transcriptDestination
     +-- Create PID file at ~/.nori/watch.pid
     +-- Open log file at ~/.nori/logs/watch.log
     +-- Start chokidar watcher on ~/.claude/projects/
@@ -52,7 +59,9 @@ Claude Code session ends
     +-- transcript-done-marker hook writes .done marker to ~/.nori/transcripts/<agent>/<project>/
     +-- watch daemon detects marker via chokidar watcher on transcript directory
     +-- handleMarkerEvent() derives transcript path from marker (.done -> .jsonl)
-    +-- uploader.ts: processTranscriptForUpload() reads, parses, uploads via transcriptApi
+    +-- uploader.ts: processTranscriptForUpload({ transcriptPath, markerPath, orgId })
+    |   +-- Reads and parses JSONL transcript
+    |   +-- Uploads via transcriptApi.upload() with orgId for org-specific URL targeting
     +-- On success: delete both transcript and marker files
 ```
 
@@ -76,7 +85,7 @@ checkStaleTranscripts() runs every 60 seconds
 
 | Module | Purpose |
 |--------|---------|
-| `watch.ts` | Main daemon orchestration, signal handlers, logging, staleness tracking, upload coordination |
+| `watch.ts` | Main daemon orchestration, signal handlers, logging, staleness tracking, upload coordination, transcript destination selection |
 | `paths.ts` | Path utilities for Claude projects dir and transcript storage |
 | `parser.ts` | Extracts sessionId from JSONL using regex (avoids full JSON parsing) |
 | `storage.ts` | Copies transcript files to organized storage |
@@ -90,6 +99,7 @@ checkStaleTranscripts() runs every 60 seconds
 - The `isShuttingDown` flag prevents race conditions during cleanup
 - `cleanupWatch()` accepts `exitProcess` parameter for testability (tests pass `false` to avoid calling `process.exit()`)
 - The `--agent` flag allows future extensibility for watching other agents (e.g., Cursor), but currently only claude-code is supported
+- The `--set-destination` flag forces re-selection of the transcript destination organization, even if one is already configured
 - PID file at `~/.nori/watch.pid` enables single-instance enforcement and remote stop capability
 - Log file at `~/.nori/logs/watch.log` captures daemon activity when running in background mode
 - The `getHomeDir()` function respects `process.env.HOME` for test isolation
@@ -112,7 +122,18 @@ checkStaleTranscripts() runs every 60 seconds
 **uploader.ts Implementation:**
 - `parseTranscript({ content })` splits JSONL by newlines, parses each line, skips invalid JSON
 - `extractSessionId({ messages })` iterates messages looking for first truthy `sessionId` field
-- `processTranscriptForUpload({ transcriptPath, markerPath? })` orchestrates the full upload flow: read -> parse -> validate -> upload -> cleanup
+- `processTranscriptForUpload({ transcriptPath, markerPath?, orgId? })` orchestrates the full upload flow: read -> parse -> validate -> upload -> cleanup
+- The `orgId` parameter is passed through to `transcriptApi.upload()` to target the selected organization's registry
 - Returns `true` on successful upload, `false` on any failure (preserves files for retry)
+
+**Transcript Destination Selection:**
+- `selectTranscriptDestination({ privateOrgs, currentDestination?, forceSelection? })` determines which org receives uploads
+- Filters out "public" from available organizations (only private orgs can receive transcripts)
+- If current destination is valid and not forcing re-selection, uses existing selection
+- Single private org: auto-selects without prompting
+- Multiple private orgs: displays numbered list and prompts user for selection
+- Invalid selection defaults to first org in list
+- Selection is persisted to `config.transcriptDestination` and stored in module-level `transcriptOrgId` variable for use during uploads
+- If configured destination is no longer in user's organization list (lost access), triggers re-selection
 
 Created and maintained by Nori.

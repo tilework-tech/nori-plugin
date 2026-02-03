@@ -13,3 +13,8 @@ export {
 } from "./validators.js";
 export { confirmAction } from "./confirm.js";
 export { promptText, type ValidateFunction } from "./text.js";
+export {
+  selectProfile,
+  type ProfileOption,
+  type ProfileSelection,
+} from "./profile.js";

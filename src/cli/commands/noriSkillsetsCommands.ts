@@ -251,10 +251,15 @@ export const registerNoriSkillsetsWatchCommand = (args: {
       "Watch Claude Code sessions and save transcripts to ~/.nori/transcripts/",
     )
     .option("-a, --agent <name>", "Agent to watch", "claude-code")
-    .action(async (options: { agent: string }) => {
+    .option(
+      "--set-destination",
+      "Re-configure transcript upload destination organization",
+    )
+    .action(async (options: { agent: string; setDestination?: boolean }) => {
       await watchMain({
         agent: options.agent,
         daemon: true,
+        setDestination: options.setDestination ?? false,
       });
     });
 

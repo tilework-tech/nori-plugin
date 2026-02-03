@@ -544,6 +544,10 @@ export const watchMain = async (args?: {
   // Set up log file for daemon mode
   if (daemon) {
     logStream = await fs.open(logFile, "a");
+    // Print startup message to stdout before redirecting logs to file
+    success({
+      message: `Watch daemon started (PID: ${process.pid}). Logs: ${logFile}`,
+    });
   }
 
   await log(`Watch daemon started (PID: ${process.pid})`);

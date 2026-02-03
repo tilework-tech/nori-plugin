@@ -11,8 +11,8 @@ Ordered approximately from smallest to largest effort.
 
 ## Core Prompt Modules
 
-- [ ] Implement confirm.ts with confirm() wrapper and tests
-- [ ] Implement text.ts with validation wrapper and tests
+- [x] Implement confirm.ts with confirm() wrapper and tests
+- [x] Implement text.ts with validation wrapper and tests
 - [ ] Implement profile.ts with select() for profile selection and tests
 - [ ] Implement auth.ts with group() for bundled auth prompts and tests
 

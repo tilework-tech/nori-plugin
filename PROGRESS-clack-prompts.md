@@ -35,3 +35,24 @@ vi.mock("@clack/prompts", () => ({
 ```
 
 This pattern should be reused for future prompt module tests.
+
+## Completed: Core Prompt Modules - confirm.ts & text.ts (2026-02-03)
+
+### Files Created
+
+- `src/cli/prompts/confirm.ts` - `confirmAction()` wrapper for yes/no prompts
+- `src/cli/prompts/text.ts` - `promptText()` wrapper for text input with validation
+- `src/cli/prompts/confirm.test.ts` - 4 tests for confirm behavior
+- `src/cli/prompts/text.test.ts` - 6 tests for text input behavior
+
+### Architecture Decisions
+
+1. **Named argument pattern**: Both `confirmAction({ message, initialValue? })` and `promptText({ message, placeholder?, defaultValue?, initialValue?, validate? })` follow the codebase's named argument convention.
+
+2. **Validation adapter**: The `promptText` validate function adapts between the codebase's `{ value: string }` signature and @clack/prompts' `(value: string | undefined)` signature. When @clack/prompts passes `undefined`, we convert to empty string for validation.
+
+3. **Cancel handling is uniform**: Both wrappers check `isCancel(result)` and call `handleCancel()` which exits with code 0.
+
+### TypeScript Notes
+
+- @clack/prompts' `text()` validate callback receives `string | undefined`, not just `string`. The wrapper handles this by using `value ?? ""` when calling the user's validator.

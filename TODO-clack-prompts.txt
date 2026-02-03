@@ -14,7 +14,7 @@ Ordered approximately from smallest to largest effort.
 - [x] Implement confirm.ts with confirm() wrapper and tests
 - [x] Implement text.ts with validation wrapper and tests
 - [x] Implement profile.ts with select() for profile selection and tests
-- [ ] Implement auth.ts with group() for bundled auth prompts and tests
+- [x] Implement auth.ts with group() for bundled auth prompts and tests
 
 ## Command Migration
 

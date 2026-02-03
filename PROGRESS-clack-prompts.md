@@ -56,3 +56,56 @@ This pattern should be reused for future prompt module tests.
 ### TypeScript Notes
 
 - @clack/prompts' `text()` validate callback receives `string | undefined`, not just `string`. The wrapper handles this by using `value ?? ""` when calling the user's validator.
+
+## Completed: Core Prompt Modules - auth.ts (2026-02-03)
+
+### Files Created
+
+- `src/cli/prompts/auth.ts` - `promptForAuth()` wrapper using group() for bundled auth prompts
+- `src/cli/prompts/auth.test.ts` - 6 tests for auth behavior
+
+### Architecture Decisions
+
+1. **group() for bundled prompts**: Uses @clack/prompts' `group()` to bundle email, password, and org ID prompts together. This provides a cohesive auth flow with proper sequencing.
+
+2. **Conditional prompts**: Password and org ID prompts are only shown if user provides a non-empty email. This is handled by returning `Promise.resolve(null)` from the prompt factory functions within `group()`.
+
+3. **URL fallback support**: The org ID field accepts both:
+   - Org ID format (e.g., "mycompany") → builds URL via `buildWatchtowerUrl()`
+   - Full URL format (e.g., "https://custom.example.com") → normalizes via `normalizeUrl()`
+   This preserves the existing behavior from `onboard.ts`.
+
+4. **Skip auth pattern**: Empty email (or whitespace-only) returns `null`, signaling to caller that auth was skipped. Caller can then proceed without authentication.
+
+5. **onCancel handler in group()**: Uses `group()`'s built-in `onCancel` option to call `handleCancel()`, providing consistent exit behavior.
+
+### Test Mocking Pattern
+
+Tests mock both `@clack/prompts` and `@/utils/url.js`:
+```typescript
+vi.mock("@clack/prompts", () => ({
+  group: vi.fn(),
+  isCancel: vi.fn(),
+  cancel: vi.fn(),
+}));
+
+vi.mock("@/utils/url.js", () => ({
+  buildWatchtowerUrl: vi.fn(({ orgId }) => `https://${orgId}.tilework.tech`),
+  isValidUrl: vi.fn(({ input }) => { /* URL validation */ }),
+  normalizeUrl: vi.fn(({ baseUrl }) => baseUrl.replace(/\/+$/, "")),
+}));
+```
+
+### API
+
+```typescript
+type AuthCredentials = {
+  username: string;
+  password: string;
+  organizationUrl: string;
+};
+
+const promptForAuth = async (): Promise<AuthCredentials | null>;
+```
+
+Returns `null` when user skips auth by entering empty email.

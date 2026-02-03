@@ -114,5 +114,65 @@ describe("transcriptApi", () => {
         }),
       ).rejects.toThrow("private instance mode");
     });
+
+    test("passes baseUrl built from orgId when orgId is provided", async () => {
+      const mockResponse = {
+        id: "transcript-123",
+        title: "Test Session",
+        sessionId: "session-abc",
+        createdAt: "2024-01-01T00:00:00Z",
+      };
+
+      vi.mocked(apiRequest).mockResolvedValueOnce(mockResponse);
+
+      await transcriptApi.upload({
+        sessionId: "session-abc",
+        messages: [
+          { type: "user", message: { role: "user", content: "Hello" } },
+        ],
+        orgId: "myorg",
+      });
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        path: "/transcripts",
+        method: "POST",
+        body: {
+          sessionId: "session-abc",
+          messages: [
+            { type: "user", message: { role: "user", content: "Hello" } },
+          ],
+        },
+        baseUrl: "https://myorg.noriskillsets.dev",
+      });
+    });
+
+    test("does not pass baseUrl when orgId is not provided", async () => {
+      const mockResponse = {
+        id: "transcript-123",
+        title: "Test Session",
+        sessionId: "session-abc",
+        createdAt: "2024-01-01T00:00:00Z",
+      };
+
+      vi.mocked(apiRequest).mockResolvedValueOnce(mockResponse);
+
+      await transcriptApi.upload({
+        sessionId: "session-abc",
+        messages: [
+          { type: "user", message: { role: "user", content: "Hello" } },
+        ],
+      });
+
+      expect(apiRequest).toHaveBeenCalledWith({
+        path: "/transcripts",
+        method: "POST",
+        body: {
+          sessionId: "session-abc",
+          messages: [
+            { type: "user", message: { role: "user", content: "Hello" } },
+          ],
+        },
+      });
+    });
   });
 });

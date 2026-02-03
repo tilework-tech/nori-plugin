@@ -945,6 +945,81 @@ describe("token-based auth", () => {
   });
 });
 
+describe("transcriptDestination config", () => {
+  let tempDir: string;
+  let mockConfigPath: string;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "config-transcript-dest-test-"),
+    );
+    mockConfigPath = path.join(tempDir, ".nori-config.json");
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should save and load transcriptDestination", async () => {
+    await saveConfig({
+      username: "test@example.com",
+      password: null,
+      refreshToken: "token-123",
+      organizationUrl: "https://noriskillsets.dev",
+      transcriptDestination: "myorg",
+      installDir: tempDir,
+    });
+
+    const loaded = await loadConfig({ installDir: tempDir });
+
+    expect(loaded?.transcriptDestination).toBe("myorg");
+  });
+
+  it("should load transcriptDestination when set in config file", async () => {
+    await fs.writeFile(
+      mockConfigPath,
+      JSON.stringify({
+        transcriptDestination: "acme-corp",
+        installDir: tempDir,
+      }),
+    );
+
+    const loaded = await loadConfig({ installDir: tempDir });
+
+    expect(loaded?.transcriptDestination).toBe("acme-corp");
+  });
+
+  it("should return null for transcriptDestination when not set", async () => {
+    await fs.writeFile(
+      mockConfigPath,
+      JSON.stringify({
+        sendSessionTranscript: "enabled",
+        installDir: tempDir,
+      }),
+    );
+
+    const loaded = await loadConfig({ installDir: tempDir });
+
+    expect(loaded?.transcriptDestination).toBeUndefined();
+  });
+
+  it("should preserve transcriptDestination when saving other fields", async () => {
+    // First save with transcriptDestination
+    await saveConfig({
+      username: "test@example.com",
+      password: null,
+      refreshToken: "token-123",
+      organizationUrl: "https://noriskillsets.dev",
+      transcriptDestination: "myorg",
+      installDir: tempDir,
+    });
+
+    // Load and verify
+    const loaded = await loadConfig({ installDir: tempDir });
+    expect(loaded?.transcriptDestination).toBe("myorg");
+  });
+});
+
 describe("schema validation", () => {
   let tempDir: string;
   let mockConfigPath: string;

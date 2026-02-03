@@ -190,5 +190,53 @@ describe("uploader", () => {
         ],
       });
     });
+
+    test("passes orgId to transcriptApi.upload when provided", async () => {
+      const transcriptPath = path.join(tempDir, "session-123.jsonl");
+      await fs.writeFile(
+        transcriptPath,
+        '{"sessionId":"session-123","type":"user","message":{"role":"user","content":"Hello"}}',
+      );
+
+      vi.mocked(transcriptApi.upload).mockResolvedValueOnce({
+        id: "transcript-id",
+        title: "Test",
+        sessionId: "session-123",
+        createdAt: "2024-01-01T00:00:00Z",
+      });
+
+      await processTranscriptForUpload({
+        transcriptPath,
+        orgId: "myorg",
+      });
+
+      expect(transcriptApi.upload).toHaveBeenCalledWith({
+        sessionId: "session-123",
+        messages: expect.any(Array),
+        orgId: "myorg",
+      });
+    });
+
+    test("does not pass orgId when not provided", async () => {
+      const transcriptPath = path.join(tempDir, "session-123.jsonl");
+      await fs.writeFile(
+        transcriptPath,
+        '{"sessionId":"session-123","type":"user","message":{"role":"user","content":"Hello"}}',
+      );
+
+      vi.mocked(transcriptApi.upload).mockResolvedValueOnce({
+        id: "transcript-id",
+        title: "Test",
+        sessionId: "session-123",
+        createdAt: "2024-01-01T00:00:00Z",
+      });
+
+      await processTranscriptForUpload({ transcriptPath });
+
+      expect(transcriptApi.upload).toHaveBeenCalledWith({
+        sessionId: "session-123",
+        messages: expect.any(Array),
+      });
+    });
   });
 });

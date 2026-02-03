@@ -27,7 +27,9 @@ import {
   waitForWatcherReady,
   type WatcherInstance,
 } from "@/cli/commands/watch/watcher.js";
+import { loadConfig, saveConfig } from "@/cli/config.js";
 import { info, success, warn } from "@/cli/logger.js";
+import { promptUser } from "@/cli/prompt.js";
 
 /**
  * Default staleness timeout in milliseconds (5 minutes)
@@ -74,6 +76,11 @@ let projectsWatcher: WatcherInstance | null = null;
  * Watcher for transcript storage directory (.done markers)
  */
 let markersWatcher: WatcherInstance | null = null;
+
+/**
+ * Current transcript destination org ID
+ */
+let transcriptOrgId: string | null = null;
 
 /**
  * Log a message (to file in daemon mode, console otherwise)
@@ -148,6 +155,7 @@ const handleMarkerEvent = async (args: {
   const uploaded = await processTranscriptForUpload({
     transcriptPath,
     markerPath,
+    orgId: transcriptOrgId,
   });
 
   if (uploaded) {
@@ -244,6 +252,7 @@ const checkStaleTranscripts = async (args: {
       const uploaded = await processTranscriptForUpload({
         transcriptPath,
         markerPath: hasMarker ? markerPath : null,
+        orgId: transcriptOrgId,
       });
 
       if (uploaded) {
@@ -375,12 +384,84 @@ export const cleanupWatch = async (args?: {
     signalHandler = null;
   }
 
-  // Reset shutdown flag for next run (important for tests)
+  // Reset shutdown flag and transcript destination for next run (important for tests)
   isShuttingDown = false;
+  transcriptOrgId = null;
 
   if (exitProcess) {
     process.exit(0);
   }
+};
+
+/**
+ * Select transcript destination organization
+ *
+ * @param args - Configuration arguments
+ * @param args.privateOrgs - List of private orgs the user has access to
+ * @param args.currentDestination - Current transcript destination (if any)
+ * @param args.forceSelection - Force re-selection even if destination is set
+ * @param args.isDaemon - Whether running in daemon mode (no TTY for prompts)
+ *
+ * @returns Selected org ID or null if no selection possible
+ */
+const selectTranscriptDestination = async (args: {
+  privateOrgs: Array<string>;
+  currentDestination?: string | null;
+  forceSelection?: boolean | null;
+  isDaemon?: boolean | null;
+}): Promise<string | null> => {
+  const { privateOrgs, currentDestination, forceSelection, isDaemon } = args;
+
+  // If current destination is valid and not forcing re-selection, use it
+  if (
+    !forceSelection &&
+    currentDestination != null &&
+    privateOrgs.includes(currentDestination)
+  ) {
+    return currentDestination;
+  }
+
+  // No private orgs - can't upload transcripts
+  if (privateOrgs.length === 0) {
+    return null;
+  }
+
+  // Single org - auto-select
+  if (privateOrgs.length === 1) {
+    return privateOrgs[0];
+  }
+
+  // Multiple orgs in daemon mode - auto-select first with warning
+  if (isDaemon) {
+    warn({
+      message: `Multiple organizations available but running in daemon mode. Using first org: ${privateOrgs[0]}. Run 'nori-skillsets watch --set-destination' interactively to change.`,
+    });
+    return privateOrgs[0];
+  }
+
+  // Multiple orgs - prompt user
+  info({ message: "\nSelect organization for transcript uploads:" });
+  for (let i = 0; i < privateOrgs.length; i++) {
+    info({ message: `  ${i + 1}. ${privateOrgs[i]}` });
+  }
+
+  let response: string;
+  try {
+    response = await promptUser({
+      prompt: `Enter number (1-${privateOrgs.length}): `,
+    });
+  } catch {
+    warn({ message: "Unable to prompt for selection, using first org" });
+    return privateOrgs[0];
+  }
+
+  const choice = parseInt(response.trim(), 10);
+  if (isNaN(choice) || choice < 1 || choice > privateOrgs.length) {
+    warn({ message: "Invalid selection, using first org" });
+    return privateOrgs[0];
+  }
+
+  return privateOrgs[choice - 1];
 };
 
 /**
@@ -390,15 +471,18 @@ export const cleanupWatch = async (args?: {
  * @param args.agent - Agent to watch (default: claude-code)
  * @param args.daemon - Whether to run as daemon
  * @param args.staleTimeoutMs - Staleness timeout in milliseconds (default: 5 minutes)
+ * @param args.setDestination - Force re-selection of transcript destination
  */
 export const watchMain = async (args?: {
   agent?: string | null;
   daemon?: boolean | null;
   staleTimeoutMs?: number | null;
+  setDestination?: boolean | null;
 }): Promise<void> => {
   const agent = args?.agent ?? "claude-code";
   const daemon = args?.daemon ?? false;
   const staleTimeoutMs = args?.staleTimeoutMs ?? DEFAULT_STALE_TIMEOUT_MS;
+  const setDestination = args?.setDestination ?? false;
 
   // Reset shutdown flag
   isShuttingDown = false;
@@ -408,6 +492,44 @@ export const watchMain = async (args?: {
     warn({ message: "Watch daemon is already running" });
     return;
   }
+
+  // Load config and handle transcript destination
+  const homeDir = process.env.HOME ?? "";
+  const installDir = path.join(homeDir, ".nori");
+  const config = await loadConfig({ installDir });
+
+  // Get user's organizations (filter out "public")
+  const userOrgs = config?.auth?.organizations ?? [];
+  const privateOrgs = userOrgs.filter((org) => org !== "public");
+
+  // Select transcript destination
+  const selectedOrg = await selectTranscriptDestination({
+    privateOrgs,
+    currentDestination: config?.transcriptDestination,
+    forceSelection: setDestination,
+    isDaemon: daemon,
+  });
+
+  // Save selection if it changed
+  if (selectedOrg != null && selectedOrg !== config?.transcriptDestination) {
+    await saveConfig({
+      username: config?.auth?.username ?? null,
+      password: config?.auth?.password ?? null,
+      refreshToken: config?.auth?.refreshToken ?? null,
+      organizationUrl: config?.auth?.organizationUrl ?? null,
+      organizations: config?.auth?.organizations ?? null,
+      isAdmin: config?.auth?.isAdmin ?? null,
+      sendSessionTranscript: config?.sendSessionTranscript ?? null,
+      autoupdate: config?.autoupdate ?? null,
+      agents: config?.agents ?? null,
+      version: config?.version ?? null,
+      transcriptDestination: selectedOrg,
+      installDir,
+    });
+  }
+
+  // Store for use in upload functions
+  transcriptOrgId = selectedOrg;
 
   const pidFile = getWatchPidFile();
   const logFile = getWatchLogFile();
@@ -483,7 +605,6 @@ export const watchMain = async (args?: {
   }, staleTimeoutMs);
 
   // Also set up watching for the transcript storage directory (for .done markers)
-  const homeDir = process.env.HOME ?? "";
   const transcriptStorageDir = path.join(
     homeDir,
     ".nori",

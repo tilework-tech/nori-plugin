@@ -234,7 +234,7 @@ describe("transcript destination selection", () => {
 
   test("auto-selects single org without prompting", async () => {
     // Create config with auth and single org
-    const configPath = path.join(tempDir, ".nori", ".nori-config.json");
+    const configPath = path.join(tempDir, ".nori-config.json");
     await fs.writeFile(
       configPath,
       JSON.stringify({
@@ -264,7 +264,7 @@ describe("transcript destination selection", () => {
 
   test("does not prompt when transcriptDestination already set", async () => {
     // Create config with transcriptDestination already set
-    const configPath = path.join(tempDir, ".nori", ".nori-config.json");
+    const configPath = path.join(tempDir, ".nori-config.json");
     await fs.writeFile(
       configPath,
       JSON.stringify({
@@ -297,7 +297,7 @@ describe("transcript destination selection", () => {
 
   test("does not set transcriptDestination when user has no orgs", async () => {
     // Create config with auth but no organizations
-    const configPath = path.join(tempDir, ".nori", ".nori-config.json");
+    const configPath = path.join(tempDir, ".nori-config.json");
     await fs.writeFile(
       configPath,
       JSON.stringify({
@@ -328,7 +328,7 @@ describe("transcript destination selection", () => {
 
   test("excludes 'public' from available orgs", async () => {
     // Create config with public and private orgs
-    const configPath = path.join(tempDir, ".nori", ".nori-config.json");
+    const configPath = path.join(tempDir, ".nori-config.json");
     await fs.writeFile(
       configPath,
       JSON.stringify({
@@ -358,7 +358,7 @@ describe("transcript destination selection", () => {
 
   test("clears transcriptDestination if org no longer accessible", async () => {
     // Create config where transcriptDestination is set to an org user no longer has access to
-    const configPath = path.join(tempDir, ".nori", ".nori-config.json");
+    const configPath = path.join(tempDir, ".nori-config.json");
     await fs.writeFile(
       configPath,
       JSON.stringify({
@@ -390,7 +390,7 @@ describe("transcript destination selection", () => {
   test("--set-destination flag forces re-selection even when destination already set", async () => {
     // This test verifies the flag is accepted - actual prompting behavior
     // requires interactive testing
-    const configPath = path.join(tempDir, ".nori", ".nori-config.json");
+    const configPath = path.join(tempDir, ".nori-config.json");
     await fs.writeFile(
       configPath,
       JSON.stringify({

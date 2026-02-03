@@ -523,7 +523,7 @@ export const watchMain = async (args?: {
   const setDestination = args?.setDestination ?? false;
 
   const homeDir = process.env.HOME ?? "";
-  const installDir = path.join(homeDir, ".nori");
+  const installDir = homeDir; // Config is at ~/.nori-config.json (home dir is base)
   const logFile = getWatchLogFile();
 
   // Check if already running

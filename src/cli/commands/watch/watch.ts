@@ -438,10 +438,11 @@ export const watchMain = async (args?: {
   const installDir = homeDir; // Config is at ~/.nori-config.json (home dir is base)
   const logFile = getWatchLogFile();
 
-  // Check if already running
+  // Stop any existing daemon before starting a new one
+  // This ensures we always run the latest code and prevents duplicate daemons
   if (await isWatchRunning()) {
-    warn({ message: "Watch daemon is already running" });
-    return;
+    info({ message: "Stopping existing watch daemon..." });
+    await watchStopMain({ quiet: true });
   }
 
   // INTERACTIVE MODE: Do setup, then spawn background daemon

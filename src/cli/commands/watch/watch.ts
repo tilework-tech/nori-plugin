@@ -143,16 +143,19 @@ const handleMarkerEvent = async (args: {
     return;
   }
 
-  // Debounce: skip if we processed this marker recently
+  // Derive transcript path from marker path (.done -> .jsonl)
+  // Do this BEFORE debounce so we debounce on the transcript, not the marker
+  const transcriptPath = markerPath.replace(/\.done$/, ".jsonl");
+
+  // Debounce: skip if we processed this transcript recently
+  // This prevents duplicate uploads when chokidar emits both 'add' and 'change'
+  // events for the same marker file creation
   const now = Date.now();
-  const lastTime = lastEventTime.get(markerPath);
+  const lastTime = lastEventTime.get(transcriptPath);
   if (lastTime != null && now - lastTime < DEBOUNCE_MS) {
     return;
   }
-  lastEventTime.set(markerPath, now);
-
-  // Derive transcript path from marker path (.done -> .jsonl)
-  const transcriptPath = markerPath.replace(/\.done$/, ".jsonl");
+  lastEventTime.set(transcriptPath, now);
 
   // Skip if already uploading this file (prevent concurrent uploads)
   if (uploadingFiles.has(transcriptPath)) {

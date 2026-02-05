@@ -662,6 +662,41 @@ describe("upload locking", () => {
     expect(uploadMock.mock.calls.length).toBe(1);
   });
 
+  test("debounces rapid marker events for same transcript (add+change scenario)", async () => {
+    // This test verifies that when chokidar emits both 'add' and 'change' events
+    // for the same marker file creation (which happens in polling mode), we only
+    // upload once. Events can be as close as 60ms apart.
+    const uploadMock = vi.mocked(processTranscriptForUpload);
+    uploadMock.mockResolvedValue(true);
+
+    void watchMain({
+      agent: "claude-code",
+      _background: true,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Create a transcript file
+    const transcriptFile = path.join(transcriptDir, "rapid-test.jsonl");
+    await fs.writeFile(
+      transcriptFile,
+      JSON.stringify({ sessionId: "rapid-test", type: "init" }) + "\n",
+    );
+
+    // Create marker file - this may trigger both 'add' and 'change' events
+    const markerFile = path.join(transcriptDir, "rapid-test.done");
+    await fs.writeFile(markerFile, "");
+
+    // Immediately modify it to simulate chokidar emitting change after add
+    await fs.writeFile(markerFile, " ");
+
+    // Wait for events to be processed
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    // Should only have uploaded once due to debouncing on transcriptPath
+    expect(uploadMock.mock.calls.length).toBe(1);
+  });
+
   test("allows sequential uploads after previous completes", async () => {
     const uploadMock = vi.mocked(processTranscriptForUpload);
     uploadMock.mockImplementation(async () => {

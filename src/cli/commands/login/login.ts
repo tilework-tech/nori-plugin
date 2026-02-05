@@ -321,11 +321,144 @@ const authenticateWithGoogle = async (args?: {
 };
 
 /**
+ * Authenticate with email/password using legacy prompts (basic readline).
+ * Used when --experimental-ui is not enabled.
+ *
+ * @param args - Configuration arguments
+ * @param args.configDir - Directory to save config to
+ *
+ * @returns Authentication result with tokens and user info, or null if cancelled/failed
+ */
+const authenticateWithLegacyPrompts = async (args: {
+  configDir: string;
+}): Promise<{
+  refreshToken: string;
+  idToken: string;
+  email: string;
+  organizations: Array<string>;
+  isAdmin: boolean;
+} | null> => {
+  const { configDir } = args;
+
+  // Prompt for email
+  const inputEmail = await promptUser({
+    prompt: "Email: ",
+  });
+
+  if (inputEmail == null || inputEmail.trim() === "") {
+    error({ message: "Email is required." });
+    return null;
+  }
+
+  // Prompt for password (masked)
+  const inputPassword = await promptUser({
+    prompt: "Password: ",
+    masked: true,
+  });
+
+  if (inputPassword == null || inputPassword.trim() === "") {
+    error({ message: "Password is required." });
+    return null;
+  }
+
+  info({ message: "Authenticating..." });
+
+  try {
+    configureFirebase();
+    const firebase = getFirebase();
+
+    const userCredential = await signInWithEmailAndPassword(
+      firebase.auth,
+      inputEmail.trim(),
+      inputPassword,
+    );
+
+    const idToken = await userCredential.user.getIdToken();
+
+    // Fetch user's organizations and admin status
+    const accessInfo = await fetchUserAccess({ idToken });
+
+    const organizations = accessInfo?.organizations ?? [];
+    const isAdmin = accessInfo?.isAdmin ?? false;
+
+    // Load existing config to preserve other fields
+    const existingConfig = await loadConfig({ installDir: configDir });
+
+    // Save credentials to config
+    await saveConfig({
+      username: inputEmail.trim(),
+      refreshToken: userCredential.user.refreshToken,
+      organizationUrl: NORI_SKILLSETS_API_URL,
+      organizations,
+      isAdmin,
+      sendSessionTranscript: existingConfig?.sendSessionTranscript ?? null,
+      autoupdate: existingConfig?.autoupdate ?? null,
+      agents: existingConfig?.agents ?? null,
+      version: existingConfig?.version ?? null,
+      installDir: configDir,
+    });
+
+    newline();
+    success({ message: `Logged in as ${inputEmail.trim()}` });
+
+    if (organizations.length > 0) {
+      info({ message: `Organizations: ${organizations.join(", ")}` });
+      if (isAdmin) {
+        info({ message: "Admin: Yes" });
+      }
+    } else {
+      info({
+        message: "No private organizations found. Using public registry.",
+      });
+    }
+
+    return {
+      refreshToken: userCredential.user.refreshToken,
+      idToken,
+      email: inputEmail.trim(),
+      organizations,
+      isAdmin,
+    };
+  } catch (err) {
+    const authError = err as AuthError;
+    error({ message: "Authentication failed" });
+    error({ message: `  Error: ${authError.message}` });
+
+    // Provide helpful hints for common errors
+    if (
+      authError.code === AuthErrorCodes.INVALID_PASSWORD ||
+      authError.code === AuthErrorCodes.INVALID_LOGIN_CREDENTIALS ||
+      authError.code === "auth/invalid-credential"
+    ) {
+      error({
+        message: "  Hint: Check that your email and password are correct.",
+      });
+    } else if (authError.code === AuthErrorCodes.USER_DELETED) {
+      error({
+        message: "  Hint: This email is not registered. Contact support.",
+      });
+    } else if (authError.code === AuthErrorCodes.TOO_MANY_ATTEMPTS_TRY_LATER) {
+      error({
+        message:
+          "  Hint: Too many failed attempts. Wait a few minutes and try again.",
+      });
+    } else if (authError.code === AuthErrorCodes.NETWORK_REQUEST_FAILED) {
+      error({
+        message: "  Hint: Network error. Check your internet connection.",
+      });
+    }
+
+    return null;
+  }
+};
+
+/**
  * Main login function
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
  * @param args.nonInteractive - Whether to run in non-interactive mode
+ * @param args.experimentalUi - Whether to use new interactive TUI flows
  * @param args.email - Email address (for non-interactive mode)
  * @param args.password - Password (for non-interactive mode)
  * @param args.google - Whether to use Google SSO
@@ -334,6 +467,7 @@ const authenticateWithGoogle = async (args?: {
 export const loginMain = async (args?: {
   installDir?: string | null;
   nonInteractive?: boolean | null;
+  experimentalUi?: boolean | null;
   email?: string | null;
   password?: string | null;
   google?: boolean | null;
@@ -342,6 +476,7 @@ export const loginMain = async (args?: {
   const {
     installDir,
     nonInteractive,
+    experimentalUi,
     email,
     password,
     google: useGoogle,
@@ -430,8 +565,8 @@ export const loginMain = async (args?: {
       error({ message: `  Error: ${authError.message}` });
       return;
     }
-  } else {
-    // Interactive mode: use loginFlow for grouped prompts UX
+  } else if (experimentalUi) {
+    // Interactive mode with experimental UI: use loginFlow for grouped prompts UX
     const result = await loginFlow({
       callbacks: {
         onAuthenticate: async (args): Promise<AuthenticateResult> => {
@@ -522,6 +657,16 @@ export const loginMain = async (args?: {
 
     // Flow already showed intro/outro, so we're done
     return;
+  } else {
+    // Interactive mode with legacy prompts (default)
+    const result = await authenticateWithLegacyPrompts({ configDir });
+    if (result == null) {
+      // User cancelled or auth failed
+      return;
+    }
+
+    // Legacy flow already saved config and showed success message
+    return;
   }
 
   // For Google SSO and non-interactive flows, fetch and display access info
@@ -603,6 +748,7 @@ export const registerLoginCommand = (args: { program: Command }): void => {
         await loginMain({
           installDir: globalOpts.installDir || null,
           nonInteractive: globalOpts.nonInteractive || null,
+          experimentalUi: globalOpts.experimentalUi || null,
           email: options.email || null,
           password: options.password || null,
           google: options.google || null,

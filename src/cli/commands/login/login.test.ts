@@ -96,7 +96,126 @@ describe("login command", () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  describe("loginMain", () => {
+  describe("loginMain with legacy prompts (default)", () => {
+    it("should use legacy prompts when experimentalUi is not set", async () => {
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { loginFlow } = await import("@/cli/prompts/index.js");
+
+      // Mock promptUser for email and password
+      vi.mocked(promptUser)
+        .mockResolvedValueOnce("user@example.com") // email
+        .mockResolvedValueOnce("password123"); // password
+
+      // Mock Firebase sign in
+      vi.mocked(signInWithEmailAndPassword).mockResolvedValue({
+        user: {
+          refreshToken: "mock-refresh-token",
+          getIdToken: vi.fn().mockResolvedValue("mock-id-token"),
+        },
+      } as any);
+
+      // Mock check-access endpoint
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: ["acme", "orderco"],
+            isAdmin: true,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir });
+
+      // Verify promptUser was called for email and password
+      expect(promptUser).toHaveBeenCalledTimes(2);
+      expect(promptUser).toHaveBeenNthCalledWith(1, { prompt: "Email: " });
+      expect(promptUser).toHaveBeenNthCalledWith(2, {
+        prompt: "Password: ",
+        masked: true,
+      });
+
+      // Verify loginFlow was NOT called
+      expect(loginFlow).not.toHaveBeenCalled();
+
+      // Verify config was saved correctly
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config).not.toBeNull();
+      expect(config?.auth?.username).toBe("user@example.com");
+      expect(config?.auth?.refreshToken).toBe("mock-refresh-token");
+    });
+
+    it("should handle empty email input with legacy prompts", async () => {
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { error: logError } = await import("@/cli/logger.js");
+
+      // Mock promptUser to return empty email
+      vi.mocked(promptUser).mockResolvedValueOnce("");
+
+      await loginMain({ installDir: tempDir });
+
+      // Verify error was logged
+      expect(logError).toHaveBeenCalledWith({
+        message: "Email is required.",
+      });
+
+      // No config should be saved
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config?.auth).toBeUndefined();
+    });
+
+    it("should handle empty password input with legacy prompts", async () => {
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { error: logError } = await import("@/cli/logger.js");
+
+      // Mock promptUser for email then empty password
+      vi.mocked(promptUser)
+        .mockResolvedValueOnce("user@example.com")
+        .mockResolvedValueOnce("");
+
+      await loginMain({ installDir: tempDir });
+
+      // Verify error was logged
+      expect(logError).toHaveBeenCalledWith({
+        message: "Password is required.",
+      });
+
+      // No config should be saved
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config?.auth).toBeUndefined();
+    });
+
+    it("should show auth errors with legacy prompts", async () => {
+      const { signInWithEmailAndPassword, AuthErrorCodes } =
+        await import("firebase/auth");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { error: logError } = await import("@/cli/logger.js");
+
+      // Mock promptUser
+      vi.mocked(promptUser)
+        .mockResolvedValueOnce("user@example.com")
+        .mockResolvedValueOnce("wrongpassword");
+
+      // Mock Firebase to throw invalid credentials error
+      const authError = new Error("Invalid credentials");
+      (authError as any).code = AuthErrorCodes.INVALID_LOGIN_CREDENTIALS;
+      vi.mocked(signInWithEmailAndPassword).mockRejectedValue(authError);
+
+      await loginMain({ installDir: tempDir });
+
+      // Verify error was logged
+      expect(logError).toHaveBeenCalledWith({
+        message: "Authentication failed",
+      });
+
+      // No config should be saved
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config?.auth).toBeUndefined();
+    });
+  });
+
+  describe("loginMain with --experimental-ui", () => {
     it("should authenticate with Firebase and save credentials to config", async () => {
       const { signInWithEmailAndPassword } = await import("firebase/auth");
       const { loginFlow } = await import("@/cli/prompts/index.js");
@@ -138,7 +257,7 @@ describe("login command", () => {
           }),
       });
 
-      await loginMain({ installDir: tempDir });
+      await loginMain({ installDir: tempDir, experimentalUi: true });
 
       // Verify loginFlow was called
       expect(loginFlow).toHaveBeenCalled();
@@ -223,7 +342,7 @@ describe("login command", () => {
         };
       });
 
-      await loginMain({ installDir: tempDir });
+      await loginMain({ installDir: tempDir, experimentalUi: true });
 
       // Verify loginFlow was called and returned null (indicating failure)
       expect(loginFlow).toHaveBeenCalled();
@@ -283,7 +402,7 @@ describe("login command", () => {
           }),
       });
 
-      await loginMain({ installDir: tempDir });
+      await loginMain({ installDir: tempDir, experimentalUi: true });
 
       // Verify existing fields are preserved
       const config = await loadConfig({ installDir: tempDir });
@@ -331,7 +450,7 @@ describe("login command", () => {
         json: () => Promise.resolve({ error: "Internal server error" }),
       });
 
-      await loginMain({ installDir: tempDir });
+      await loginMain({ installDir: tempDir, experimentalUi: true });
 
       // Verify auth was saved with empty organizations
       const config = await loadConfig({ installDir: tempDir });
@@ -372,7 +491,7 @@ describe("login command", () => {
       // Mock fetch to throw network error
       mockFetch.mockRejectedValue(new Error("Network error"));
 
-      await loginMain({ installDir: tempDir });
+      await loginMain({ installDir: tempDir, experimentalUi: true });
 
       // Verify auth was saved with empty organizations
       const config = await loadConfig({ installDir: tempDir });
@@ -402,7 +521,7 @@ describe("login command", () => {
       // Mock loginFlow to return null (cancelled)
       vi.mocked(loginFlow).mockResolvedValue(null);
 
-      await loginMain({ installDir: tempDir });
+      await loginMain({ installDir: tempDir, experimentalUi: true });
 
       // Verify loginFlow was called
       expect(loginFlow).toHaveBeenCalled();

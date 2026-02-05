@@ -199,9 +199,18 @@ export const registerNoriSkillsetsSwitchSkillsetCommand = (args: {
 }): void => {
   const { program } = args;
 
+  // Primary command: switch-skillset (singular, canonical)
   program
     .command("switch-skillset <name>")
     .description("Switch to a different skillset and reinstall")
+    .option("-a, --agent <name>", "AI agent to switch skillset for")
+    .action(async (name: string, options: { agent?: string }) => {
+      await switchSkillsetAction({ name, options, program });
+    });
+
+  // Hidden alias: switch-skillsets (plural)
+  program
+    .command("switch-skillsets <name>", { hidden: true })
     .option("-a, --agent <name>", "AI agent to switch skillset for")
     .action(async (name: string, options: { agent?: string }) => {
       await switchSkillsetAction({ name, options, program });
@@ -266,6 +275,7 @@ export const registerNoriSkillsetsListSkillsetsCommand = (args: {
 }): void => {
   const { program } = args;
 
+  // Primary command: list-skillsets (plural, canonical)
   program
     .command("list-skillsets")
     .description("List locally available skillsets (one per line)")
@@ -276,6 +286,15 @@ export const registerNoriSkillsetsListSkillsetsCommand = (args: {
         agent: globalOpts.agent || null,
       });
     });
+
+  // Hidden alias: list-skillset (singular)
+  program.command("list-skillset", { hidden: true }).action(async () => {
+    const globalOpts = program.opts();
+    await listSkillsetsMain({
+      installDir: globalOpts.installDir || null,
+      agent: globalOpts.agent || null,
+    });
+  });
 };
 
 /**
@@ -294,12 +313,24 @@ export const registerNoriSkillsetsWatchCommand = (args: {
       "Watch Claude Code sessions and save transcripts to ~/.nori/transcripts/",
     )
     .option("-a, --agent <name>", "Agent to watch", "claude-code")
-    .action(async (options: { agent: string }) => {
-      await watchMain({
-        agent: options.agent,
-        daemon: true,
-      });
-    });
+    .option(
+      "--set-destination",
+      "Re-configure transcript upload destination organization",
+    )
+    .option("--_background", "Internal: run as background daemon")
+    .action(
+      async (options: {
+        agent: string;
+        setDestination?: boolean;
+        _background?: boolean;
+      }) => {
+        await watchMain({
+          agent: options.agent,
+          setDestination: options.setDestination ?? false,
+          _background: options._background ?? false,
+        });
+      },
+    );
 
   watchCmd
     .command("stop")
@@ -325,19 +356,26 @@ export const registerNoriSkillsetsLoginCommand = (args: {
     .option("-e, --email <email>", "Email address (for non-interactive mode)")
     .option("-p, --password <password>", "Password (for non-interactive mode)")
     .option("-g, --google", "Sign in with Google SSO")
+    .option(
+      "--no-localhost",
+      "Use hosted callback page instead of localhost (for headless/SSH)",
+    )
     .action(
       async (options: {
         email?: string;
         password?: string;
         google?: boolean;
+        localhost?: boolean;
       }) => {
         const globalOpts = program.opts();
         await loginMain({
           installDir: globalOpts.installDir || null,
           nonInteractive: globalOpts.nonInteractive || null,
+          experimentalUi: globalOpts.experimentalUi || null,
           email: options.email || null,
           password: options.password || null,
           google: options.google || null,
+          noLocalhost: options.localhost === false ? true : null,
         });
       },
     );

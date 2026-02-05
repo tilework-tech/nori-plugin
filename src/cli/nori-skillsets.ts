@@ -57,6 +57,7 @@ program
     "-a, --agent <name>",
     "AI agent to use (auto-detected from config, or claude-code)",
   )
+  .option("--experimental-ui", "Use new interactive TUI flows (experimental)")
   .addHelpText(
     "after",
     `

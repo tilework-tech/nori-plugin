@@ -5,6 +5,7 @@
  */
 
 import { apiRequest } from "@/api/base.js";
+import { buildOrganizationRegistryUrl } from "@/utils/url.js";
 
 /**
  * A message in a transcript (simplified type for upload)
@@ -27,6 +28,8 @@ export type UploadTranscriptRequest = {
   sessionId: string;
   messages: Array<TranscriptMessage>;
   title?: string | null;
+  /** Organization ID to upload to (e.g., "myorg" -> https://myorg.noriskillsets.dev) */
+  orgId?: string | null;
 };
 
 /**
@@ -50,7 +53,7 @@ export const transcriptApi = {
   upload: async (
     args: UploadTranscriptRequest,
   ): Promise<UploadTranscriptResponse> => {
-    const { sessionId, messages, title } = args;
+    const { sessionId, messages, title, orgId } = args;
 
     const body: Record<string, unknown> = {
       sessionId,
@@ -61,10 +64,15 @@ export const transcriptApi = {
       body.title = title;
     }
 
+    // Build org-specific base URL if orgId is provided
+    const baseUrl =
+      orgId != null ? buildOrganizationRegistryUrl({ orgId }) : undefined;
+
     return apiRequest<UploadTranscriptResponse>({
       path: "/transcripts",
       method: "POST",
       body,
+      ...(baseUrl != null && { baseUrl }),
     });
   },
 };

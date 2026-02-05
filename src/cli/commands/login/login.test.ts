@@ -64,14 +64,18 @@ vi.mock("open", () => ({
 
 // Mock the googleAuth module
 vi.mock("./googleAuth.js", () => ({
+  AUTH_WARNING_MS: 60 * 1000,
   findAvailablePort: vi.fn(),
   getGoogleAuthUrl: vi.fn(),
   startAuthServer: vi.fn(),
   exchangeCodeForTokens: vi.fn(),
   generateState: vi.fn(),
   validateOAuthCredentials: vi.fn(),
+  validateWebOAuthCredentials: vi.fn(),
+  isHeadlessEnvironment: vi.fn(),
   GOOGLE_OAUTH_CLIENT_ID: "test-client-id",
   GOOGLE_OAUTH_CLIENT_SECRET: "test-client-secret",
+  GOOGLE_OAUTH_WEB_CLIENT_ID: "test-web-client-id",
 }));
 
 describe("login command", () => {
@@ -626,6 +630,330 @@ describe("login command", () => {
       );
       expect(config?.autoupdate).toBe("enabled");
       expect(config?.auth?.username).toBe("user@gmail.com");
+    });
+
+    it("should always display auth URL before opening browser", async () => {
+      const { signInWithCredential } = await import("firebase/auth");
+      const { info } = await import("@/cli/logger.js");
+      const {
+        findAvailablePort,
+        getGoogleAuthUrl,
+        startAuthServer,
+        exchangeCodeForTokens,
+        generateState,
+        isHeadlessEnvironment,
+      } = await import("./googleAuth.js");
+
+      const testAuthUrl =
+        "https://accounts.google.com/o/oauth2/v2/auth?client_id=test";
+
+      vi.mocked(generateState).mockReturnValue("state");
+      vi.mocked(findAvailablePort).mockResolvedValue(9876);
+      vi.mocked(getGoogleAuthUrl).mockReturnValue(testAuthUrl);
+      vi.mocked(isHeadlessEnvironment).mockReturnValue(false);
+      vi.mocked(startAuthServer).mockResolvedValue({
+        code: "code",
+        server: { close: vi.fn() } as any,
+      });
+      vi.mocked(exchangeCodeForTokens).mockResolvedValue({
+        idToken: "id-token",
+        accessToken: "access-token",
+      });
+      vi.mocked(signInWithCredential).mockResolvedValue({
+        user: {
+          refreshToken: "refresh",
+          email: "user@gmail.com",
+          getIdToken: vi.fn().mockResolvedValue("firebase-id-token"),
+        },
+      } as any);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: [],
+            isAdmin: false,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir, google: true });
+
+      // Verify the auth URL was displayed
+      expect(info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining(testAuthUrl),
+        }),
+      );
+    });
+
+    it("should display SSH port forwarding instructions in headless environment", async () => {
+      const { signInWithCredential } = await import("firebase/auth");
+      const { info } = await import("@/cli/logger.js");
+      const {
+        findAvailablePort,
+        getGoogleAuthUrl,
+        startAuthServer,
+        exchangeCodeForTokens,
+        generateState,
+        isHeadlessEnvironment,
+      } = await import("./googleAuth.js");
+
+      vi.mocked(generateState).mockReturnValue("state");
+      vi.mocked(findAvailablePort).mockResolvedValue(9876);
+      vi.mocked(getGoogleAuthUrl).mockReturnValue(
+        "https://accounts.google.com/test",
+      );
+      vi.mocked(isHeadlessEnvironment).mockReturnValue(true); // Simulate SSH environment
+      vi.mocked(startAuthServer).mockResolvedValue({
+        code: "code",
+        server: { close: vi.fn() } as any,
+      });
+      vi.mocked(exchangeCodeForTokens).mockResolvedValue({
+        idToken: "id-token",
+        accessToken: "access-token",
+      });
+      vi.mocked(signInWithCredential).mockResolvedValue({
+        user: {
+          refreshToken: "refresh",
+          email: "user@gmail.com",
+          getIdToken: vi.fn().mockResolvedValue("firebase-id-token"),
+        },
+      } as any);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: [],
+            isAdmin: false,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir, google: true });
+
+      // Verify SSH port forwarding instructions were displayed
+      const infoCalls = vi.mocked(info).mock.calls.map((call) => call[0]);
+      const hasPortForwardingInstruction = infoCalls.some(
+        (call) => call.message.includes("ssh") && call.message.includes("9876"),
+      );
+      expect(hasPortForwardingInstruction).toBe(true);
+    });
+  });
+
+  describe("loginMain with --google --no-localhost", () => {
+    it("should use web client ID and noriskillsets.dev callback URL when --no-localhost is set", async () => {
+      const { signInWithCredential, GoogleAuthProvider } =
+        await import("firebase/auth");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { getGoogleAuthUrl, generateState } =
+        await import("./googleAuth.js");
+
+      vi.mocked(generateState).mockReturnValue("test-state");
+      vi.mocked(getGoogleAuthUrl).mockReturnValue(
+        "https://accounts.google.com/test?redirect_uri=https://noriskillsets.dev/oauth/callback",
+      );
+      // User pastes the id_token from the server (not an auth code)
+      vi.mocked(promptUser).mockResolvedValue("id-token-from-server-page");
+      vi.mocked(signInWithCredential).mockResolvedValue({
+        user: {
+          refreshToken: "refresh-token",
+          email: "user@gmail.com",
+          getIdToken: vi.fn().mockResolvedValue("firebase-id-token"),
+        },
+      } as any);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: [],
+            isAdmin: false,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir, google: true, noLocalhost: true });
+
+      // Verify getGoogleAuthUrl was called with web client ID and noriskillsets.dev redirect URI
+      expect(getGoogleAuthUrl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientId: "test-web-client-id",
+          redirectUri: "https://noriskillsets.dev/oauth/callback",
+        }),
+      );
+
+      // Verify user was prompted to paste the token (not auth code)
+      expect(promptUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: expect.stringContaining("token"),
+        }),
+      );
+
+      // Verify GoogleAuthProvider.credential was called with the pasted token directly
+      expect(GoogleAuthProvider.credential).toHaveBeenCalledWith(
+        "id-token-from-server-page",
+      );
+
+      // Verify config was saved
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config?.auth?.username).toBe("user@gmail.com");
+    });
+
+    it("should not start local auth server or exchange tokens when --no-localhost is set", async () => {
+      const { signInWithCredential } = await import("firebase/auth");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const {
+        getGoogleAuthUrl,
+        exchangeCodeForTokens,
+        generateState,
+        startAuthServer,
+        findAvailablePort,
+      } = await import("./googleAuth.js");
+
+      vi.mocked(generateState).mockReturnValue("test-state");
+      vi.mocked(getGoogleAuthUrl).mockReturnValue(
+        "https://accounts.google.com/test",
+      );
+      vi.mocked(promptUser).mockResolvedValue("id-token-from-server");
+      vi.mocked(signInWithCredential).mockResolvedValue({
+        user: {
+          refreshToken: "refresh-token",
+          email: "user@gmail.com",
+          getIdToken: vi.fn().mockResolvedValue("firebase-id-token"),
+        },
+      } as any);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: [],
+            isAdmin: false,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir, google: true, noLocalhost: true });
+
+      // Verify local server functions were NOT called
+      expect(findAvailablePort).not.toHaveBeenCalled();
+      expect(startAuthServer).not.toHaveBeenCalled();
+      // Verify token exchange was NOT called (server handles this)
+      expect(exchangeCodeForTokens).not.toHaveBeenCalled();
+    });
+
+    it("should show error when --no-localhost is used without --google", async () => {
+      const { error } = await import("@/cli/logger.js");
+
+      await loginMain({ installDir: tempDir, noLocalhost: true });
+
+      expect(error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("--no-localhost"),
+        }),
+      );
+
+      // No config should be saved
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config?.auth).toBeUndefined();
+    });
+
+    it("should display instructions to copy the token from the callback page", async () => {
+      const { signInWithCredential } = await import("firebase/auth");
+      const { info } = await import("@/cli/logger.js");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { getGoogleAuthUrl, generateState } =
+        await import("./googleAuth.js");
+
+      vi.mocked(generateState).mockReturnValue("test-state");
+      vi.mocked(getGoogleAuthUrl).mockReturnValue(
+        "https://accounts.google.com/test",
+      );
+      vi.mocked(promptUser).mockResolvedValue("id-token");
+      vi.mocked(signInWithCredential).mockResolvedValue({
+        user: {
+          refreshToken: "refresh-token",
+          email: "user@gmail.com",
+          getIdToken: vi.fn().mockResolvedValue("firebase-id-token"),
+        },
+      } as any);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: [],
+            isAdmin: false,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir, google: true, noLocalhost: true });
+
+      // Verify instructions were displayed
+      const infoCalls = vi.mocked(info).mock.calls.map((call) => call[0]);
+      const hasInstructions = infoCalls.some(
+        (call) =>
+          call.message.includes("Copy") || call.message.includes("token"),
+      );
+      expect(hasInstructions).toBe(true);
+    });
+
+    it("should handle empty token input gracefully", async () => {
+      const { error } = await import("@/cli/logger.js");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { getGoogleAuthUrl, generateState } =
+        await import("./googleAuth.js");
+
+      vi.mocked(generateState).mockReturnValue("test-state");
+      vi.mocked(getGoogleAuthUrl).mockReturnValue(
+        "https://accounts.google.com/test",
+      );
+      vi.mocked(promptUser).mockResolvedValue(""); // Empty input
+
+      await loginMain({ installDir: tempDir, google: true, noLocalhost: true });
+
+      expect(error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("token"),
+        }),
+      );
+
+      // No config should be saved
+      const config = await loadConfig({ installDir: tempDir });
+      expect(config?.auth).toBeUndefined();
+    });
+
+    it("should validate web OAuth credentials for headless flow", async () => {
+      const { validateWebOAuthCredentials } = await import("./googleAuth.js");
+      const { promptUser } = await import("@/cli/prompt.js");
+      const { signInWithCredential } = await import("firebase/auth");
+
+      vi.mocked(promptUser).mockResolvedValue("id-token");
+      vi.mocked(signInWithCredential).mockResolvedValue({
+        user: {
+          refreshToken: "refresh-token",
+          email: "user@gmail.com",
+          getIdToken: vi.fn().mockResolvedValue("firebase-id-token"),
+        },
+      } as any);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authorized: true,
+            organizations: [],
+            isAdmin: false,
+          }),
+      });
+
+      await loginMain({ installDir: tempDir, google: true, noLocalhost: true });
+
+      // Verify web OAuth credentials were validated
+      expect(validateWebOAuthCredentials).toHaveBeenCalled();
     });
   });
 });

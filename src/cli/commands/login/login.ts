@@ -25,15 +25,22 @@ import type { Command } from "commander";
 import type { AuthError } from "firebase/auth";
 
 import {
+  AUTH_WARNING_MS,
   exchangeCodeForTokens,
   findAvailablePort,
   generateState,
   getGoogleAuthUrl,
   GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET,
+  GOOGLE_OAUTH_WEB_CLIENT_ID,
+  isHeadlessEnvironment,
   startAuthServer,
   validateOAuthCredentials,
+  validateWebOAuthCredentials,
 } from "./googleAuth.js";
+
+/** Redirect URI for headless/no-localhost mode */
+const HEADLESS_REDIRECT_URI = "https://noriskillsets.dev/oauth/callback";
 
 /** The base URL for the noriskillsets.dev API */
 const NORI_SKILLSETS_API_URL = "https://noriskillsets.dev";
@@ -92,24 +99,88 @@ const fetchUserAccess = async (args: {
 const DEFAULT_CONFIG_DIR = os.homedir();
 
 /**
- * Authenticate via Google SSO using the localhost OAuth callback pattern
+ * Authenticate via Google SSO using the localhost OAuth callback pattern,
+ * or via manual code entry when --no-localhost is set.
+ *
+ * @param args - Configuration arguments
+ * @param args.noLocalhost - If true, use hosted callback page instead of localhost
  *
  * @returns Firebase credentials (refreshToken, idToken, email)
  */
-const authenticateWithGoogle = async (): Promise<{
+const authenticateWithGoogle = async (args?: {
+  noLocalhost?: boolean | null;
+}): Promise<{
   refreshToken: string;
   idToken: string;
   email: string;
 }> => {
-  // Fail fast if OAuth credentials are not configured
-  validateOAuthCredentials();
+  const { noLocalhost } = args ?? {};
 
-  // Find an available port for the callback server
-  const port = await findAvailablePort({});
-  const redirectUri = `http://localhost:${port}`;
+  if (noLocalhost) {
+    // Headless mode: use Web Application client, server handles token exchange
+    validateWebOAuthCredentials();
+
+    // Generate CSRF protection nonce (for display purposes)
+    const state = generateState();
+
+    // Build the Google OAuth URL with Web Application client ID
+    const authUrl = getGoogleAuthUrl({
+      clientId: GOOGLE_OAUTH_WEB_CLIENT_ID,
+      redirectUri: HEADLESS_REDIRECT_URI,
+      state,
+    });
+
+    // Display instructions
+    newline();
+    info({ message: "Authentication URL:" });
+    info({ message: `  ${authUrl}` });
+    newline();
+    info({ message: "Instructions:" });
+    info({ message: "  1. Open the URL above in any browser" });
+    info({ message: "  2. Complete the Google sign-in" });
+    info({ message: "  3. Copy the token from the page" });
+    info({ message: "  4. Paste it below" });
+    newline();
+
+    // Prompt user to paste the id_token (server already exchanged the code)
+    const inputToken = await promptUser({
+      prompt: "Paste token: ",
+    });
+
+    if (inputToken == null || inputToken.trim() === "") {
+      throw new Error("No token provided.");
+    }
+
+    // Use the id_token directly with Firebase (no exchange needed)
+    info({ message: "Signing in..." });
+    configureFirebase();
+    const firebase = getFirebase();
+    const credential = GoogleAuthProvider.credential(inputToken.trim());
+    const userCredential = await signInWithCredential(
+      firebase.auth,
+      credential,
+    );
+
+    const email = userCredential.user.email;
+    if (email == null) {
+      throw new Error("No email address associated with Google account.");
+    }
+
+    return {
+      refreshToken: userCredential.user.refreshToken,
+      idToken: await userCredential.user.getIdToken(),
+      email,
+    };
+  }
+
+  // Standard mode: use Desktop client with localhost callback server
+  validateOAuthCredentials();
 
   // Generate CSRF protection nonce
   const state = generateState();
+
+  const port = await findAvailablePort({});
+  const redirectUri = `http://localhost:${port}`;
 
   // Build the Google OAuth URL
   const authUrl = getGoogleAuthUrl({
@@ -118,27 +189,49 @@ const authenticateWithGoogle = async (): Promise<{
     state,
   });
 
+  // Always display the auth URL for headless/SSH environments
+  newline();
+  info({ message: "Authentication URL:" });
+  info({ message: `  ${authUrl}` });
+  newline();
+
+  // Detect SSH environment and provide port forwarding instructions
+  if (isHeadlessEnvironment()) {
+    info({ message: "Detected SSH/headless environment." });
+    info({ message: "To authenticate from a remote session:" });
+    info({ message: `  1. Run this on your local machine:` });
+    info({
+      message: `     ssh -L ${port}:localhost:${port} <user>@<server>`,
+    });
+    info({ message: `  2. Open the URL above in your local browser` });
+    newline();
+  }
+
   // Start the local server to capture the callback
   const serverPromise = startAuthServer({
     port,
     expectedState: state,
+    warningMs: AUTH_WARNING_MS,
+    onTimeoutWarning: () => {
+      warn({
+        message:
+          "Authentication will timeout in 1 minute. Please complete the browser flow.",
+      });
+    },
   });
 
-  // Open browser to the Google consent screen
-  info({ message: "Opening browser for Google authentication..." });
+  // Attempt to open browser (may fail silently in headless)
+  info({ message: "Attempting to open browser..." });
   try {
     await open(authUrl);
   } catch {
-    // If browser fails to open, print the URL for manual copy-paste
-    info({
-      message: "Could not open browser automatically. Please visit:",
-    });
-    info({ message: `  ${authUrl}` });
+    // Browser failed to open - already displayed the URL above
   }
 
   // Wait for the OAuth callback
-  const { code, server } = await serverPromise;
-  server.close();
+  const result = await serverPromise;
+  const code = result.code;
+  result.server.close();
 
   // Exchange the authorization code for Google tokens
   info({ message: "Exchanging authorization code..." });
@@ -176,6 +269,7 @@ const authenticateWithGoogle = async (): Promise<{
  * @param args.email - Email address (for non-interactive mode)
  * @param args.password - Password (for non-interactive mode)
  * @param args.google - Whether to use Google SSO
+ * @param args.noLocalhost - Whether to use hosted callback page instead of localhost
  */
 export const loginMain = async (args?: {
   installDir?: string | null;
@@ -183,6 +277,7 @@ export const loginMain = async (args?: {
   email?: string | null;
   password?: string | null;
   google?: boolean | null;
+  noLocalhost?: boolean | null;
 }): Promise<void> => {
   const {
     installDir,
@@ -190,6 +285,7 @@ export const loginMain = async (args?: {
     email,
     password,
     google: useGoogle,
+    noLocalhost,
   } = args ?? {};
   // Default to home directory for config storage
   const configDir = installDir ?? DEFAULT_CONFIG_DIR;
@@ -211,6 +307,14 @@ export const loginMain = async (args?: {
     return;
   }
 
+  if (noLocalhost && !useGoogle) {
+    error({
+      message:
+        "Cannot use --no-localhost without --google. This flag is only for Google SSO.",
+    });
+    return;
+  }
+
   let refreshToken: string;
   let idToken: string;
   let userEmail: string;
@@ -218,7 +322,7 @@ export const loginMain = async (args?: {
   if (useGoogle) {
     // Google SSO flow
     try {
-      const result = await authenticateWithGoogle();
+      const result = await authenticateWithGoogle({ noLocalhost });
       refreshToken = result.refreshToken;
       idToken = result.idToken;
       userEmail = result.email;
@@ -377,11 +481,16 @@ export const registerLoginCommand = (args: { program: Command }): void => {
     .option("-e, --email <email>", "Email address (for non-interactive mode)")
     .option("-p, --password <password>", "Password (for non-interactive mode)")
     .option("-g, --google", "Sign in with Google SSO")
+    .option(
+      "--no-localhost",
+      "Use hosted callback page instead of localhost (for headless/SSH)",
+    )
     .action(
       async (options: {
         email?: string;
         password?: string;
         google?: boolean;
+        localhost?: boolean;
       }) => {
         const globalOpts = program.opts();
 
@@ -391,6 +500,7 @@ export const registerLoginCommand = (args: { program: Command }): void => {
           email: options.email || null,
           password: options.password || null,
           google: options.google || null,
+          noLocalhost: options.localhost === false ? true : null,
         });
       },
     );

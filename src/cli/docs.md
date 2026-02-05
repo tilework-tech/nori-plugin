@@ -107,6 +107,8 @@ The config.ts module provides a unified `Config` type for both disk persistence 
 - `organizations` - array of organization IDs the user has access to (populated by login command from `/api/auth/check-access`)
 - `isAdmin` - whether the user has admin privileges for their organization
 
+**transcriptDestination Config Field:** The `Config` type includes an optional `transcriptDestination` field that specifies which organization should receive transcript uploads. This is stored as an org ID string (e.g., `"myorg"`) which maps to a registry URL (e.g., `https://myorg.noriskillsets.dev`). The watch daemon sets this field on first run when the user selects a destination organization. This allows users with access to multiple private organizations to control where their transcripts are uploaded, independent of the `organizationUrl` used for authentication.
+
 **Multi-Agent Config Structure:** The config supports per-agent profiles via the `agents` field, a `Record<string, AgentConfig>` where each agent has its own profile. The keys of the `agents` object serve as the source of truth for which agents are installed (replacing the former `installedAgents` array). Use `getInstalledAgents({ config })` helper to get the list of installed agents.
 
 **Profile Lookup Pattern (CRITICAL):** Code that needs to read a profile MUST use `getAgentProfile({ config, agentName })` - never access agent profiles directly. The function returns the profile from `config.agents[agentName].profile` or null if not found.

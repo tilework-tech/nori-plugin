@@ -337,7 +337,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatError({
-        message: `No Nori installation found.\n\nRun 'npx nori-skillsets init' to install Nori Profiles.`,
+        message: `No Nori installation found.\n\nRun 'npx nori-skillsets init' to install Nori Skillsets.`,
       }),
     };
   }
@@ -367,7 +367,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
       return {
         decision: "block",
         reason: formatError({
-          message: `Profile "${packageName}" already exists at:\n${targetDir}\n\nTo reinstall, first remove the existing profile directory.`,
+          message: `Skillset "${packageName}" already exists at:\n${targetDir}\n\nTo reinstall, first remove the existing skillset directory.`,
         }),
       };
     } catch {
@@ -412,7 +412,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatError({
-        message: `Profile "${packageName}" not found in any registry.`,
+        message: `Skillset "${packageName}" not found in any registry.`,
       }),
     };
   }
@@ -485,7 +485,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatSuccess({
-        message: `Downloaded and installed profile "${packageName}"${versionStr} from ${selectedRegistry.registryUrl}\n\nInstalled to: ${targetDir}\n\nYou can now use this profile with '/nori-switch-profile ${packageName}'.`,
+        message: `Downloaded and installed skillset "${packageName}"${versionStr} from ${selectedRegistry.registryUrl}\n\nInstalled to: ${targetDir}\n\nYou can now use this skillset with '/nori-switch-skillset ${packageName}'.`,
       }),
     };
   } catch (err) {
@@ -493,7 +493,7 @@ const run = async (args: { input: HookInput }): Promise<HookOutput | null> => {
     return {
       decision: "block",
       reason: formatError({
-        message: `Failed to download profile "${packageName}":\n${errorMessage}`,
+        message: `Failed to download skillset "${packageName}":\n${errorMessage}`,
       }),
     };
   }

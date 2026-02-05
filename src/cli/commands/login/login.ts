@@ -17,7 +17,7 @@ import open from "open";
 
 import { loadConfig, saveConfig } from "@/cli/config.js";
 import { error, info, success, warn, newline } from "@/cli/logger.js";
-import { promptUser } from "@/cli/prompt.js";
+import { promptUser, promptYesNo } from "@/cli/prompt.js";
 import { configureFirebase, getFirebase } from "@/providers/firebase.js";
 import { formatNetworkError } from "@/utils/fetch.js";
 
@@ -32,9 +32,11 @@ import {
   getGoogleAuthUrl,
   GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET,
+  GOOGLE_OAUTH_WEB_CLIENT_ID,
   isHeadlessEnvironment,
   startAuthServer,
   validateOAuthCredentials,
+  validateWebOAuthCredentials,
 } from "./googleAuth.js";
 
 /** Redirect URI for headless/no-localhost mode */
@@ -97,121 +99,146 @@ const fetchUserAccess = async (args: {
 const DEFAULT_CONFIG_DIR = os.homedir();
 
 /**
- * Authenticate via Google SSO using the localhost OAuth callback pattern,
- * or via manual code entry when --no-localhost is set.
- *
- * @param args - Configuration arguments
- * @param args.noLocalhost - If true, use hosted callback page instead of localhost
+ * Authenticate via Google SSO using the headless flow with manual token entry.
+ * The server exchanges the code for tokens, and the user pastes the id_token.
  *
  * @returns Firebase credentials (refreshToken, idToken, email)
  */
-const authenticateWithGoogle = async (args?: {
-  noLocalhost?: boolean | null;
+const authenticateWithGoogleHeadless = async (): Promise<{
+  refreshToken: string;
+  idToken: string;
+  email: string;
+}> => {
+  // Headless mode: use Web Application client, server handles token exchange
+  validateWebOAuthCredentials();
+
+  // Generate CSRF protection nonce (for display purposes)
+  const state = generateState();
+
+  // Build the Google OAuth URL with Web Application client ID
+  const authUrl = getGoogleAuthUrl({
+    clientId: GOOGLE_OAUTH_WEB_CLIENT_ID,
+    redirectUri: HEADLESS_REDIRECT_URI,
+    state,
+  });
+
+  // Display instructions
+  newline();
+  info({ message: "Authentication URL:" });
+  info({ message: `  ${authUrl}` });
+  newline();
+  info({ message: "Instructions:" });
+  info({ message: "  1. Open the URL above in any browser" });
+  info({ message: "  2. Complete the Google sign-in" });
+  info({ message: "  3. Copy the token from the page" });
+  info({ message: "  4. Paste it below" });
+  newline();
+
+  // Prompt user to paste the id_token (server already exchanged the code)
+  // Use masked input to hide the sensitive token
+  const inputToken = await promptUser({
+    prompt: "Paste token: ",
+    masked: true,
+  });
+
+  if (inputToken == null || inputToken.trim() === "") {
+    throw new Error("No token provided.");
+  }
+
+  // Use the id_token directly with Firebase (no exchange needed)
+  info({ message: "Signing in..." });
+  configureFirebase();
+  const firebase = getFirebase();
+  const credential = GoogleAuthProvider.credential(inputToken.trim());
+  const userCredential = await signInWithCredential(firebase.auth, credential);
+
+  const email = userCredential.user.email;
+  if (email == null) {
+    throw new Error("No email address associated with Google account.");
+  }
+
+  return {
+    refreshToken: userCredential.user.refreshToken,
+    idToken: await userCredential.user.getIdToken(),
+    email,
+  };
+};
+
+/**
+ * Authenticate via Google SSO using the localhost OAuth callback pattern.
+ *
+ * @param args - Configuration arguments
+ * @param args.showPortForwardingInstructions - If true, show SSH port forwarding instructions
+ *
+ * @returns Firebase credentials (refreshToken, idToken, email)
+ */
+const authenticateWithGoogleLocalhost = async (args?: {
+  showPortForwardingInstructions?: boolean | null;
 }): Promise<{
   refreshToken: string;
   idToken: string;
   email: string;
 }> => {
-  const { noLocalhost } = args ?? {};
+  const { showPortForwardingInstructions } = args ?? {};
 
-  // Fail fast if OAuth credentials are not configured
+  // Standard mode: use Desktop client with localhost callback server
   validateOAuthCredentials();
 
   // Generate CSRF protection nonce
   const state = generateState();
 
-  let redirectUri: string;
-  let code: string;
+  const port = await findAvailablePort({});
+  const redirectUri = `http://localhost:${port}`;
 
-  if (noLocalhost) {
-    // Headless mode: use noriskillsets.dev callback page
-    redirectUri = HEADLESS_REDIRECT_URI;
+  // Build the Google OAuth URL
+  const authUrl = getGoogleAuthUrl({
+    clientId: GOOGLE_OAUTH_CLIENT_ID,
+    redirectUri,
+    state,
+  });
 
-    // Build the Google OAuth URL
-    const authUrl = getGoogleAuthUrl({
-      clientId: GOOGLE_OAUTH_CLIENT_ID,
-      redirectUri,
-      state,
+  // Always display the auth URL
+  newline();
+  info({ message: "Authentication URL:" });
+  info({ message: `  ${authUrl}` });
+  newline();
+
+  // Show port forwarding instructions if requested (user is in headless but chose localhost flow)
+  if (showPortForwardingInstructions) {
+    info({ message: "To authenticate from this remote session:" });
+    info({ message: `  1. Run this on your local machine:` });
+    info({
+      message: `     ssh -L ${port}:localhost:${port} <user>@<server>`,
     });
-
-    // Display instructions
+    info({ message: `  2. Open the URL above in your local browser` });
     newline();
-    info({ message: "Authentication URL:" });
-    info({ message: `  ${authUrl}` });
-    newline();
-    info({ message: "Instructions:" });
-    info({ message: "  1. Open the URL above in any browser" });
-    info({ message: "  2. Complete the Google sign-in" });
-    info({ message: "  3. Copy the authorization code from the page" });
-    info({ message: "  4. Paste it below" });
-    newline();
-
-    // Prompt user to paste the code
-    const inputCode = await promptUser({
-      prompt: "Paste authorization code: ",
-    });
-
-    if (inputCode == null || inputCode.trim() === "") {
-      throw new Error("No authorization code provided.");
-    }
-
-    code = inputCode.trim();
-  } else {
-    // Standard mode: use localhost callback server
-    const port = await findAvailablePort({});
-    redirectUri = `http://localhost:${port}`;
-
-    // Build the Google OAuth URL
-    const authUrl = getGoogleAuthUrl({
-      clientId: GOOGLE_OAUTH_CLIENT_ID,
-      redirectUri,
-      state,
-    });
-
-    // Always display the auth URL for headless/SSH environments
-    newline();
-    info({ message: "Authentication URL:" });
-    info({ message: `  ${authUrl}` });
-    newline();
-
-    // Detect SSH environment and provide port forwarding instructions
-    if (isHeadlessEnvironment()) {
-      info({ message: "Detected SSH/headless environment." });
-      info({ message: "To authenticate from a remote session:" });
-      info({ message: `  1. Run this on your local machine:` });
-      info({
-        message: `     ssh -L ${port}:localhost:${port} <user>@<server>`,
-      });
-      info({ message: `  2. Open the URL above in your local browser` });
-      newline();
-    }
-
-    // Start the local server to capture the callback
-    const serverPromise = startAuthServer({
-      port,
-      expectedState: state,
-      warningMs: AUTH_WARNING_MS,
-      onTimeoutWarning: () => {
-        warn({
-          message:
-            "Authentication will timeout in 1 minute. Please complete the browser flow.",
-        });
-      },
-    });
-
-    // Attempt to open browser (may fail silently in headless)
-    info({ message: "Attempting to open browser..." });
-    try {
-      await open(authUrl);
-    } catch {
-      // Browser failed to open - already displayed the URL above
-    }
-
-    // Wait for the OAuth callback
-    const result = await serverPromise;
-    code = result.code;
-    result.server.close();
   }
+
+  // Start the local server to capture the callback
+  const serverPromise = startAuthServer({
+    port,
+    expectedState: state,
+    warningMs: AUTH_WARNING_MS,
+    onTimeoutWarning: () => {
+      warn({
+        message:
+          "Authentication will timeout in 1 minute. Please complete the browser flow.",
+      });
+    },
+  });
+
+  // Attempt to open browser (may fail silently in headless)
+  info({ message: "Attempting to open browser..." });
+  try {
+    await open(authUrl);
+  } catch {
+    // Browser failed to open - already displayed the URL above
+  }
+
+  // Wait for the OAuth callback
+  const result = await serverPromise;
+  const code = result.code;
+  result.server.close();
 
   // Exchange the authorization code for Google tokens
   info({ message: "Exchanging authorization code..." });
@@ -238,6 +265,58 @@ const authenticateWithGoogle = async (args?: {
     idToken: await userCredential.user.getIdToken(),
     email,
   };
+};
+
+/**
+ * Authenticate via Google SSO. Automatically detects headless environments
+ * and prompts the user to choose between headless flow or localhost flow.
+ *
+ * @param args - Configuration arguments
+ * @param args.noLocalhost - If true, force use of headless flow (skips environment detection)
+ *
+ * @returns Firebase credentials (refreshToken, idToken, email)
+ */
+const authenticateWithGoogle = async (args?: {
+  noLocalhost?: boolean | null;
+}): Promise<{
+  refreshToken: string;
+  idToken: string;
+  email: string;
+}> => {
+  const { noLocalhost } = args ?? {};
+
+  // If --no-localhost flag is explicitly set, use headless flow directly
+  if (noLocalhost) {
+    return authenticateWithGoogleHeadless();
+  }
+
+  // Detect headless/SSH environment
+  if (isHeadlessEnvironment()) {
+    newline();
+    info({ message: "Detected SSH/headless environment." });
+    info({
+      message:
+        "You can use a simplified headless flow that works without port forwarding.",
+    });
+    newline();
+
+    const useHeadlessFlow = await promptYesNo({
+      prompt: "Use headless authentication flow?",
+      defaultValue: true,
+    });
+
+    if (useHeadlessFlow) {
+      return authenticateWithGoogleHeadless();
+    } else {
+      // User chose localhost flow in headless environment - show port forwarding instructions
+      return authenticateWithGoogleLocalhost({
+        showPortForwardingInstructions: true,
+      });
+    }
+  }
+
+  // Standard local environment - use localhost flow without port forwarding instructions
+  return authenticateWithGoogleLocalhost();
 };
 
 /**

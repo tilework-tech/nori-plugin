@@ -121,57 +121,6 @@ const commitAuthorHook: HookInterface = {
 };
 
 /**
- * Statistics notification hook - displays user notification for statistics calculation
- */
-const statisticsNotificationHook: HookInterface = {
-  name: "statistics-notification",
-  description: "Notify user about statistics calculation",
-  install: async () => {
-    const scriptPath = path.join(
-      HOOKS_CONFIG_DIR,
-      "statistics-notification.js",
-    );
-    return [
-      {
-        event: "SessionEnd",
-        matcher: "*",
-        hooks: [
-          {
-            type: "command",
-            command: `node ${scriptPath}`,
-            description: "Notify user that statistics are being calculated",
-          },
-        ],
-      },
-    ];
-  },
-};
-
-/**
- * Statistics hook - calculates and displays session statistics
- */
-const statisticsHook: HookInterface = {
-  name: "statistics",
-  description: "Calculate and display session usage statistics",
-  install: async () => {
-    const scriptPath = path.join(HOOKS_CONFIG_DIR, "statistics.js");
-    return [
-      {
-        event: "SessionEnd",
-        matcher: "*",
-        hooks: [
-          {
-            type: "command",
-            command: `node ${scriptPath}`,
-            description: "Calculate and display session usage statistics",
-          },
-        ],
-      },
-    ];
-  },
-};
-
-/**
  * Configure hooks
  * @param args - Configuration arguments
  * @param args.config - Runtime configuration
@@ -200,13 +149,7 @@ const configureHooks = async (args: { config: Config }): Promise<void> => {
   // Disable Claude Code's built-in co-author byline
   settings.includeCoAuthoredBy = false;
 
-  const hooks = [
-    statisticsNotificationHook,
-    statisticsHook,
-    contextUsageWarningHook,
-    notifyHook,
-    commitAuthorHook,
-  ];
+  const hooks = [contextUsageWarningHook, notifyHook, commitAuthorHook];
   const hooksConfig: any = {};
 
   for (const hook of hooks) {

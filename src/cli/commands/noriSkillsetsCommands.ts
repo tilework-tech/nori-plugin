@@ -328,6 +328,7 @@ export const registerNoriSkillsetsLoginCommand = (args: {
         await loginMain({
           installDir: globalOpts.installDir || null,
           nonInteractive: globalOpts.nonInteractive || null,
+          experimentalUi: globalOpts.experimentalUi || null,
           email: options.email || null,
           password: options.password || null,
           google: options.google || null,

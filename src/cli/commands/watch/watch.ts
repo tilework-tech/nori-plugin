@@ -43,6 +43,11 @@ const DEBOUNCE_MS = 500;
 const STALE_THRESHOLD_MS = 30000;
 
 /**
+ * Expire threshold in milliseconds - files not modified for this long are deleted (24 hours)
+ */
+const EXPIRE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+
+/**
  * Scan interval in milliseconds - how often to scan for stale transcripts
  */
 const SCAN_INTERVAL_MS = 10000;
@@ -255,6 +260,31 @@ const extractSessionIdFromFile = async (args: {
 };
 
 /**
+ * Delete expired transcript files
+ *
+ * @param args - Configuration arguments
+ * @param args.expiredFiles - Array of file paths to delete
+ */
+const deleteExpiredFiles = async (args: {
+  expiredFiles: Array<string>;
+}): Promise<void> => {
+  const { expiredFiles } = args;
+
+  for (const filePath of expiredFiles) {
+    if (isShuttingDown) {
+      break;
+    }
+
+    try {
+      await fs.unlink(filePath);
+      await log(`Deleted expired transcript: ${filePath}`);
+    } catch (err) {
+      await log(`Failed to delete expired transcript ${filePath}: ${err}`);
+    }
+  }
+};
+
+/**
  * Scan for stale transcripts and upload them
  */
 const scanForStaleTranscripts = async (): Promise<void> => {
@@ -263,11 +293,18 @@ const scanForStaleTranscripts = async (): Promise<void> => {
   }
 
   try {
-    const staleFiles = await findStaleTranscripts({
+    const { staleFiles, expiredFiles } = await findStaleTranscripts({
       transcriptDir: currentTranscriptDir,
-      maxAgeMs: STALE_THRESHOLD_MS,
+      staleThresholdMs: STALE_THRESHOLD_MS,
+      expireThresholdMs: EXPIRE_THRESHOLD_MS,
     });
 
+    // Delete expired files first
+    if (expiredFiles.length > 0) {
+      await deleteExpiredFiles({ expiredFiles });
+    }
+
+    // Process stale files for upload
     for (const transcriptPath of staleFiles) {
       if (isShuttingDown) {
         break;

@@ -14,7 +14,7 @@ import {
 import { success, info, warn } from "@/cli/logger.js";
 
 import type { Config } from "@/cli/config.js";
-import type { Loader, ValidationResult } from "@/cli/features/agentRegistry.js";
+import type { Loader } from "@/cli/features/agentRegistry.js";
 
 // Get directory of this loader file
 const __filename = fileURLToPath(import.meta.url);
@@ -271,122 +271,6 @@ const removeHooks = async (args: { config: Config }): Promise<void> => {
 };
 
 /**
- * Validate hooks configuration
- * @param args - Configuration arguments
- * @param args.config - Runtime configuration
- *
- * @returns Validation result
- */
-const validate = async (args: {
-  config: Config;
-}): Promise<ValidationResult> => {
-  const { config: _config } = args;
-  const claudeSettingsFile = getClaudeHomeSettingsFile();
-  const errors: Array<string> = [];
-
-  // Check if settings file exists
-  try {
-    await fs.access(claudeSettingsFile);
-  } catch {
-    errors.push(`Settings file not found at ${claudeSettingsFile}`);
-    errors.push('Run "nori-skillsets init" to create the settings file');
-    return {
-      valid: false,
-      message: "Claude settings file not found",
-      errors,
-    };
-  }
-
-  // Read and parse settings
-  let settings: any;
-  try {
-    const content = await fs.readFile(claudeSettingsFile, "utf-8");
-    settings = JSON.parse(content);
-  } catch (err) {
-    errors.push("Failed to read or parse settings.json");
-    errors.push(`Error: ${err}`);
-    return {
-      valid: false,
-      message: "Invalid settings.json",
-      errors,
-    };
-  }
-
-  // Check if hooks are configured
-  if (!settings.hooks) {
-    errors.push("No hooks configured in settings.json");
-    errors.push('Run "nori-skillsets init" to configure hooks');
-    return {
-      valid: false,
-      message: "Hooks not configured",
-      errors,
-    };
-  }
-
-  // Check for required hook events
-  const requiredEvents = ["SessionEnd"];
-  for (const event of requiredEvents) {
-    if (!settings.hooks[event]) {
-      errors.push(`Missing hook configuration for event: ${event}`);
-    }
-  }
-
-  // Check if SessionEnd has required hooks (statistics)
-  if (settings.hooks.SessionEnd) {
-    const sessionEndHooks = settings.hooks.SessionEnd;
-    let hasStatisticsNotificationHook = false;
-    let hasStatisticsHook = false;
-
-    for (const hookConfig of sessionEndHooks) {
-      if (hookConfig.hooks) {
-        for (const hook of hookConfig.hooks) {
-          if (
-            hook.command &&
-            hook.command.includes("statistics-notification.js")
-          ) {
-            hasStatisticsNotificationHook = true;
-          }
-          if (
-            hook.command &&
-            hook.command.includes("statistics.js") &&
-            !hook.command.includes("statistics-notification")
-          ) {
-            hasStatisticsHook = true;
-          }
-        }
-      }
-    }
-
-    if (!hasStatisticsNotificationHook) {
-      errors.push("Missing statistics-notification hook for SessionEnd event");
-    }
-    if (!hasStatisticsHook) {
-      errors.push("Missing statistics hook for SessionEnd event");
-    }
-  }
-
-  // Check includeCoAuthoredBy setting
-  if (settings.includeCoAuthoredBy !== false) {
-    errors.push("includeCoAuthoredBy should be set to false in settings.json");
-    errors.push('Run "nori-skillsets init" to configure git settings');
-  }
-
-  if (errors.length > 0) {
-    return {
-      valid: false,
-      message: "Hooks configuration has issues",
-      errors,
-    };
-  }
-
-  return {
-    valid: true,
-    message: "Hooks are properly configured",
-    errors: null,
-  };
-};
-
-/**
  * Hooks feature loader
  */
 export const hooksLoader: Loader = {
@@ -399,5 +283,4 @@ export const hooksLoader: Loader = {
   uninstall: async (args: { config: Config }) => {
     await removeHooks(args);
   },
-  validate,
 };

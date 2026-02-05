@@ -4,7 +4,6 @@
  */
 
 import { claudeCodeAgent } from "@/cli/features/claude-code/agent.js";
-import { cursorAgent } from "@/cli/features/cursor-agent/agent.js";
 
 import type { Config } from "@/cli/config.js";
 
@@ -12,16 +11,7 @@ import type { Config } from "@/cli/config.js";
  * Canonical agent names used as UIDs in the registry.
  * Each Agent.name must match one of these values.
  */
-export type AgentName = "claude-code" | "cursor-agent";
-
-/**
- * Result of validation check
- */
-export type ValidationResult = {
-  valid: boolean;
-  message: string;
-  errors?: Array<string> | null;
-};
+export type AgentName = "claude-code";
 
 /**
  * Loader interface for feature installation
@@ -32,7 +22,6 @@ export type Loader = {
   description: string;
   run: (args: { config: Config }) => Promise<void>;
   uninstall: (args: { config: Config }) => Promise<void>;
-  validate?: (args: { config: Config }) => Promise<ValidationResult>;
 };
 
 /**
@@ -91,7 +80,6 @@ export class AgentRegistry {
   private constructor() {
     this.agents = new Map();
     this.agents.set(claudeCodeAgent.name, claudeCodeAgent);
-    this.agents.set(cursorAgent.name, cursorAgent);
   }
 
   /**

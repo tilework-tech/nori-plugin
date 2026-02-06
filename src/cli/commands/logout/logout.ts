@@ -47,9 +47,9 @@ const findConfigsWithAuth = async (args: {
   const configDirs: Array<string> = [];
 
   // Check for config at the search directory itself
-  const rootConfigPath = getConfigPath({ installDir: searchDir });
+  const rootConfigPath = getConfigPath();
   if (await fileExists(rootConfigPath)) {
-    const config = await loadConfig({ installDir: searchDir });
+    const config = await loadConfig();
     if (config?.auth != null) {
       configDirs.push(searchDir);
     }
@@ -57,9 +57,9 @@ const findConfigsWithAuth = async (args: {
 
   // Check for config in .nori subdirectory (home directory installation pattern)
   const noriSubdir = path.join(searchDir, ".nori");
-  const noriConfigPath = getConfigPath({ installDir: noriSubdir });
+  const noriConfigPath = getConfigPath();
   if (await fileExists(noriConfigPath)) {
-    const config = await loadConfig({ installDir: noriSubdir });
+    const config = await loadConfig();
     if (config?.auth != null) {
       configDirs.push(noriSubdir);
     }
@@ -78,7 +78,7 @@ const clearAuthFromConfig = async (args: {
   installDir: string;
 }): Promise<void> => {
   const { installDir } = args;
-  const existingConfig = await loadConfig({ installDir });
+  const existingConfig = await loadConfig();
 
   if (existingConfig == null) {
     return;
@@ -110,7 +110,7 @@ export const logoutMain = async (args?: {
 
   // If specific installDir provided, use original behavior
   if (installDir != null) {
-    const existingConfig = await loadConfig({ installDir });
+    const existingConfig = await loadConfig();
 
     if (existingConfig?.auth == null) {
       info({ message: "Not currently logged in." });

@@ -37,7 +37,7 @@ export class ConfigManager {
       );
     }
 
-    const configPath = getConfigPath({ installDir });
+    const configPath = getConfigPath();
 
     if (existsSync(configPath)) {
       const content = readFileSync(configPath, "utf8");

@@ -542,12 +542,8 @@ export const registryDownloadMain = async (args: {
   const profileDisplayName =
     orgId === "public" ? packageName : `${orgId}/${packageName}`;
 
-  // Find installation directory
-  let targetInstallDir: string;
-
+  // Find installation directory and auto-init if needed
   if (installDir != null) {
-    targetInstallDir = installDir;
-
     // Check if installation exists at the specified directory
     const allInstallations = getInstallDirs({ currentDir: installDir });
     if (!allInstallations.includes(installDir)) {
@@ -577,7 +573,7 @@ export const registryDownloadMain = async (args: {
 
     // Prefer the home dir if it has a Nori installation (typically has registry auth)
     if (homeInstallations.includes(homeDir)) {
-      targetInstallDir = homeDir;
+      // Home dir has installation - use centralized config
     } else if (allInstallations.length === 0) {
       // No installation found - auto-init at home directory (interactive to allow user prompts)
       // Skip the profile persistence warning since users are just trying to download a profile
@@ -594,7 +590,6 @@ export const registryDownloadMain = async (args: {
         });
         return { success: false };
       }
-      targetInstallDir = homeDir;
     } else if (allInstallations.length > 1) {
       const installList = allInstallations
         .map((dir, index) => `${index + 1}. ${dir}`)
@@ -605,14 +600,14 @@ export const registryDownloadMain = async (args: {
       });
       return { success: false };
     } else {
-      targetInstallDir = allInstallations[0];
+      // Single installation found - use centralized config
     }
   }
 
   // Load config for registry auth
-  const config = await loadConfig({ installDir: targetInstallDir });
+  const config = await loadConfig();
 
-  const profilesDir = getNoriProfilesDir({ installDir: targetInstallDir });
+  const profilesDir = getNoriProfilesDir();
   // For namespaced packages, the profile is in a nested directory (e.g., profiles/myorg/my-profile)
   const targetDir =
     orgId === "public"
@@ -756,9 +751,8 @@ export const registryDownloadMain = async (args: {
     }
   } else {
     // Namespaced package without unified auth in current config
-    // Check home directory for auth as fallback (common pattern: user-level login)
-    const homeDir = os.homedir();
-    const homeConfig = await loadConfig({ installDir: homeDir });
+    // Check centralized config for auth as fallback (common pattern: user-level login)
+    const homeConfig = await loadConfig();
     const homeHasUnifiedAuthWithOrgs =
       homeConfig?.auth != null &&
       homeConfig.auth.refreshToken != null &&

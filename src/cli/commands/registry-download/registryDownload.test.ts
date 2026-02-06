@@ -595,8 +595,9 @@ describe("registry-download", () => {
           installDir: customInstallDir,
         });
 
-        // Verify profile was installed to custom directory
-        const profileDir = path.join(customProfilesDir, "custom-profile");
+        // Profiles are always installed to the centralized ~/.nori/profiles
+        // regardless of --install-dir, since getNoriProfilesDir() uses os.homedir()
+        const profileDir = path.join(profilesDir, "custom-profile");
         const stats = await fs.stat(profileDir);
         expect(stats.isDirectory()).toBe(true);
       } finally {
@@ -697,16 +698,15 @@ describe("registry-download", () => {
       const homeProfilesDir = path.join(testDir, ".nori", "profiles");
       await fs.mkdir(homeProfilesDir, { recursive: true });
 
-      // Mock loadConfig to return config based on installDir
-      // When called with explicit installDir - returns config without auth
-      // When called with home dir - returns config with auth
-      vi.mocked(loadConfig).mockImplementation(async (args) => {
-        if (args?.installDir === explicitInstallDir) {
-          // Explicit installDir has no auth
-          return { installDir: explicitInstallDir };
-        }
-        // Home dir has auth
-        return {
+      // Mock loadConfig to return config with unified auth from centralized config
+      // Since loadConfig() is now zero-arg and always reads from ~/.nori-config.json,
+      // both the initial call and the fallback call return the same config.
+      // The first call returns config without org auth, triggering the fallback path,
+      // which also calls loadConfig() and gets the same result. To test the fallback
+      // auth path, we return config with auth on the second call.
+      vi.mocked(loadConfig)
+        .mockResolvedValueOnce({ installDir: explicitInstallDir })
+        .mockResolvedValueOnce({
           installDir: testDir,
           auth: {
             username: "testuser",
@@ -714,8 +714,7 @@ describe("registry-download", () => {
             refreshToken: "mock-refresh-token",
             organizations: ["pangram", "demo"],
           },
-        };
-      });
+        });
 
       // Mock getRegistryAuth to return auth for the pangram namespace
       vi.mocked(getRegistryAuth).mockReturnValue({
@@ -754,13 +753,10 @@ describe("registry-download", () => {
           authToken: "mock-auth-token",
         });
 
-        // Verify profile was installed to the explicit installDir (not home dir)
+        // Profiles are always installed to the centralized ~/.nori/profiles
+        // regardless of --install-dir, since getNoriProfilesDir() uses os.homedir()
         // Namespaced packages are installed in a nested directory: profiles/{orgId}/{packageName}
-        const profileDir = path.join(
-          explicitProfilesDir,
-          "pangram",
-          "high-autonomy",
-        );
+        const profileDir = path.join(profilesDir, "pangram", "high-autonomy");
         const stats = await fs.stat(profileDir);
         expect(stats.isDirectory()).toBe(true);
       } finally {

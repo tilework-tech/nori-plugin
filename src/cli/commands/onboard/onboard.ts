@@ -12,6 +12,7 @@
 
 import { loadConfig, saveConfig, getAgentProfile } from "@/cli/config.js";
 import { AgentRegistry } from "@/cli/features/agentRegistry.js";
+import { listProfiles } from "@/cli/features/managedFolder.js";
 import {
   error,
   info,
@@ -38,17 +39,15 @@ import type { Command } from "commander";
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
- * @param args.agent - AI agent implementation
  *
  * @returns Array of available profiles with names and descriptions
  */
 const getAvailableProfiles = async (args: {
   installDir: string;
-  agent: ReturnType<typeof AgentRegistry.prototype.get>;
 }): Promise<Array<{ name: string; description: string }>> => {
-  const { installDir, agent } = args;
+  const { installDir } = args;
 
-  const installedProfileNames = await agent.listProfiles({ installDir });
+  const installedProfileNames = await listProfiles({ installDir });
 
   return installedProfileNames.map((name) => ({
     name,
@@ -146,18 +145,16 @@ const promptForAuth = async (): Promise<{
  *
  * @param args - Configuration arguments
  * @param args.installDir - Installation directory
- * @param args.agent - AI agent implementation
  *
  * @returns Selected profile
  */
 const promptForProfile = async (args: {
   installDir: string;
-  agent: ReturnType<typeof AgentRegistry.prototype.get>;
 }): Promise<{ baseProfile: string }> => {
-  const { installDir, agent } = args;
+  const { installDir } = args;
 
-  // Get available profiles from both source and installed locations
-  const profiles = await getAvailableProfiles({ installDir, agent });
+  // Get available profiles from installed location
+  const profiles = await getAvailableProfiles({ installDir });
 
   if (profiles.length === 0) {
     error({
@@ -320,14 +317,12 @@ export const onboardMain = async (args?: {
         existingProfile ??
         (await promptForProfile({
           installDir: normalizedInstallDir,
-          agent: agentImpl,
         }));
     } else {
       newline();
       auth = await promptForAuth();
       selectedProfile = await promptForProfile({
         installDir: normalizedInstallDir,
-        agent: agentImpl,
       });
     }
   } else {
@@ -335,7 +330,6 @@ export const onboardMain = async (args?: {
     auth = await promptForAuth();
     selectedProfile = await promptForProfile({
       installDir: normalizedInstallDir,
-      agent: agentImpl,
     });
   }
 

@@ -665,8 +665,8 @@ describe("registry-download", () => {
       expect(registrarApi.downloadTarball).not.toHaveBeenCalled();
     });
 
-    it("should use home dir auth for namespaced packages when explicit installDir has no auth", async () => {
-      // Create explicit install dir WITHOUT auth (simulates cwd from registry-install)
+    it("should use centralized auth for namespaced packages with explicit installDir", async () => {
+      // Create explicit install dir (simulates cwd from registry-install)
       const explicitInstallDir = await fs.mkdtemp(
         path.join(tmpdir(), "nori-explicit-install-"),
       );
@@ -681,40 +681,17 @@ describe("registry-download", () => {
         JSON.stringify({ profile: { baseProfile: "test" } }),
       );
 
-      // Create home dir WITH unified auth including "pangram" organization
-      const homeNoriDir = path.join(testDir, ".nori");
-      await fs.mkdir(homeNoriDir, { recursive: true });
-      await fs.writeFile(
-        path.join(homeNoriDir, ".nori-config.json"),
-        JSON.stringify({
-          profile: { baseProfile: "home-profile" },
-          auth: {
-            username: "testuser",
-            refreshToken: "mock-refresh-token",
-            organizations: ["pangram", "demo"],
-          },
-        }),
-      );
-      const homeProfilesDir = path.join(testDir, ".nori", "profiles");
-      await fs.mkdir(homeProfilesDir, { recursive: true });
-
-      // Mock loadConfig to return config with unified auth from centralized config
-      // Since loadConfig() is now zero-arg and always reads from ~/.nori-config.json,
-      // both the initial call and the fallback call return the same config.
-      // The first call returns config without org auth, triggering the fallback path,
-      // which also calls loadConfig() and gets the same result. To test the fallback
-      // auth path, we return config with auth on the second call.
-      vi.mocked(loadConfig)
-        .mockResolvedValueOnce({ installDir: explicitInstallDir })
-        .mockResolvedValueOnce({
-          installDir: testDir,
-          auth: {
-            username: "testuser",
-            organizationUrl: "https://pangram.noriskillsets.dev",
-            refreshToken: "mock-refresh-token",
-            organizations: ["pangram", "demo"],
-          },
-        });
+      // Config is centralized at ~/.nori-config.json and always has auth
+      // since loadConfig() is zero-arg and reads from a single location
+      vi.mocked(loadConfig).mockResolvedValue({
+        installDir: testDir,
+        auth: {
+          username: "testuser",
+          organizationUrl: "https://pangram.noriskillsets.dev",
+          refreshToken: "mock-refresh-token",
+          organizations: ["pangram", "demo"],
+        },
+      });
 
       // Mock getRegistryAuth to return auth for the pangram namespace
       vi.mocked(getRegistryAuth).mockReturnValue({
@@ -742,10 +719,10 @@ describe("registry-download", () => {
           installDir: explicitInstallDir, // Explicit installDir (like registry-install passes)
         });
 
-        // Verify success - should have used home dir auth as fallback
+        // Verify success - should have used centralized config auth
         expect(result.success).toBe(true);
 
-        // Verify download was called with auth token from home dir
+        // Verify download was called with auth token from centralized config
         expect(registrarApi.downloadTarball).toHaveBeenCalledWith({
           packageName: "high-autonomy",
           version: undefined,

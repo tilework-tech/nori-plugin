@@ -181,7 +181,8 @@ describe("logout command", () => {
       expect(beforeLogout?.auth?.username).toBe("user@example.com");
 
       // Perform logout without installDir - should find config at homedir
-      await logoutMain({ searchDir: tempDir });
+      // Config is centralized at ~/.nori-config.json (os.homedir() mocked to tempDir)
+      await logoutMain();
 
       // Verify auth is cleared
       const afterLogout = await loadConfig();

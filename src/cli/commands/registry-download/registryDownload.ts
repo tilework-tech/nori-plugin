@@ -566,41 +566,37 @@ export const registryDownloadMain = async (args: {
   } else {
     const allInstallations = getInstallDirs({ currentDir: cwd });
 
-    // Also check the home directory as it typically has registry auth configured
-    // For registry commands, prefer the home dir installation if it exists
+    // Check home directory for existing installation
     const homeDir = os.homedir();
     const homeInstallations = getInstallDirs({ currentDir: homeDir });
 
-    // Prefer the home dir if it has a Nori installation (typically has registry auth)
-    if (homeInstallations.includes(homeDir)) {
-      // Home dir has installation - use centralized config
-    } else if (allInstallations.length === 0) {
-      // No installation found - auto-init at home directory (interactive to allow user prompts)
-      // Skip the profile persistence warning since users are just trying to download a profile
-      info({ message: "Setting up Nori for first time use..." });
-      try {
-        await initMain({
-          installDir: homeDir,
-          nonInteractive: false,
-          skipWarning: true,
-        });
-      } catch (err) {
+    if (!homeInstallations.includes(homeDir)) {
+      if (allInstallations.length === 0) {
+        // No installation found - auto-init at home directory (interactive to allow user prompts)
+        // Skip the profile persistence warning since users are just trying to download a profile
+        info({ message: "Setting up Nori for first time use..." });
+        try {
+          await initMain({
+            installDir: homeDir,
+            nonInteractive: false,
+            skipWarning: true,
+          });
+        } catch (err) {
+          error({
+            message: `Failed to initialize Nori: ${err instanceof Error ? err.message : String(err)}`,
+          });
+          return { success: false };
+        }
+      } else if (allInstallations.length > 1) {
+        const installList = allInstallations
+          .map((dir, index) => `${index + 1}. ${dir}`)
+          .join("\n");
+
         error({
-          message: `Failed to initialize Nori: ${err instanceof Error ? err.message : String(err)}`,
+          message: `Found multiple Nori installations. Cannot determine which one to use.\n\nInstallations found:\n${installList}\n\nPlease use --install-dir to specify the target installation.`,
         });
         return { success: false };
       }
-    } else if (allInstallations.length > 1) {
-      const installList = allInstallations
-        .map((dir, index) => `${index + 1}. ${dir}`)
-        .join("\n");
-
-      error({
-        message: `Found multiple Nori installations. Cannot determine which one to use.\n\nInstallations found:\n${installList}\n\nPlease use --install-dir to specify the target installation.`,
-      });
-      return { success: false };
-    } else {
-      // Single installation found - use centralized config
     }
   }
 
@@ -750,68 +746,12 @@ export const registryDownloadMain = async (args: {
       searchResults = [];
     }
   } else {
-    // Namespaced package without unified auth in current config
-    // Check centralized config for auth as fallback (common pattern: user-level login)
-    const homeConfig = await loadConfig();
-    const homeHasUnifiedAuthWithOrgs =
-      homeConfig?.auth != null &&
-      homeConfig.auth.refreshToken != null &&
-      homeConfig.auth.organizations != null;
-
-    if (homeHasUnifiedAuthWithOrgs) {
-      // Use home dir auth for namespaced package
-      const targetRegistryUrl = buildOrganizationRegistryUrl({ orgId });
-      const userOrgs = homeConfig.auth!.organizations!;
-
-      // Check if user has access to this org
-      if (!userOrgs.includes(orgId)) {
-        const displayName = `${orgId}/${packageName}`;
-        error({
-          message: `You do not have access to organization "${orgId}".\n\nCannot download "${displayName}" from ${targetRegistryUrl}.\n\nYour available organizations: ${userOrgs.length > 0 ? userOrgs.join(", ") : "(none)"}`,
-        });
-        return { success: false };
-      }
-
-      // Get auth token for the org registry using home dir auth
-      const registryAuth = {
-        registryUrl: targetRegistryUrl,
-        username: homeConfig.auth!.username,
-        refreshToken: homeConfig.auth!.refreshToken,
-      };
-
-      try {
-        const authToken = await getRegistryAuthToken({ registryAuth });
-        const packument = await registrarApi.getPackument({
-          packageName,
-          registryUrl: targetRegistryUrl,
-          authToken,
-        });
-
-        searchResults = [
-          {
-            registryUrl: targetRegistryUrl,
-            packument,
-            authToken,
-          },
-        ];
-      } catch (err) {
-        if (err instanceof NetworkError) {
-          error({
-            message: `Network error while connecting to ${targetRegistryUrl}:\n\n${err.message}`,
-          });
-          return { success: false };
-        }
-        // API error (like 404) - package not found in org registry
-        searchResults = [];
-      }
-    } else {
-      // No auth anywhere - require login
-      const displayName = `${orgId}/${packageName}`;
-      error({
-        message: `Skillset "${displayName}" not found. To download from organization "${orgId}", log in with:\n\n  nori-skillsets login`,
-      });
-      return { success: false };
-    }
+    // Namespaced package without unified auth - require login
+    const displayName = `${orgId}/${packageName}`;
+    error({
+      message: `Skillset "${displayName}" not found. To download from organization "${orgId}", log in with:\n\n  nori-skillsets login`,
+    });
+    return { success: false };
   }
 
   // Handle search results

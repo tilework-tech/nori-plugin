@@ -73,7 +73,7 @@ After authentication (either method):
 - Calls `/api/auth/check-access` to verify organization access and retrieve organization list
 - Saves auth credentials (refreshToken, organizationUrl, organizations, isAdmin) to config
 
-The `logout` command removes auth credentials from config, preserving the profile selection and other settings. When no `--install-dir` is provided, logout auto-detects all config locations with auth credentials by searching both `<searchDir>/.nori-config.json` and `<searchDir>/.nori/.nori-config.json` (the home directory installation pattern stores config in the `.nori` subdirectory). Auth is cleared from all detected locations.
+The `logout` command removes auth credentials from the centralized `~/.nori-config.json`, preserving the profile selection and other settings. The `logoutMain` function loads the single centralized config via `loadConfig()` (zero-arg), clears the `auth` field, and saves back via `saveConfig()`.
 
 **Registry Commands:** The `registry-search`, `registry-download`, and `registry-install` commands provide terminal access to Nori package registries. These commands use the `registrarApi` from @/src/api/registrar.ts. Registry commands work without any agent gate -- they operate on the profiles directory structure independently of which agent is installed.
 

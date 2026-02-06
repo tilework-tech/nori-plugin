@@ -58,13 +58,12 @@ The LoaderRegistry provides getAll() for install order. The profiles loader must
 | `getClaudeMdFile({ installDir })` | `{installDir}/.claude/CLAUDE.md` |
 | `getClaudeSkillsDir({ installDir })` | `{installDir}/.claude/skills` |
 
-**Nori project-relative paths** (take `installDir` param):
+**Nori centralized paths** (zero-arg, always resolve to home directory):
 
 | Function | Returns |
 |----------|---------|
-| `getNoriDir({ installDir })` | `{installDir}/.nori` |
-| `getNoriProfilesDir({ installDir })` | `{installDir}/.nori/profiles` |
-| `getNoriConfigFile({ installDir })` | `{installDir}/.nori/config.json` |
+| `getNoriDir()` | `~/.nori` |
+| `getNoriProfilesDir()` | `~/.nori/profiles` |
 
 **Claude home-based paths** (no params):
 
@@ -74,7 +73,7 @@ The LoaderRegistry provides getAll() for install order. The profiles loader must
 | `getClaudeHomeSettingsFile()` | `~/.claude/settings.json` |
 | `getClaudeHomeCommandsDir()` | `~/.claude/commands` |
 
-Global features (hooks, statusline) use home-based paths because Claude Code reads these from the user's home directory.
+Global features (hooks, statusline) use home-based paths because Claude Code reads these from the user's home directory. Nori centralized paths use `os.homedir()` to ensure config and profiles are always in the same location regardless of working directory.
 
 **Directory Separation Architecture:** Profiles are stored in `~/.nori/profiles/` instead of `~/.claude/profiles/`. This creates a clear separation between Nori's internal profile repository and Claude Code's native artifacts.
 

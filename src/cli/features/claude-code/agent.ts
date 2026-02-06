@@ -33,7 +33,7 @@ export const claudeCodeAgent: Agent = {
     profileName: string;
   }): Promise<void> => {
     const { installDir, profileName } = args;
-    const profilesDir = getNoriProfilesDir({ installDir });
+    const profilesDir = getNoriProfilesDir();
 
     // Verify profile exists
     // profileName can be flat (e.g., "senior-swe") or namespaced (e.g., "myorg/my-profile")
@@ -48,7 +48,7 @@ export const claudeCodeAgent: Agent = {
     }
 
     // Load current config
-    const currentConfig = await loadConfig({ installDir });
+    const currentConfig = await loadConfig();
 
     // Get existing agents config (agents keys are the source of truth for installed agents)
     const existingAgents = currentConfig?.agents ?? {};

@@ -29,16 +29,12 @@ const __dirname = path.dirname(__filename);
  *
  * @param args - Function arguments
  * @param args.profileName - Name of the profile to load CLAUDE.md from
- * @param args.installDir - Installation directory
  *
  * @returns Path to the CLAUDE.md file for the profile
  */
-const getProfileClaudeMd = (args: {
-  profileName: string;
-  installDir: string;
-}): string => {
-  const { profileName, installDir } = args;
-  const noriDir = getNoriDir({ installDir });
+const getProfileClaudeMd = (args: { profileName: string }): string => {
+  const { profileName } = args;
+  const noriDir = getNoriDir();
   return path.join(noriDir, "profiles", profileName, "CLAUDE.md");
 };
 
@@ -191,7 +187,7 @@ const generateSkillsList = async (args: {
 
   try {
     // Get skills directory for the profile from installed profiles in .nori
-    const noriDir = getNoriDir({ installDir });
+    const noriDir = getNoriDir();
     const skillsDir = path.join(noriDir, "profiles", profileName, "skills");
 
     // Find all skill files
@@ -278,7 +274,6 @@ const insertClaudeMd = async (args: { config: Config }): Promise<void> => {
   // Read CLAUDE.md from the selected profile
   const profileClaudeMdPath = getProfileClaudeMd({
     profileName,
-    installDir: config.installDir,
   });
   let instructions = await fs.readFile(profileClaudeMdPath, "utf-8");
 
@@ -343,49 +338,6 @@ const insertClaudeMd = async (args: { config: Config }): Promise<void> => {
 };
 
 /**
- * Remove nori-managed block from CLAUDE.md
- *
- * @param args - Configuration arguments
- * @param args.config - Runtime configuration
- */
-const removeClaudeMd = async (args: { config: Config }): Promise<void> => {
-  const { config } = args;
-  info({ message: "Removing nori instructions from CLAUDE.md..." });
-
-  const claudeMdFile = getClaudeMdFile({ installDir: config.installDir });
-
-  try {
-    const content = await fs.readFile(claudeMdFile, "utf-8");
-
-    // Check if managed block exists
-    if (!content.includes(BEGIN_MARKER)) {
-      info({ message: "No nori instructions found in CLAUDE.md" });
-      return;
-    }
-
-    // Remove managed block
-    const regex = new RegExp(
-      `\n?${BEGIN_MARKER}\n[\\s\\S]*?\n${END_MARKER}\n?`,
-      "g",
-    );
-    const updated = content.replace(regex, "");
-
-    // If file is empty after removal, delete it
-    if (updated.trim() === "") {
-      await fs.unlink(claudeMdFile);
-      success({ message: "✓ CLAUDE.md removed (was empty after cleanup)" });
-    } else {
-      await fs.writeFile(claudeMdFile, updated);
-      success({
-        message: "✓ Nori instructions removed from CLAUDE.md (file preserved)",
-      });
-    }
-  } catch {
-    info({ message: "CLAUDE.md not found (may not have been installed)" });
-  }
-};
-
-/**
  * CLAUDE.md feature loader
  */
 export const claudeMdLoader: ProfileLoader = {
@@ -394,9 +346,5 @@ export const claudeMdLoader: ProfileLoader = {
   install: async (args: { config: Config }) => {
     const { config } = args;
     await insertClaudeMd({ config });
-  },
-  uninstall: async (args: { config: Config }) => {
-    const { config } = args;
-    await removeClaudeMd({ config });
   },
 };

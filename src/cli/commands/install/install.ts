@@ -147,7 +147,7 @@ const writeInstalledManifest = async (args: {
   }
 
   const claudeDir = getClaudeDir({ installDir: config.installDir });
-  const manifestPath = getManifestPath({ installDir: config.installDir });
+  const manifestPath = getManifestPath();
 
   try {
     const manifest = await computeDirectoryManifest({
@@ -247,7 +247,7 @@ export const noninteractive = async (args?: {
   });
 
   // Step 2: Resolve profile and save to config
-  const existingConfig = await loadConfig({ installDir: normalizedInstallDir });
+  const existingConfig = await loadConfig();
   if (existingConfig == null) {
     error({
       message:
@@ -293,7 +293,7 @@ export const noninteractive = async (args?: {
   });
 
   // Reload config after saving
-  const config = await loadConfig({ installDir: normalizedInstallDir });
+  const config = await loadConfig();
   if (config == null) {
     error({ message: "Failed to load configuration after setup." });
     process.exit(1);
@@ -311,7 +311,6 @@ export const noninteractive = async (args?: {
  * Main installer entry point
  * @param args - Configuration arguments
  * @param args.nonInteractive - Whether to run in non-interactive mode (kept for caller compatibility)
- * @param args.skipUninstall - Whether to skip uninstall step (kept for caller compatibility)
  * @param args.installDir - Custom installation directory (optional)
  * @param args.agent - AI agent to use (defaults to claude-code)
  * @param args.silent - Whether to suppress all output
@@ -319,7 +318,6 @@ export const noninteractive = async (args?: {
  */
 export const main = async (args?: {
   nonInteractive?: boolean | null;
-  skipUninstall?: boolean | null;
   installDir?: string | null;
   agent?: string | null;
   silent?: boolean | null;

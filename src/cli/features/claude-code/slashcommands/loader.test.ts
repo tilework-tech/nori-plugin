@@ -32,12 +32,9 @@ vi.mock("@/cli/features/claude-code/paths.js", () => ({
     path.join(args.installDir, ".claude", "skills"),
   getClaudeProfilesDir: (args: { installDir: string }) =>
     path.join(args.installDir, ".claude", "profiles"),
-  getNoriDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".nori"),
-  getNoriProfilesDir: (args: { installDir: string }) =>
-    path.join(args.installDir, ".nori", "profiles"),
-  getNoriConfigFile: (args: { installDir: string }) =>
-    path.join(args.installDir, ".nori", "config.json"),
+  getNoriDir: () => path.join(os.homedir(), ".nori"),
+  getNoriProfilesDir: () => path.join(os.homedir(), ".nori", "profiles"),
+  getNoriConfigFile: () => path.join(os.homedir(), ".nori", "config.json"),
   getClaudeHomeDir: () => mockClaudeHomeDir,
   getClaudeHomeSettingsFile: () =>
     path.join(mockClaudeHomeDir, "settings.json"),
@@ -107,25 +104,6 @@ describe("globalSlashCommandsLoader", () => {
 
       await expect(
         globalSlashCommandsLoader.run({ config }),
-      ).resolves.not.toThrow();
-    });
-  });
-
-  describe("uninstall", () => {
-    it("should be a no-op and not throw errors", async () => {
-      const config: Config = { installDir: tempDir };
-
-      await expect(
-        globalSlashCommandsLoader.uninstall({ config }),
-      ).resolves.not.toThrow();
-    });
-
-    it("should handle missing commands directory gracefully", async () => {
-      const config: Config = { installDir: tempDir };
-
-      // Uninstall without installing first
-      await expect(
-        globalSlashCommandsLoader.uninstall({ config }),
       ).resolves.not.toThrow();
     });
   });

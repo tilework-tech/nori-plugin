@@ -101,6 +101,8 @@ The change detection uses the manifest module from @/src/cli/features/claude-cod
 
 **watch** (@/src/cli/commands/watch/): Monitors Claude Code sessions by tailing transcript files. Supports `watch` (start) and `watch stop` (stop daemon).
 
+**completion** (@/src/cli/commands/completion/): Generates shell completion scripts for Bash and Zsh. `completionMain` routes the `<shell>` argument to `generateBashCompletion()` or `generateZshCompletion()`, which return static script strings printed to stdout. Users activate completions via `eval "$(nori-skillsets completion bash)"` or the zsh equivalent. The generated scripts handle static completions (subcommands, per-command flags) inline, and dynamic completions for `switch-skillset` by calling back to `nori-skillsets list-skillsets 2>/dev/null` at tab-completion time. All three binary names (`nori-skillsets`, `nori-skillset`, `sks`) are registered for completion. Hidden command aliases (`switch-skillsets`, `list-skillset`) are excluded from completion candidates.
+
 ### Things to Know
 
 - `asciiArt.ts` in the install directory contains ASCII banners displayed during installation. Display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.

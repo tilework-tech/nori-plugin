@@ -7,6 +7,7 @@
  * The registry-* prefixed commands are also available as aliases.
  */
 
+import { completionMain } from "@/cli/commands/completion/completion.js";
 import { externalMain } from "@/cli/commands/external/external.js";
 import { initMain } from "@/cli/commands/init/init.js";
 import { installLocationMain } from "@/cli/commands/install-location/installLocation.js";
@@ -442,4 +443,22 @@ export const registerNoriSkillsetsInstallLocationCommand = (args: {
         });
       },
     );
+};
+
+/**
+ * Register the 'completion' command for nori-skillsets CLI
+ * @param args - Configuration arguments
+ * @param args.program - Commander program instance
+ */
+export const registerNoriSkillsetsCompletionCommand = (args: {
+  program: Command;
+}): void => {
+  const { program } = args;
+
+  program
+    .command("completion <shell>")
+    .description("Generate shell completion script (bash, zsh)")
+    .action((shell: string) => {
+      completionMain({ shell });
+    });
 };

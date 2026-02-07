@@ -31,14 +31,11 @@ export const formatUpdateMessage = (args: {
   const { currentVersion, latestVersion } = args;
   return [
     "",
-    "\x1b[33m╭─────────────────────────────────────────────╮\x1b[0m",
-    `\x1b[33m│\x1b[0m  🍙 Update available! ${currentVersion} → ${latestVersion}`,
-    "\x1b[33m│\x1b[0m",
-    "\x1b[33m│\x1b[0m  1. Update now",
-    "\x1b[33m│\x1b[0m  2. Skip",
-    "\x1b[33m│\x1b[0m  3. Skip until next version",
-    "\x1b[33m╰─────────────────────────────────────────────╯\x1b[0m",
-    "",
+    `\x1b[33m┃\x1b[0m  🍙 Update available! ${currentVersion} → ${latestVersion}`,
+    "\x1b[33m┃\x1b[0m",
+    "\x1b[33m┃\x1b[0m  1. Update now",
+    "\x1b[33m┃\x1b[0m  2. Skip",
+    "\x1b[33m┃\x1b[0m  3. Skip until next version\n\n",
   ].join("\n");
 };
 

@@ -10,7 +10,7 @@ import * as os from "os";
 import * as path from "path";
 
 const VERSION_CACHE_FILE = "nori-skillsets-version.json";
-const DEFAULT_MAX_AGE_HOURS = 20;
+const DEFAULT_MAX_AGE_HOURS = 12;
 
 export type VersionCache = {
   latest_version: string;

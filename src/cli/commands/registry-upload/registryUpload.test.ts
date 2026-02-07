@@ -314,8 +314,8 @@ describe("registry-upload", () => {
           cwd: testDir,
         });
 
-        // Should fail because profile doesn't exist, but loadConfig should have been called with correct path
-        expect(loadConfig).toHaveBeenCalledWith({ installDir: testDir });
+        // Should fail because profile doesn't exist, but loadConfig should have been called
+        expect(loadConfig).toHaveBeenCalled();
       });
     });
 
@@ -1223,6 +1223,10 @@ describe("registry-upload", () => {
           start: vi.fn(),
           stop: vi.fn(),
           message: vi.fn(),
+          cancel: vi.fn(),
+          error: vi.fn(),
+          clear: vi.fn(),
+          isCancelled: false,
         };
         vi.mocked(clack.spinner).mockReturnValue(spinnerMock);
 
@@ -1273,6 +1277,10 @@ describe("registry-upload", () => {
           start: vi.fn(),
           stop: vi.fn(),
           message: vi.fn(),
+          cancel: vi.fn(),
+          error: vi.fn(),
+          clear: vi.fn(),
+          isCancelled: false,
         };
         vi.mocked(clack.spinner).mockReturnValue(spinnerMock);
 
@@ -1320,6 +1328,10 @@ describe("registry-upload", () => {
           start: vi.fn(),
           stop: vi.fn(),
           message: vi.fn(),
+          cancel: vi.fn(),
+          error: vi.fn(),
+          clear: vi.fn(),
+          isCancelled: false,
         };
         vi.mocked(clack.spinner).mockReturnValue(spinnerMock);
 

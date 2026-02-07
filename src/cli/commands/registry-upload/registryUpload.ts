@@ -377,12 +377,8 @@ export const registryUploadMain = async (args: {
   const profileDisplayName =
     orgId === "public" ? packageName : `${orgId}/${packageName}`;
 
-  // Find installation directory
-  let targetInstallDir: string;
-
-  if (installDir != null) {
-    targetInstallDir = installDir;
-  } else {
+  // Validate Nori installation exists
+  if (installDir == null) {
     const allInstallations = getInstallDirs({ currentDir: cwd });
 
     if (allInstallations.length === 0) {
@@ -402,12 +398,10 @@ export const registryUploadMain = async (args: {
       });
       return { success: false };
     }
-
-    targetInstallDir = allInstallations[0];
   }
 
   // Load config
-  const config = await loadConfig({ installDir: targetInstallDir });
+  const config = await loadConfig();
   if (config == null) {
     error({ message: `Could not load Nori configuration.` });
     return { success: false };
@@ -533,7 +527,7 @@ export const registryUploadMain = async (args: {
   }
 
   // Check profile exists locally
-  const profilesDir = getNoriProfilesDir({ installDir: targetInstallDir });
+  const profilesDir = getNoriProfilesDir();
   const profileDir =
     orgId === "public"
       ? path.join(profilesDir, packageName)
@@ -615,12 +609,17 @@ export const registryUploadMain = async (args: {
   };
 
   // Start spinner
-  uploadSpinner?.start(`Uploading "${profileDisplayName}@${uploadVersion}"...`);
+  if (uploadSpinner != null) {
+    uploadSpinner.start();
+    uploadSpinner.message(
+      `Uploading "${profileDisplayName}@${uploadVersion}"...`,
+    );
+  }
 
   try {
     const result = await performUpload({});
 
-    uploadSpinner?.stop(`Upload complete`);
+    uploadSpinner?.stop();
     displaySuccess({ result });
 
     return { success: true };
@@ -649,7 +648,7 @@ export const registryUploadMain = async (args: {
             resolutionStrategy: strategy,
           });
 
-          uploadSpinner?.stop(`Upload complete`);
+          uploadSpinner?.stop();
 
           success({
             message: `Successfully uploaded "${profileDisplayName}@${retryResult.version}" to ${targetRegistryUrl}`,
@@ -673,7 +672,7 @@ export const registryUploadMain = async (args: {
 
           return { success: true };
         } catch (retryErr) {
-          uploadSpinner?.stop(`Upload failed`);
+          uploadSpinner?.stop();
           error({
             message: `Upload failed on retry: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
           });
@@ -683,7 +682,7 @@ export const registryUploadMain = async (args: {
 
       // Interactive resolution if not in non-interactive mode
       if (!nonInteractive) {
-        uploadSpinner?.stop(`Skill conflicts detected`);
+        uploadSpinner?.stop();
 
         try {
           // Prompt for resolution of unresolved conflicts
@@ -707,19 +706,22 @@ export const registryUploadMain = async (args: {
             }
           }
 
-          uploadSpinner?.start(`Uploading with resolution strategy...`);
+          if (uploadSpinner != null) {
+            uploadSpinner.start();
+            uploadSpinner.message(`Uploading with resolution strategy...`);
+          }
 
           const retryResult = await performUpload({
             resolutionStrategy: combinedStrategy,
           });
 
-          uploadSpinner?.stop(`Upload complete`);
+          uploadSpinner?.stop();
           displaySuccess({ result: retryResult });
 
           return { success: true };
         } catch (resolutionErr) {
           // User cancelled or error during resolution
-          uploadSpinner?.stop(`Upload cancelled`);
+          uploadSpinner?.stop();
           error({
             message: `Upload cancelled: ${resolutionErr instanceof Error ? resolutionErr.message : String(resolutionErr)}`,
           });
@@ -728,12 +730,12 @@ export const registryUploadMain = async (args: {
       }
 
       // Non-interactive mode - manual resolution required
-      uploadSpinner?.stop(`Upload failed`);
+      uploadSpinner?.stop();
       error({ message: formatSkillConflicts({ conflicts: err.conflicts }) });
       return { success: false };
     }
 
-    uploadSpinner?.stop(`Upload failed`);
+    uploadSpinner?.stop();
     error({
       message: `Upload failed: ${err instanceof Error ? err.message : String(err)}`,
     });

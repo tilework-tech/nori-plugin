@@ -103,6 +103,8 @@ The change detection uses the manifest module from @/src/cli/features/claude-cod
 
 **factory-reset** (@/src/cli/commands/factory-reset/factoryReset.ts): The `factoryResetMain` function removes all configuration for a given agent. It blocks non-interactive mode (prints an error and returns), looks up the agent by name via `AgentRegistry.getInstance().get({ name })`, checks that the agent supports `factoryReset`, and delegates to the agent's `factoryReset({ path })` method. Defaults `path` to `process.cwd()` if not provided. This follows the same pattern as `switch-skillset` for refusing destructive operations in non-interactive mode.
 
+**dir** (@/src/cli/commands/dir/dir.ts): Opens the Nori profiles directory (`~/.nori/profiles`) in the system file explorer. In non-interactive mode, outputs the plain path via `raw()` for scripting use. In interactive mode, uses `execFile` to invoke platform-specific open commands (`open` on macOS, `xdg-open` on Linux). Falls back to printing the path if the open command fails. Uses `getNoriProfilesDir()` from @/src/cli/features/claude-code/paths.ts for the directory path.
+
 ### Things to Know
 
 - `asciiArt.ts` in the install directory contains ASCII banners displayed during installation. Display functions (displayNoriBanner, displayWelcomeBanner, displaySeaweedBed) check `isSilentMode()` and return early without output when silent mode is enabled.

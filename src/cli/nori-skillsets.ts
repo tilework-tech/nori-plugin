@@ -13,6 +13,7 @@ import {
   registerNoriSkillsetsDownloadCommand,
   registerNoriSkillsetsDownloadSkillCommand,
   registerNoriSkillsetsExternalCommand,
+  registerNoriSkillsetsFactoryResetCommand,
   registerNoriSkillsetsInitCommand,
   registerNoriSkillsetsInstallCommand,
   registerNoriSkillsetsInstallLocationCommand,
@@ -27,6 +28,7 @@ import {
   setTileworkSource,
   trackInstallLifecycle,
 } from "@/cli/installTracking.js";
+import { checkForUpdateAndPrompt } from "@/cli/updates/checkForUpdate.js";
 import { getCurrentPackageVersion } from "@/cli/version.js";
 import { initializeProxySupport } from "@/utils/fetch.js";
 import { normalizeInstallDir } from "@/utils/path.js";
@@ -41,6 +43,25 @@ const version = getCurrentPackageVersion() || "unknown";
 setTileworkSource({ source: "nori-skillsets" });
 
 void trackInstallLifecycle({ currentVersion: version });
+
+// Check for updates before parsing commands (skip for informational flags)
+const isSilent =
+  process.argv.includes("--silent") || process.argv.includes("-s");
+const isNonInteractive =
+  process.argv.includes("--non-interactive") || process.argv.includes("-n");
+const isInfoOnly =
+  process.argv.includes("--help") ||
+  process.argv.includes("-h") ||
+  process.argv.includes("--version") ||
+  process.argv.includes("-V");
+
+if (!isInfoOnly) {
+  await checkForUpdateAndPrompt({
+    currentVersion: version,
+    isInteractive: !isNonInteractive && !isSilent,
+    isSilent,
+  });
+}
 
 program
   .name("nori-skillsets")
@@ -85,6 +106,7 @@ Examples:
   $ nori-skillsets install-location --installation-source  # show only source dirs
   $ nori-skillsets install-location --installation-managed # show only managed dirs
   $ nori-skillsets install-location --non-interactive      # plain output for scripts
+  $ nori-skillsets factory-reset claude-code               # remove all Claude Code config
 `,
   );
 
@@ -102,6 +124,7 @@ registerNoriSkillsetsExternalCommand({ program });
 registerNoriSkillsetsWatchCommand({ program });
 registerNoriSkillsetsInstallLocationCommand({ program });
 registerNoriSkillsetsCompletionCommand({ program });
+registerNoriSkillsetsFactoryResetCommand({ program });
 
 program.parse(process.argv);
 

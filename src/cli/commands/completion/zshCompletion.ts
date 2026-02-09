@@ -31,6 +31,7 @@ _nori_skillsets() {
     'external:Install skills from an external GitHub repository'
     'watch:Watch Claude Code sessions and save transcripts'
     'install-location:Display Nori installation directories'
+    'factory-reset:Remove all configuration for a given agent'
     'completion:Generate shell completion script'
     'help:Display help for a command'
   )
@@ -54,7 +55,7 @@ _nori_skillsets() {
             '--no-localhost[Use hosted callback page]' \\
             \$global_opts
           ;;
-        logout|init|list-skillsets|help)
+        logout|init|list-skillsets|factory-reset|help)
           _arguments \$global_opts
           ;;
         search)

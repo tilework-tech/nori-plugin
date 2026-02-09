@@ -35,6 +35,7 @@ const VISIBLE_SUBCOMMANDS = [
   "external",
   "watch",
   "install-location",
+  "factory-reset",
   "completion",
   "help",
 ];

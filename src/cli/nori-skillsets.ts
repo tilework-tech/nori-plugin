@@ -9,6 +9,7 @@
 import { Command } from "commander";
 
 import {
+  registerNoriSkillsetsDirCommand,
   registerNoriSkillsetsDownloadCommand,
   registerNoriSkillsetsDownloadSkillCommand,
   registerNoriSkillsetsExternalCommand,
@@ -101,6 +102,7 @@ Examples:
   $ nori-skillsets external owner/repo --all --ref main
   $ nori-skillsets watch              # start watching Claude Code sessions
   $ nori-skillsets watch stop         # stop the watch daemon
+  $ nori-skillsets dir                  # open the profiles directory
   $ nori-skillsets install-location   # show all installation directories
   $ nori-skillsets install-location --installation-source  # show only source dirs
   $ nori-skillsets install-location --installation-managed # show only managed dirs
@@ -121,6 +123,7 @@ registerNoriSkillsetsListSkillsetsCommand({ program });
 registerNoriSkillsetsDownloadSkillCommand({ program });
 registerNoriSkillsetsExternalCommand({ program });
 registerNoriSkillsetsWatchCommand({ program });
+registerNoriSkillsetsDirCommand({ program });
 registerNoriSkillsetsInstallLocationCommand({ program });
 registerNoriSkillsetsFactoryResetCommand({ program });
 

@@ -1,7 +1,7 @@
 /**
  * Tests for the external command --new flag
  *
- * Verifies that --new creates a new skillset directory with CLAUDE.md and nori.json,
+ * Verifies that --new creates a new skillset directory with nori.json,
  * then installs discovered skills into it.
  */
 
@@ -136,7 +136,10 @@ describe("externalMain with --new", () => {
     // Create an existing skillset
     const existingDir = path.join(profilesDir, "existing");
     await fs.mkdir(existingDir, { recursive: true });
-    await fs.writeFile(path.join(existingDir, "CLAUDE.md"), "");
+    await fs.writeFile(
+      path.join(existingDir, "nori.json"),
+      JSON.stringify({ name: "existing", version: "1.0.0" }),
+    );
 
     vi.mocked(loadConfig).mockResolvedValue({
       installDir: testDir,
@@ -154,7 +157,7 @@ describe("externalMain with --new", () => {
     expect(allErrorOutput.toLowerCase()).toContain("already exists");
   });
 
-  it("should create skillset directory with CLAUDE.md and nori.json when cloning succeeds", async () => {
+  it("should create skillset directory with nori.json when cloning succeeds", async () => {
     vi.mocked(loadConfig).mockResolvedValue({
       installDir: testDir,
     });
@@ -183,13 +186,8 @@ describe("externalMain with --new", () => {
       all: true,
     });
 
-    // Verify skillset directory was created
+    // Verify skillset directory was created with nori.json
     const skillsetDir = path.join(profilesDir, "fresh-skillset");
-    const claudeMdContent = await fs.readFile(
-      path.join(skillsetDir, "CLAUDE.md"),
-      "utf-8",
-    );
-    expect(claudeMdContent).toBe("");
 
     // Verify nori.json was created with correct structure
     const noriJsonContent = JSON.parse(

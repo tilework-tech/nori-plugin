@@ -1,7 +1,7 @@
 /**
  * New skillset command
  *
- * Creates a new empty skillset folder under ~/.nori/profiles/ with nori.json and CLAUDE.md.
+ * Creates a new empty skillset folder under ~/.nori/profiles/ with nori.json.
  */
 
 import * as fs from "fs/promises";
@@ -9,11 +9,10 @@ import * as path from "path";
 
 import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { writeProfileMetadata } from "@/cli/features/claude-code/profiles/metadata.js";
-import { INSTRUCTIONS_FILE } from "@/cli/features/managedFolder.js";
 import { error, info, newline, success } from "@/cli/logger.js";
 
 /**
- * Create the directory, nori.json, and CLAUDE.md for a new skillset.
+ * Create the directory and nori.json for a new skillset.
  *
  * This is the core creation logic shared by `nori-skillsets new` and
  * the `--new` flag on `nori-skillsets external`.  Callers are responsible
@@ -37,7 +36,7 @@ export const createEmptySkillset = async (args: {
   // Create the skillset directory
   await fs.mkdir(destPath);
 
-  // Write nori.json
+  // Write nori.json (serves as the skillset marker for list-skillsets)
   await writeProfileMetadata({
     profileDir: destPath,
     metadata: {
@@ -45,9 +44,6 @@ export const createEmptySkillset = async (args: {
       version: "1.0.0",
     },
   });
-
-  // Write empty CLAUDE.md so the skillset is recognized by list-skillsets
-  await fs.writeFile(path.join(destPath, INSTRUCTIONS_FILE), "");
 };
 
 export const newSkillsetMain = async (args: {

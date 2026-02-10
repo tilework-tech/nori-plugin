@@ -21,6 +21,7 @@ import {
   registerNoriSkillsetsInstallLocationCommand,
   registerNoriSkillsetsListSkillsetsCommand,
   registerNoriSkillsetsLoginCommand,
+  registerNoriSkillsetsNewCommand,
   registerNoriSkillsetsLogoutCommand,
   registerNoriSkillsetsSearchCommand,
   registerNoriSkillsetsSwitchSkillsetCommand,
@@ -109,6 +110,7 @@ Examples:
   $ nori-skillsets install-location --installation-source  # show only source dirs
   $ nori-skillsets install-location --installation-managed # show only managed dirs
   $ nori-skillsets install-location --non-interactive      # plain output for scripts
+  $ nori-skillsets new my-skillset                            # create a new empty skillset
   $ nori-skillsets fork senior-swe my-custom                # fork a skillset to a new name
   $ nori-skillsets edit-skillset                            # open active skillset in VS Code
   $ nori-skillsets edit-skillset my-profile                 # open a specific skillset
@@ -131,6 +133,7 @@ registerNoriSkillsetsWatchCommand({ program });
 registerNoriSkillsetsDirCommand({ program });
 registerNoriSkillsetsInstallLocationCommand({ program });
 registerNoriSkillsetsForkCommand({ program });
+registerNoriSkillsetsNewCommand({ program });
 registerNoriSkillsetsEditSkillsetCommand({ program });
 registerNoriSkillsetsFactoryResetCommand({ program });
 

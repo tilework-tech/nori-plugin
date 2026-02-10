@@ -34,13 +34,22 @@ const VISIBLE_SUBCOMMANDS = [
   "download-skill",
   "external",
   "watch",
+  "dir",
+  "fork",
+  "edit-skillset",
   "install-location",
   "factory-reset",
   "completion",
   "help",
 ];
 
-const HIDDEN_ALIASES = ["switch-skillsets", "list-skillset"];
+const HIDDEN_ALIASES = [
+  "switch-skillsets",
+  "switch",
+  "list-skillset",
+  "fork-skillset",
+  "edit",
+];
 
 const GLOBAL_FLAGS = [
   "--install-dir",
@@ -110,6 +119,12 @@ describe("generateBashCompletion", () => {
     expect(result).toContain("--skill");
     expect(result).toContain("--all");
     expect(result).toContain("--ref");
+  });
+
+  it("should contain edit-skillset-specific flags", () => {
+    const result = generateBashCompletion();
+    // edit-skillset should offer --agent flag
+    expect(result).toMatch(/edit-skillset[\s\S]*--agent/);
   });
 
   it("should contain install-location-specific flags", () => {

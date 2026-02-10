@@ -30,6 +30,9 @@ _nori_skillsets() {
     'download-skill:Download and install a skill package'
     'external:Install skills from an external GitHub repository'
     'watch:Watch Claude Code sessions and save transcripts'
+    'dir:Open the Nori profiles directory'
+    'fork:Fork an existing skillset to a new name'
+    'edit-skillset:Open a skillset folder in VS Code'
     'install-location:Display Nori installation directories'
     'factory-reset:Remove all configuration for a given agent'
     'completion:Generate shell completion script'
@@ -55,8 +58,20 @@ _nori_skillsets() {
             '--no-localhost[Use hosted callback page]' \\
             \$global_opts
           ;;
-        logout|init|list-skillsets|factory-reset|help)
+        logout|init|list-skillsets|dir|factory-reset|help)
           _arguments \$global_opts
+          ;;
+        fork)
+          _arguments \\
+            '1:base-skillset:' \\
+            '2:new-skillset:' \\
+            \$global_opts
+          ;;
+        edit-skillset)
+          _arguments \\
+            '1:name:' \\
+            '(-a --agent)'{-a,--agent}'[AI agent to get skillset for]:name:' \\
+            \$global_opts
           ;;
         search)
           _arguments \\

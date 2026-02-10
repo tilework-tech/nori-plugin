@@ -12,24 +12,23 @@ import { writeProfileMetadata } from "@/cli/features/claude-code/profiles/metada
 import { INSTRUCTIONS_FILE } from "@/cli/features/managedFolder.js";
 import { error, info, newline, success } from "@/cli/logger.js";
 
-export const newSkillsetMain = async (args: {
+/**
+ * Create the directory, nori.json, and CLAUDE.md for a new skillset.
+ *
+ * This is the core creation logic shared by `nori-skillsets new` and
+ * the `--new` flag on `nori-skillsets external`.  Callers are responsible
+ * for validation (e.g. checking the directory does not already exist)
+ * and any user-facing messaging beyond what this function does.
+ *
+ * @param args - The function arguments
+ * @param args.destPath - Absolute path to the new skillset directory
+ * @param args.name - Skillset name (used as the `name` field in nori.json)
+ */
+export const createEmptySkillset = async (args: {
+  destPath: string;
   name: string;
 }): Promise<void> => {
-  const { name } = args;
-  const profilesDir = getNoriProfilesDir();
-  const destPath = path.join(profilesDir, name);
-
-  // Validate destination does not already exist
-  try {
-    await fs.access(destPath);
-    error({
-      message: `Skillset '${name}' already exists. Choose a different name.`,
-    });
-    process.exit(1);
-    return;
-  } catch {
-    // Expected — destination should not exist
-  }
+  const { destPath, name } = args;
 
   // Create parent directory if needed (for namespaced profiles like org/name)
   const parentDir = path.dirname(destPath);
@@ -49,6 +48,28 @@ export const newSkillsetMain = async (args: {
 
   // Write empty CLAUDE.md so the skillset is recognized by list-skillsets
   await fs.writeFile(path.join(destPath, INSTRUCTIONS_FILE), "");
+};
+
+export const newSkillsetMain = async (args: {
+  name: string;
+}): Promise<void> => {
+  const { name } = args;
+  const profilesDir = getNoriProfilesDir();
+  const destPath = path.join(profilesDir, name);
+
+  // Validate destination does not already exist
+  try {
+    await fs.access(destPath);
+    error({
+      message: `Skillset '${name}' already exists. Choose a different name.`,
+    });
+    process.exit(1);
+    return;
+  } catch {
+    // Expected — destination should not exist
+  }
+
+  await createEmptySkillset({ destPath, name });
 
   newline();
   success({

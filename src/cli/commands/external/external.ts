@@ -12,6 +12,7 @@ import {
   getCommandNames,
   type CliName,
 } from "@/cli/commands/cliCommandNames.js";
+import { createEmptySkillset } from "@/cli/commands/new-skillset/newSkillset.js";
 import { loadConfig, getAgentProfile } from "@/cli/config.js";
 import {
   getClaudeSkillsDir,
@@ -19,7 +20,6 @@ import {
 } from "@/cli/features/claude-code/paths.js";
 import { addSkillToNoriJson } from "@/cli/features/claude-code/profiles/metadata.js";
 import { substituteTemplatePaths } from "@/cli/features/claude-code/template.js";
-import { INSTRUCTIONS_FILE } from "@/cli/features/managedFolder.js";
 import { error, success, info, newline, warn } from "@/cli/logger.js";
 import { getInstallDirs } from "@/utils/path.js";
 
@@ -327,12 +327,7 @@ export const externalMain = async (args: {
       // Expected — directory should not exist
     }
 
-    await fs.mkdir(newSkillsetDir, { recursive: true });
-    await fs.writeFile(path.join(newSkillsetDir, INSTRUCTIONS_FILE), "");
-    await fs.writeFile(
-      path.join(newSkillsetDir, "nori.json"),
-      JSON.stringify({ name: newSkillset, version: "1.0.0" }, null, 2),
-    );
+    await createEmptySkillset({ destPath: newSkillsetDir, name: newSkillset });
     targetSkillset = newSkillset;
     success({ message: `Created new skillset "${newSkillset}"` });
   } else if (skillset != null) {

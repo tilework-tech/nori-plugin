@@ -143,6 +143,46 @@ type AuthenticateResult =
 The flow checks `result.success` and uses `log.error()` / `note()` for
 error display. No try/catch in the flow body.
 
+## Intro and Outro Messages
+
+### Intro: use infinitive verb form
+
+The `intro()` message is a title describing what the flow will do. Use an
+infinitive verb (the base form of the verb):
+
+```ts
+// GOOD — infinitive verb form
+intro("Initialize Nori");
+intro("Switch Skillset");
+intro("Log in to Nori Skillsets");
+
+// BAD — noun form or gerund
+intro("Initialization");
+intro("Login to Nori");  // "Login" is a noun; use "Log in"
+intro("Switching Skillsets");
+```
+
+### Outro: use past tense or next step
+
+The `outro()` message confirms completion. Use either:
+- Past tense verb describing what was accomplished
+- A next step the user should take
+
+```ts
+// GOOD — past tense
+outro("Nori initialized successfully");
+outro(`Logged in as ${email}`);
+outro("Skillset switched");
+
+// GOOD — next step
+outro("Restart claude-code to apply");
+
+// BAD — present tense or vague
+outro("Done");
+outro("Success");
+outro("Nori is initialized");
+```
+
 ## Styling and Formatting
 
 ### No inline ANSI escape codes

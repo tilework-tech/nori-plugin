@@ -270,10 +270,17 @@ export const registerNoriSkillsetsUploadCommand = (args: {
       "--list-versions",
       "List available versions for the profile instead of uploading",
     )
+    .option("--dry-run", "Show what would be uploaded without uploading")
+    .option("--description <text>", "Description for this version")
     .action(
       async (
         profileSpec: string,
-        options: { registry?: string; listVersions?: boolean },
+        options: {
+          registry?: string;
+          listVersions?: boolean;
+          dryRun?: boolean;
+          description?: string;
+        },
       ) => {
         const globalOpts = program.opts();
 
@@ -285,6 +292,8 @@ export const registerNoriSkillsetsUploadCommand = (args: {
           listVersions: options.listVersions || null,
           nonInteractive: globalOpts.nonInteractive || null,
           silent: globalOpts.silent || null,
+          dryRun: options.dryRun || null,
+          description: options.description || null,
         });
 
         if (!result.success) {

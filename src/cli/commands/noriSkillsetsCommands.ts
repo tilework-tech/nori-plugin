@@ -180,6 +180,7 @@ export const registerNoriSkillsetsInitCommand = (args: {
       await initMain({
         installDir: globalOpts.installDir || null,
         nonInteractive: globalOpts.nonInteractive || null,
+        experimentalUi: globalOpts.experimentalUi || null,
       });
     });
 };

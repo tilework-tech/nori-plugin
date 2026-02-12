@@ -6,22 +6,23 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
-import * as clack from "@clack/prompts";
 import * as semver from "semver";
 import * as tar from "tar";
 
 import {
   registrarApi,
-  type ExtractedSkillInfo,
-  type SkillConflict,
   type SkillResolutionStrategy,
   type UploadSkillsetResponse,
 } from "@/api/registrar.js";
 import { getRegistryAuthToken } from "@/api/registryAuth.js";
 import { loadConfig, getRegistryAuth } from "@/cli/config.js";
 import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
-import { error, success, info, raw } from "@/cli/logger.js";
-import { selectSkillResolution } from "@/cli/prompts/skillResolution.js";
+import { error, info } from "@/cli/logger.js";
+import {
+  uploadFlow,
+  listVersionsFlow,
+  type UploadResult,
+} from "@/cli/prompts/flows/index.js";
 import { isSkillCollisionError } from "@/utils/fetch.js";
 import { getInstallDirs } from "@/utils/path.js";
 import {
@@ -47,18 +48,18 @@ export type RegistryUploadResult = {
  * @param args.registryUrl - The registry URL
  * @param args.authToken - Auth token for the registry
  *
- * @returns The version to upload
+ * @returns The version to upload and whether this is a new package
  */
 const determineUploadVersion = async (args: {
   profileName: string;
   explicitVersion?: string | null;
   registryUrl: string;
   authToken?: string | null;
-}): Promise<string> => {
+}): Promise<{ version: string; isNewPackage: boolean }> => {
   const { profileName, explicitVersion, registryUrl, authToken } = args;
 
   if (explicitVersion != null) {
-    return explicitVersion;
+    return { version: explicitVersion, isNewPackage: false };
   }
 
   try {
@@ -72,14 +73,14 @@ const determineUploadVersion = async (args: {
     if (latestVersion != null && semver.valid(latestVersion) != null) {
       const nextVersion = semver.inc(latestVersion, "patch");
       if (nextVersion != null) {
-        return nextVersion;
+        return { version: nextVersion, isNewPackage: false };
       }
     }
   } catch {
     // Package doesn't exist - default to 1.0.0
   }
 
-  return "1.0.0";
+  return { version: "1.0.0", isNewPackage: true };
 };
 
 /**
@@ -130,208 +131,6 @@ const createProfileTarball = async (args: {
 };
 
 /**
- * Check if a conflict can be auto-resolved
- * @param args - The function arguments
- * @param args.conflict - The skill conflict
- *
- * @returns True if can be auto-resolved
- */
-const canAutoResolveConflict = (args: { conflict: SkillConflict }): boolean => {
-  const { conflict } = args;
-  return (
-    conflict.contentUnchanged === true &&
-    conflict.availableActions.includes("link")
-  );
-};
-
-/**
- * Build auto-resolution strategy for conflicts
- * @param args - The function arguments
- * @param args.conflicts - Array of skill conflicts
- *
- * @returns Strategy and unresolved conflicts
- */
-const buildAutoResolutionStrategy = (args: {
-  conflicts: Array<SkillConflict>;
-}): {
-  strategy: SkillResolutionStrategy;
-  unresolvedConflicts: Array<SkillConflict>;
-} => {
-  const { conflicts } = args;
-  const strategy: SkillResolutionStrategy = {};
-  const unresolvedConflicts: Array<SkillConflict> = [];
-
-  for (const conflict of conflicts) {
-    if (canAutoResolveConflict({ conflict })) {
-      strategy[conflict.skillId] = { action: "link" };
-    } else {
-      unresolvedConflicts.push(conflict);
-    }
-  }
-
-  return { strategy, unresolvedConflicts };
-};
-
-/**
- * Format skill conflicts for display
- * @param args - The function arguments
- * @param args.conflicts - Array of skill conflicts
- *
- * @returns Formatted string
- */
-const formatSkillConflicts = (args: {
-  conflicts: Array<SkillConflict>;
-}): string => {
-  const { conflicts } = args;
-  const lines: Array<string> = ["Skill conflicts detected:\n"];
-
-  for (const conflict of conflicts) {
-    const status =
-      conflict.contentUnchanged === true
-        ? "(unchanged) - will link to existing"
-        : "(MODIFIED) - requires resolution";
-    lines.push(`  ${conflict.skillId} ${status}`);
-    if (conflict.latestVersion != null) {
-      lines.push(`    Current: v${conflict.latestVersion}`);
-    }
-    if (conflict.owner != null) {
-      lines.push(`    Owner: ${conflict.owner}`);
-    }
-    lines.push(
-      `    Available actions: ${conflict.availableActions.join(", ")}\n`,
-    );
-  }
-
-  lines.push("\nManual resolution required for modified skills.");
-  lines.push(
-    "Consider renaming the skill in your profile to avoid the conflict,",
-  );
-  lines.push("or contact the skill owner to coordinate versioning.");
-
-  return lines.join("\n");
-};
-
-/**
- * Format the list of available versions for a package
- * @param args - The function arguments
- * @param args.profileName - The profile name
- * @param args.packument - The packument data containing version information
- * @param args.packument.versions - Map of version strings to version metadata
- * @param args.packument.time - Optional map of version strings to publish timestamps
- * @param args.registryUrl - The registry URL
- *
- * @returns Formatted version list
- */
-const formatVersionList = (args: {
-  profileName: string;
-  packument: {
-    "dist-tags": Record<string, string>;
-    versions: Record<string, unknown>;
-    time?: Record<string, string> | null;
-  };
-  registryUrl: string;
-}): string => {
-  const { profileName, packument, registryUrl } = args;
-  const distTags = packument["dist-tags"];
-  const versions = Object.keys(packument.versions);
-  const timeInfo = packument.time ?? {};
-
-  // Sort versions in descending order (newest first)
-  const sortedVersions = versions.sort((a, b) => {
-    const timeA = timeInfo[a] ? new Date(timeInfo[a]).getTime() : 0;
-    const timeB = timeInfo[b] ? new Date(timeInfo[b]).getTime() : 0;
-    return timeB - timeA;
-  });
-
-  const lines = [
-    `Available versions of "${profileName}" from ${registryUrl}:\n`,
-    "Dist-tags:",
-  ];
-
-  for (const [tag, version] of Object.entries(distTags)) {
-    lines.push(`  ${tag}: ${version}`);
-  }
-
-  lines.push("\nVersions:");
-
-  for (const version of sortedVersions) {
-    const timestamp = timeInfo[version]
-      ? new Date(timeInfo[version]).toLocaleDateString()
-      : "";
-    const tags = Object.entries(distTags)
-      .filter(([, v]) => v === version)
-      .map(([t]) => t);
-    const tagStr = tags.length > 0 ? ` (${tags.join(", ")})` : "";
-    const timeStr = timestamp ? ` - ${timestamp}` : "";
-    lines.push(`  ${version}${tagStr}${timeStr}`);
-  }
-
-  lines.push(
-    `\nTo upload a specific version:\n  nori-skillsets upload ${profileName}@<version>`,
-  );
-
-  return lines.join("\n");
-};
-
-/**
- * Format skill summary for display
- * @param args - The function arguments
- * @param args.result - The upload response
- * @param args.linkedSkillIds - Set of skill IDs that were linked (not uploaded fresh)
- *
- * @returns Formatted skill summary string or null if no skills
- */
-const formatSkillSummary = (args: {
-  result: UploadSkillsetResponse;
-  linkedSkillIds: Set<string>;
-}): string | null => {
-  const { result, linkedSkillIds } = args;
-
-  if (result.extractedSkills == null) {
-    return null;
-  }
-
-  const { succeeded, failed } = result.extractedSkills;
-
-  if (succeeded.length === 0 && failed.length === 0) {
-    return null;
-  }
-
-  const lines: Array<string> = ["\nSkills:"];
-
-  // Separate linked vs newly uploaded skills
-  const linkedSkills = succeeded.filter((s: ExtractedSkillInfo) =>
-    linkedSkillIds.has(s.name),
-  );
-  const uploadedSkills = succeeded.filter(
-    (s: ExtractedSkillInfo) => !linkedSkillIds.has(s.name),
-  );
-
-  if (uploadedSkills.length > 0) {
-    lines.push("  Uploaded:");
-    for (const skill of uploadedSkills) {
-      lines.push(`    - ${skill.name}@${skill.version}`);
-    }
-  }
-
-  if (linkedSkills.length > 0) {
-    lines.push("  Linked (existing):");
-    for (const skill of linkedSkills) {
-      lines.push(`    - ${skill.name}@${skill.version}`);
-    }
-  }
-
-  if (failed.length > 0) {
-    lines.push("  Failed:");
-    for (const skill of failed) {
-      lines.push(`    - ${skill.name}: ${skill.error}`);
-    }
-  }
-
-  return lines.join("\n");
-};
-
-/**
  * Main upload function
  * @param args - The function arguments
  * @param args.profileSpec - Profile specification (name[@version] or org/name[@version])
@@ -363,7 +162,7 @@ export const registryUploadMain = async (args: {
     registryUrl,
     listVersions,
     nonInteractive,
-    silent,
+    silent: _silent,
     dryRun,
     description,
   } = args;
@@ -506,29 +305,27 @@ export const registryUploadMain = async (args: {
     return { success: false };
   }
 
-  // If --list-versions flag is set, show versions and exit
+  // If --list-versions flag is set, use list versions flow
   if (listVersions) {
-    try {
-      const packument = await registrarApi.getPackument({
-        packageName,
-        registryUrl: targetRegistryUrl,
-        authToken,
-      });
+    const result = await listVersionsFlow({
+      profileDisplayName,
+      registryUrl: targetRegistryUrl,
+      callbacks: {
+        onFetchPackument: async () => {
+          try {
+            return await registrarApi.getPackument({
+              packageName,
+              registryUrl: targetRegistryUrl,
+              authToken,
+            });
+          } catch {
+            return null;
+          }
+        },
+      },
+    });
 
-      raw({
-        message: formatVersionList({
-          profileName: profileDisplayName,
-          packument,
-          registryUrl: targetRegistryUrl,
-        }),
-      });
-      return { success: true };
-    } catch {
-      error({
-        message: `Profile "${profileDisplayName}" not found in ${targetRegistryUrl}.`,
-      });
-      return { success: false };
-    }
+    return { success: result != null };
   }
 
   // Check profile exists locally
@@ -547,18 +344,17 @@ export const registryUploadMain = async (args: {
     return { success: false };
   }
 
-  // Determine version to upload
-  const uploadVersion = await determineUploadVersion({
-    profileName: packageName,
-    explicitVersion: version,
-    registryUrl: targetRegistryUrl,
-    authToken,
-  });
-
-  // Handle dry-run mode
+  // Handle dry-run mode (simple output, no flow)
   if (dryRun) {
+    const versionResult = await determineUploadVersion({
+      profileName: packageName,
+      explicitVersion: version,
+      registryUrl: targetRegistryUrl,
+      authToken,
+    });
+
     info({
-      message: `[Dry run] Would upload "${profileDisplayName}@${uploadVersion}" to ${targetRegistryUrl}`,
+      message: `[Dry run] Would upload "${profileDisplayName}@${versionResult.version}" to ${targetRegistryUrl}`,
     });
     info({
       message: `[Dry run] Profile path: ${profileDir}`,
@@ -566,186 +362,79 @@ export const registryUploadMain = async (args: {
     return { success: true };
   }
 
-  // Create spinner for progress (unless in silent mode)
-  const uploadSpinner = silent ? null : clack.spinner();
-
-  // Track linked skill IDs for summary
-  const linkedSkillIds = new Set<string>();
-
   // Helper to perform upload with optional resolution strategy
-  const performUpload = async (args: {
+  const performUpload = async (uploadArgs: {
     resolutionStrategy?: SkillResolutionStrategy | null;
-  }): Promise<UploadSkillsetResponse> => {
-    const tarballBuffer = await createProfileTarball({ profileDir });
-    const archiveData = new ArrayBuffer(tarballBuffer.byteLength);
-    new Uint8Array(archiveData).set(tarballBuffer);
+    uploadVersion: string;
+  }): Promise<UploadResult> => {
+    try {
+      const tarballBuffer = await createProfileTarball({ profileDir });
+      const archiveData = new ArrayBuffer(tarballBuffer.byteLength);
+      new Uint8Array(archiveData).set(tarballBuffer);
 
-    return await registrarApi.uploadSkillset({
-      packageName,
-      version: uploadVersion,
-      archiveData,
-      authToken,
-      registryUrl: targetRegistryUrl,
-      description: description ?? undefined,
-      resolutionStrategy: args.resolutionStrategy ?? undefined,
-    });
-  };
-
-  // Helper to display success and summary
-  const displaySuccess = (args: { result: UploadSkillsetResponse }): void => {
-    const { result } = args;
-
-    success({
-      message: `Successfully uploaded "${profileDisplayName}@${result.version}" to ${targetRegistryUrl}`,
-    });
-
-    // Show skill summary if available
-    const skillSummary = formatSkillSummary({
-      result,
-      linkedSkillIds,
-    });
-    if (skillSummary != null) {
-      info({ message: skillSummary });
-    }
-
-    info({
-      message: `Others can install it with:\n  nori-skillsets download ${profileDisplayName}`,
-    });
-  };
-
-  // Start spinner
-  if (uploadSpinner != null) {
-    uploadSpinner.start();
-    uploadSpinner.message(
-      `Uploading "${profileDisplayName}@${uploadVersion}"...`,
-    );
-  }
-
-  try {
-    const result = await performUpload({});
-
-    uploadSpinner?.stop();
-    displaySuccess({ result });
-
-    return { success: true };
-  } catch (err) {
-    // Handle skill collision errors
-    if (isSkillCollisionError(err)) {
-      const { strategy, unresolvedConflicts } = buildAutoResolutionStrategy({
-        conflicts: err.conflicts,
+      const result: UploadSkillsetResponse = await registrarApi.uploadSkillset({
+        packageName,
+        version: uploadArgs.uploadVersion,
+        archiveData,
+        authToken,
+        registryUrl: targetRegistryUrl,
+        description: description ?? undefined,
+        resolutionStrategy: uploadArgs.resolutionStrategy ?? undefined,
       });
 
-      // Track which skills were linked for summary
-      for (const [skillId, resolution] of Object.entries(strategy)) {
-        if (resolution.action === "link") {
-          linkedSkillIds.add(skillId);
-        }
+      return {
+        success: true,
+        version: result.version,
+        extractedSkills: result.extractedSkills,
+      };
+    } catch (err) {
+      if (isSkillCollisionError(err)) {
+        return {
+          success: false,
+          conflicts: err.conflicts,
+        };
       }
 
-      // Auto-resolve if all conflicts are resolvable
-      if (unresolvedConflicts.length === 0) {
-        try {
-          uploadSpinner?.message(
-            `Auto-resolving ${Object.keys(strategy).length} unchanged skill conflict(s)...`,
-          );
-
-          const retryResult = await performUpload({
-            resolutionStrategy: strategy,
-          });
-
-          uploadSpinner?.stop();
-
-          success({
-            message: `Successfully uploaded "${profileDisplayName}@${retryResult.version}" to ${targetRegistryUrl}`,
-          });
-          info({
-            message: `Auto-resolved ${Object.keys(strategy).length} skill(s) by linking to existing versions.`,
-          });
-
-          // Show skill summary if available
-          const skillSummary = formatSkillSummary({
-            result: retryResult,
-            linkedSkillIds,
-          });
-          if (skillSummary != null) {
-            info({ message: skillSummary });
-          }
-
-          info({
-            message: `Others can install it with:\n  nori-skillsets download ${profileDisplayName}`,
-          });
-
-          return { success: true };
-        } catch (retryErr) {
-          uploadSpinner?.stop();
-          error({
-            message: `Upload failed on retry: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
-          });
-          return { success: false };
-        }
-      }
-
-      // Interactive resolution if not in non-interactive mode
-      if (!nonInteractive) {
-        uploadSpinner?.stop();
-
-        try {
-          // Prompt for resolution of unresolved conflicts
-          const interactiveStrategy = await selectSkillResolution({
-            conflicts: unresolvedConflicts,
-            profileName: packageName,
-          });
-
-          // Merge auto-resolved and interactive strategies
-          const combinedStrategy: SkillResolutionStrategy = {
-            ...strategy,
-            ...interactiveStrategy,
-          };
-
-          // Track linked skills from interactive resolution
-          for (const [skillId, resolution] of Object.entries(
-            interactiveStrategy,
-          )) {
-            if (resolution.action === "link") {
-              linkedSkillIds.add(skillId);
-            }
-          }
-
-          if (uploadSpinner != null) {
-            uploadSpinner.start();
-            uploadSpinner.message(`Uploading with resolution strategy...`);
-          }
-
-          const retryResult = await performUpload({
-            resolutionStrategy: combinedStrategy,
-          });
-
-          uploadSpinner?.stop();
-          displaySuccess({ result: retryResult });
-
-          return { success: true };
-        } catch (resolutionErr) {
-          // User cancelled or error during resolution
-          uploadSpinner?.stop();
-          error({
-            message: `Upload cancelled: ${resolutionErr instanceof Error ? resolutionErr.message : String(resolutionErr)}`,
-          });
-          return { success: false };
-        }
-      }
-
-      // Non-interactive mode - manual resolution required
-      uploadSpinner?.stop();
-      error({ message: formatSkillConflicts({ conflicts: err.conflicts }) });
-      return { success: false };
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
+  };
 
-    uploadSpinner?.stop();
-    error({
-      message: `Upload failed: ${err instanceof Error ? err.message : String(err)}`,
-    });
-    return { success: false };
-  }
+  // Use the upload flow for interactive upload
+  // Store upload version for callbacks closure
+  let uploadVersion: string | null = null;
+
+  const result = await uploadFlow({
+    profileDisplayName,
+    profileName: packageName,
+    registryUrl: targetRegistryUrl,
+    nonInteractive: nonInteractive ?? false,
+    callbacks: {
+      onDetermineVersion: async () => {
+        const versionResult = await determineUploadVersion({
+          profileName: packageName,
+          explicitVersion: version,
+          registryUrl: targetRegistryUrl,
+          authToken,
+        });
+        uploadVersion = versionResult.version;
+        return versionResult;
+      },
+      onUpload: async (uploadCallbackArgs) => {
+        if (uploadVersion == null) {
+          return { success: false, error: "Version not determined" };
+        }
+        return performUpload({
+          resolutionStrategy: uploadCallbackArgs.resolutionStrategy,
+          uploadVersion,
+        });
+      },
+    },
+  });
+
+  return { success: result != null };
 };
 
 /**

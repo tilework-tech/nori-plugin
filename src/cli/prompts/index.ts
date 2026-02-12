@@ -31,4 +31,12 @@ export {
   switchSkillsetFlow,
   type SwitchSkillsetCallbacks,
   type SwitchSkillsetFlowResult,
+  uploadFlow,
+  type UploadFlowCallbacks,
+  type UploadFlowResult,
+  type UploadResult,
+  type DetermineVersionResult,
+  listVersionsFlow,
+  type ListVersionsFlowCallbacks,
+  type ListVersionsFlowResult,
 } from "./flows/index.js";

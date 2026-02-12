@@ -7,7 +7,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
-import { log, note } from "@clack/prompts";
+import { log, note, outro } from "@clack/prompts";
 
 import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { MANIFEST_FILE } from "@/cli/features/managedFolder.js";
@@ -51,11 +51,11 @@ export const forkSkillsetMain = async (args: {
   // Copy the skillset
   await fs.cp(sourcePath, destPath, { recursive: true });
 
-  log.success(`Forked '${baseSkillset}' to '${newSkillset}'`);
-
   const nextSteps = [
     `To switch:  nori-skillsets switch ${newSkillset}`,
     `To edit:    ~/.nori/profiles/${newSkillset}/`,
   ].join("\n");
   note(nextSteps, "Next Steps");
+
+  outro(`Forked '${baseSkillset}' to '${newSkillset}'`);
 };

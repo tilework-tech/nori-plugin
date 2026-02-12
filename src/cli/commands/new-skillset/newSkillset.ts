@@ -7,7 +7,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
-import { log, note } from "@clack/prompts";
+import { log, note, outro } from "@clack/prompts";
 
 import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { writeProfileMetadata } from "@/cli/features/claude-code/profiles/metadata.js";
@@ -66,11 +66,11 @@ export const newSkillsetMain = async (args: {
 
   await createEmptySkillset({ destPath, name });
 
-  log.success(`Created new skillset '${name}'`);
-
   const nextSteps = [
     `To switch:  nori-skillsets switch ${name}`,
     `To edit:    ~/.nori/profiles/${name}/`,
   ].join("\n");
   note(nextSteps, "Next Steps");
+
+  outro(`Created new skillset '${name}'`);
 };

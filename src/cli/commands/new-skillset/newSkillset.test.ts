@@ -21,15 +21,15 @@ vi.mock("os", async (importOriginal) => {
 });
 
 // Mock @clack/prompts for output
-const mockLogSuccess = vi.fn();
 const mockLogError = vi.fn();
 const mockNote = vi.fn();
+const mockOutro = vi.fn();
 vi.mock("@clack/prompts", () => ({
   log: {
-    success: (msg: string) => mockLogSuccess(msg),
     error: (msg: string) => mockLogError(msg),
   },
   note: (content: string, title: string) => mockNote(content, title),
+  outro: (msg: string) => mockOutro(msg),
 }));
 
 // Mock process.exit
@@ -48,9 +48,9 @@ describe("newSkillsetMain", () => {
     vi.mocked(os.homedir).mockReturnValue(testHomeDir);
     profilesDir = path.join(testHomeDir, ".nori", "profiles");
     await fs.mkdir(profilesDir, { recursive: true });
-    mockLogSuccess.mockClear();
     mockLogError.mockClear();
     mockNote.mockClear();
+    mockOutro.mockClear();
     mockExit.mockClear();
   });
 
@@ -74,8 +74,8 @@ describe("newSkillsetMain", () => {
       version: "1.0.0",
     });
 
-    // Verify success message
-    expect(mockLogSuccess).toHaveBeenCalledWith(
+    // Verify outro message
+    expect(mockOutro).toHaveBeenCalledWith(
       expect.stringContaining("my-new-skillset"),
     );
     expect(mockExit).not.toHaveBeenCalled();

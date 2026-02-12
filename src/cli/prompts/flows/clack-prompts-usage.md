@@ -4,16 +4,47 @@ Rules for building interactive CLI flows using `@clack/prompts`.
 
 ---
 
+## Architecture Overview
+
+The prompts system has two layers:
+
+### Standalone Wrappers (`src/cli/prompts/*.ts`)
+
+Individual prompt wrappers for one-off use in commands:
+
+- `confirmAction` - Yes/no confirmation
+- `promptText` - Text input with validation
+- `promptPassword` - Password input
+- `selectProfile` - Profile selection from list
+- `promptForAuth` - Grouped email/password/org collection
+
+These call `handleCancel()` on cancel, which calls `process.exit(0)`.
+Use for simple prompts in commands that don't need graceful flow control.
+
+### Flows (`src/cli/prompts/flows/*.ts`)
+
+Complete interactive experiences that orchestrate multiple clack primitives:
+
+- `initFlow` - Initialize Nori with config detection
+- `loginFlow` - Authenticate with email/password
+- `switchSkillsetFlow` - Switch between skillsets with change detection
+- `uploadFlow` - Upload profile to registry with conflict resolution
+
+Flows return `null` on cancel. They never call `process.exit`.
+**Flows must NOT import or use standalone wrappers.**
+
+---
+
 ## Flow File Structure
 
 Every flow is a single exported async function in `src/cli/prompts/flows/`.
 The function does five things in order:
 
-1. `intro()` — title for the flow
-2. Prompts — collect user input
-3. Callbacks with spinners — execute side effects
-4. `note()` / `log.*` — display results
-5. `outro()` — closing message
+1. `intro()` - title for the flow
+2. Prompts - collect user input
+3. Callbacks with spinners - execute side effects
+4. `note()` / `log.*` - display results
+5. `outro()` - closing message
 
 A flow returns a typed result object on success, or `null` on cancel/failure.
 
@@ -27,6 +58,8 @@ export const exampleFlow = async (args: {
   return result;
 };
 ```
+
+---
 
 ## Cancel Handling
 
@@ -53,31 +86,14 @@ if (isCancel(credentials)) {
 }
 ```
 
-### Use a shared `unwrap` helper for individual prompts
+### Use `unwrapPrompt` for sequential prompts
 
-When prompts are sequential and conditional (cannot use `group`), use this
-pattern instead of repeating `isCancel` + `cancel` + `return null`:
-
-```ts
-// src/cli/prompts/flows/utils.ts
-import { isCancel, cancel } from "@clack/prompts";
-
-export const unwrapPrompt = <T>(args: {
-  value: T | symbol;
-  cancelMessage?: string | null;
-}): T | null => {
-  const { value, cancelMessage } = args;
-  if (isCancel(value)) {
-    cancel(cancelMessage ?? "Operation cancelled.");
-    return null;
-  }
-  return value as T;
-};
-```
-
-Usage in a flow:
+When prompts are sequential and conditional (cannot use `group`), use the
+shared helper instead of repeating `isCancel` + `cancel` + `return null`:
 
 ```ts
+import { unwrapPrompt } from "./utils.js";
+
 const selected = unwrapPrompt({
   value: await select({ message: "Pick one", options }),
   cancelMessage: "Switch cancelled.",
@@ -90,31 +106,35 @@ if (selected == null) return null;
 Do not repeat cancel boilerplate inline at every prompt:
 
 ```ts
-// BAD — verbose, duplicated at every step
+// BAD - verbose, duplicated at every step
 if (isCancel(result)) {
   cancel("Skillset switch cancelled.");
   return null;
 }
 ```
 
+---
+
 ## Callbacks
 
 ### Keep the callback surface small
 
-A flow should have 1-3 callbacks. Each callback represents a coarse operation
+A flow should have 1-4 callbacks. Each callback represents a coarse operation
 the caller is responsible for. The flow asks the user questions; the caller
 does the work.
 
 ```ts
-// GOOD — one callback for the whole auth operation
+// GOOD - one callback for the whole auth operation
 type LoginFlowCallbacks = {
-  onAuthenticate: (args: { email: string; password: string }) =>
-    Promise<AuthenticateResult>;
+  onAuthenticate: (args: {
+    email: string;
+    password: string;
+  }) => Promise<AuthenticateResult>;
 };
 ```
 
 ```ts
-// BAD — flow micro-manages steps that are the caller's concern
+// BAD - flow micro-manages steps that are the caller's concern
 type SwitchCallbacks = {
   onResolveAgents: () => Promise<...>;
   onDetectLocalChanges: (args: { ... }) => Promise<...>;
@@ -126,7 +146,7 @@ type SwitchCallbacks = {
 ```
 
 When multiple operations are tightly coupled (switch profile then reinstall),
-combine them into one callback. The flow does not care about internal steps —
+combine them into one callback. The flow does not care about internal steps -
 it just needs a spinner around the whole thing.
 
 ### Use discriminated unions for failable callbacks
@@ -136,12 +156,14 @@ control error UX without try/catch:
 
 ```ts
 type AuthenticateResult =
-  | { success: true; userEmail: string; /* ... */ }
+  | { success: true; userEmail: string /* ... */ }
   | { success: false; error: string; hint?: string | null };
 ```
 
 The flow checks `result.success` and uses `log.error()` / `note()` for
 error display. No try/catch in the flow body.
+
+---
 
 ## Intro and Outro Messages
 
@@ -151,56 +173,60 @@ The `intro()` message is a title describing what the flow will do. Use an
 infinitive verb (the base form of the verb):
 
 ```ts
-// GOOD — infinitive verb form
+// GOOD - infinitive verb form
 intro("Initialize Nori");
 intro("Switch Skillset");
 intro("Log in to Nori Skillsets");
 
-// BAD — noun form or gerund
+// BAD - noun form or gerund
 intro("Initialization");
-intro("Login to Nori");  // "Login" is a noun; use "Log in"
+intro("Login to Nori"); // "Login" is a noun; use "Log in"
 intro("Switching Skillsets");
 ```
 
 ### Outro: use past tense or next step
 
 The `outro()` message confirms completion. Use either:
+
 - Past tense verb describing what was accomplished
 - A next step the user should take
 
 ```ts
-// GOOD — past tense
+// GOOD - past tense
 outro("Nori initialized successfully");
 outro(`Logged in as ${email}`);
 outro("Skillset switched");
 
-// GOOD — next step
+// GOOD - next step
 outro("Restart claude-code to apply");
 
-// BAD — present tense or vague
+// BAD - present tense or vague
 outro("Done");
 outro("Success");
 outro("Nori is initialized");
 ```
+
+---
 
 ## Styling and Formatting
 
 ### No inline ANSI escape codes
 
 Do not define local ANSI helper functions in flow files. The project already
-has color/formatting helpers in `@/cli/logger.ts` (`boldWhite`, `brightCyan`,
-`gray`). Use those when you need formatted text inside a `note()`. Prefer
-clack primitives (`note`, `log.*`, `intro`, `outro`) for visual hierarchy.
+has color/formatting helpers in `@/cli/logger.ts` (`bold`, `brightCyan`,
+`green`, `red`). Use those when you need formatted text inside a `note()`.
+Prefer clack primitives (`note`, `log.*`, `intro`, `outro`) for visual
+hierarchy.
 
 ```ts
-// BAD — inline ANSI helpers
+// BAD - inline ANSI helpers
 const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[39m`;
 note(`Current: ${bold(name)}`, "Details");
 
-// GOOD — use existing logger helpers
-import { boldWhite } from "@/cli/logger.js";
-note(`Current: ${boldWhite({ text: name })}`, "Details");
+// GOOD - use existing logger helpers
+import { bold, brightCyan } from "@/cli/logger.js";
+note(`Current: ${brightCyan({ text: bold({ text: name }) })}`, "Details");
 ```
 
 ### Use `note()` for information blocks
@@ -213,28 +239,152 @@ before a prompt (e.g. switch details, detected changes).
 Do not use `note()` for errors. Use `log.error()` for the main error message
 and optionally `note()` for a hint or additional context.
 
+---
+
 ## Data Formatting Helpers
 
 If a flow needs to format a data structure for display (e.g. a list of changed
-files), extract it into a helper function in the same file or a shared utility.
-Keep it short. If truncation logic is needed (show first N, then "and X more"),
-write a generic `truncateList` utility rather than inlining it per-flow.
+files), extract it into a helper function in the same file. Keep it short.
 
-## Flow vs Standalone Prompt Wrappers
+```ts
+// GOOD - extracted helper
+const buildChangesSummary = (args: { diff: ManifestDiff }): string => {
+  const { diff } = args;
+  const lines: Array<string> = [];
 
-- **Standalone wrappers** (`promptText`, `confirmAction`, etc. in
-  `src/cli/prompts/`) call `handleCancel()` which does `process.exit(0)`.
-  Use these for one-off prompts in commands that don't need graceful flow control.
-- **Flows** return `null` on cancel. They never call `process.exit`.
-  Flows must not import or use the standalone wrappers.
+  if (diff.modified.length > 0) {
+    lines.push(`Modified (${diff.modified.length}):`);
+    for (const file of diff.modified.slice(0, 5)) {
+      lines.push(`  ${file}`);
+    }
+    if (diff.modified.length > 5) {
+      lines.push(`  ... and ${diff.modified.length - 5} more`);
+    }
+  }
+  // ...
+  return lines.join("\n");
+};
+```
+
+If truncation logic is needed (show first N, then "and X more"), write a
+generic `truncateList` utility rather than inlining it per-flow.
+
+---
+
+## Validators
+
+Validators in `src/cli/prompts/validators.ts` return `string | undefined`:
+
+- `undefined` = valid
+- `string` = error message
+
+This matches @clack/prompts' validation callback signature.
+
+```ts
+export const validateProfileName = (args: {
+  value: string;
+}): string | undefined => {
+  const { value } = args;
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(value)) {
+    return "Must be lowercase alphanumeric with hyphens, no leading/trailing hyphens";
+  }
+  return undefined;
+};
+```
+
+Usage in a flow:
+
+```ts
+const profileName = unwrapPrompt({
+  value: await text({
+    message: "Enter a name for this skillset",
+    placeholder: "my-skillset",
+    validate: (value) => validateProfileName({ value: value ?? "" }),
+  }),
+  cancelMessage: cancelMsg,
+});
+```
+
+---
 
 ## Testing Flows
 
-Mock `@clack/prompts` entirely. Provide mock callbacks. Assert:
+Mock `@clack/prompts` at module level:
+
+```ts
+vi.mock("@clack/prompts", () => ({
+  intro: vi.fn(),
+  outro: vi.fn(),
+  group: vi.fn(),
+  select: vi.fn(),
+  confirm: vi.fn(),
+  text: vi.fn(),
+  password: vi.fn(),
+  spinner: vi.fn(() => ({
+    start: vi.fn(),
+    stop: vi.fn(),
+    message: vi.fn(),
+  })),
+  note: vi.fn(),
+  log: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+  isCancel: vi.fn(),
+  cancel: vi.fn(),
+}));
+```
+
+Provide mock callbacks. Assert:
 
 1. Which clack functions were called and with what arguments
-2. Which callbacks were called and with what arguments
-3. The return value (result object or null)
+2. Which callbacks were invoked and with what arguments
+3. The return value (result object or `null`)
 
-Do not test clack's internal behavior. Test that the flow calls the right
+Do NOT test clack's internal behavior. Test that the flow calls the right
 prompts in the right order and passes the right data to callbacks.
+
+---
+
+## Current Implementation Status
+
+### Migrated Flows
+
+| Flow                  | Callbacks | File                   |
+| --------------------- | --------- | ---------------------- |
+| `initFlow`            | 4         | `flows/init.ts`        |
+| `loginFlow`           | 1         | `flows/login.ts`       |
+| `switchSkillsetFlow`  | 4         | `flows/switchSkillset.ts` |
+| `uploadFlow`          | 2         | `flows/upload.ts`      |
+
+### Standalone Wrappers
+
+| Wrapper          | File              |
+| ---------------- | ----------------- |
+| `confirmAction`  | `confirm.ts`      |
+| `promptText`     | `text.ts`         |
+| `promptPassword` | `password.ts`     |
+| `selectProfile`  | `profile.ts`      |
+| `promptForAuth`  | `auth.ts`         |
+
+### Shared Utilities
+
+| Utility             | File              | Purpose                           |
+| ------------------- | ----------------- | --------------------------------- |
+| `handleCancel`      | `utils.ts`        | Exit on cancel (standalone use)   |
+| `isCancel`          | `utils.ts`        | Named-arg wrapper for clack's isCancel |
+| `unwrapPrompt`      | `flows/utils.ts`  | Cancel handling for flows         |
+| `validateProfileName` | `validators.ts` | Profile name validation           |
+| `validateOrgId`     | `validators.ts`   | Org ID validation                 |
+| `validateRequired`  | `validators.ts`   | Non-empty validation              |
+
+### Legacy System (to be removed)
+
+`src/cli/prompt.ts` contains the old `promptUser` and `promptYesNo` functions.
+Delete after all commands are migrated.
+
+### Pending Migration
+
+Commands still using legacy `promptUser`:
+
+- `login.ts` - Legacy path (flow exists, routing incomplete)
+- `onboard.ts` - Full flow migration needed
+- `watch.ts` - Uses legacy `promptUser`
+- `existingConfigCapture.ts` - Legacy path (initFlow handles this now)

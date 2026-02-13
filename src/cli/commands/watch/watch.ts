@@ -536,7 +536,7 @@ const saveTranscriptDestination = async (args: {
   installDir: string;
 }): Promise<void> => {
   const { org, installDir } = args;
-  const config = await loadConfig();
+  const config = await loadConfig({ startDir: os.homedir() });
   if (org === config?.transcriptDestination) {
     return;
   }
@@ -629,7 +629,7 @@ export const watchMain = async (args?: {
             await watchStopMain({ quiet: true });
           }
 
-          const config = await loadConfig();
+          const config = await loadConfig({ startDir: os.homedir() });
           const userOrgs = config?.auth?.organizations ?? [];
           const privateOrgs = userOrgs.filter((org) => org !== "public");
 

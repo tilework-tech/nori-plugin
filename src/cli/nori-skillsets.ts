@@ -27,8 +27,10 @@ import {
   registerNoriSkillsetsLogoutCommand,
   registerNoriSkillsetsSearchCommand,
   registerNoriSkillsetsSwitchSkillsetCommand,
+  registerNoriSkillsetsUploadCommand,
   registerNoriSkillsetsWatchCommand,
 } from "@/cli/commands/noriSkillsetsCommands.js";
+import { shouldAutoEnableExperimentalUi } from "@/cli/experimentalUi.js";
 import {
   setTileworkSource,
   trackInstallLifecycle,
@@ -95,6 +97,10 @@ Examples:
   $ nori-skillsets download my-skillset
   $ nori-skillsets download my-skillset@1.0.0
   $ nori-skillsets download my-skillset --list-versions
+  $ nori-skillsets upload my-skillset
+  $ nori-skillsets upload my-skillset@2.0.0
+  $ nori-skillsets upload myorg/my-skillset
+  $ nori-skillsets upload my-skillset --list-versions
   $ nori-skillsets install my-skillset
   $ nori-skillsets install my-skillset --user
   $ nori-skillsets switch senior-swe
@@ -127,6 +133,7 @@ registerNoriSkillsetsLogoutCommand({ program });
 registerNoriSkillsetsInitCommand({ program });
 registerNoriSkillsetsSearchCommand({ program });
 registerNoriSkillsetsDownloadCommand({ program });
+registerNoriSkillsetsUploadCommand({ program });
 registerNoriSkillsetsInstallCommand({ program });
 registerNoriSkillsetsSwitchSkillsetCommand({ program });
 registerNoriSkillsetsListSkillsetsCommand({ program });
@@ -141,6 +148,17 @@ registerNoriSkillsetsForkCommand({ program });
 registerNoriSkillsetsNewCommand({ program });
 registerNoriSkillsetsEditSkillsetCommand({ program });
 registerNoriSkillsetsFactoryResetCommand({ program });
+
+// Auto-enable --experimental-ui when not explicitly passed:
+// 1. Config file: ~/.nori-config.json { "experimentalUi": true }
+// 2. Version contains "next" (e.g., "0.7.0-next.1")
+const hasExplicitExperimentalUi = process.argv.includes("--experimental-ui");
+if (!hasExplicitExperimentalUi && !isInfoOnly) {
+  const shouldEnable = await shouldAutoEnableExperimentalUi({ version });
+  if (shouldEnable) {
+    process.argv.push("--experimental-ui");
+  }
+}
 
 program.parse(process.argv);
 

@@ -50,6 +50,7 @@ export const registerNoriSkillsetsFactoryResetCommand = (args: {
       await factoryResetMain({
         agentName,
         nonInteractive: globalOpts.nonInteractive || null,
+        experimentalUi: globalOpts.experimentalUi || null,
       });
     });
 };

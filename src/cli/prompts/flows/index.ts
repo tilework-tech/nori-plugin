@@ -38,4 +38,12 @@ export {
   type ListVersionsFlowResult,
 } from "./listVersions.js";
 
+export {
+  factoryResetFlow,
+  type FactoryResetFlowCallbacks,
+  type FactoryResetFlowResult,
+  type FactoryResetArtifact,
+  type FindArtifactsResult,
+} from "./factoryReset.js";
+
 export { unwrapPrompt } from "./utils.js";

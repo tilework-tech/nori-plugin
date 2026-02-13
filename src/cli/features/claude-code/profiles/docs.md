@@ -30,13 +30,19 @@ Markdown files use template placeholders like `{{skills_dir}}`, `{{profiles_dir}
   "name": "profile-name",
   "version": "1.0.0",
   "description": "Human-readable description",
+  "license": "MIT",
+  "keywords": ["cli", "automation", "skills"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/repo"
+  },
   "dependencies": {
     "skills": { "skill-name": "*" }
   }
 }
 ```
 
-The `readProfileMetadata()` function reads `nori.json` first, falling back to legacy `profile.json` for backward compatibility with older profiles. The `writeProfileMetadata()` function writes a `ProfileMetadata` object to `nori.json`. The `addSkillToNoriJson()` function reads an existing `nori.json` (or auto-creates one using the profile directory basename and version `"1.0.0"`), adds/updates a skill in `dependencies.skills`, and writes it back.
+All fields except `name` are optional. The `license` field follows SPDX license identifiers (e.g., "MIT", "Apache-2.0"). The `keywords` field is an array of strings for registry discoverability. The `repository` field follows package.json conventions with `type` and `url` properties.
 
 **Installation Manifest (manifest.ts)**: The manifest module (@/src/cli/features/claude-code/profiles/manifest.ts) tracks installed files for local change detection. The manifest uses a **whitelist approach**: only Nori-managed paths within `~/.claude/` are tracked, ignoring Claude Code's own runtime directories (e.g., `debug/`, `todos/`, `projects/`, `plugins/`).
 

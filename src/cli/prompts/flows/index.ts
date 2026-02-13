@@ -24,4 +24,6 @@ export {
   type InitFlowResult,
 } from "./init.js";
 
+export { newSkillsetFlow, type NewSkillsetFlowResult } from "./newSkillset.js";
+
 export { unwrapPrompt } from "./utils.js";

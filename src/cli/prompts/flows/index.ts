@@ -45,4 +45,12 @@ export {
   type ListVersionsFlowResult,
 } from "./listVersions.js";
 
+export {
+  watchFlow,
+  type WatchFlowCallbacks,
+  type WatchFlowResult,
+  type PrepareResult,
+  type StartDaemonResult,
+} from "./watch.js";
+
 export { unwrapPrompt } from "./utils.js";

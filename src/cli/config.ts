@@ -4,6 +4,7 @@
  */
 
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 
 import Ajv from "ajv";
@@ -70,6 +71,8 @@ export type Config = {
   version?: string | null;
   /** Organization ID for transcript uploads (e.g., "myorg" -> https://myorg.noriskillsets.dev) */
   transcriptDestination?: string | null;
+  /** Manually enable the experimental UI (clack-based TUI flows) */
+  experimentalUi?: boolean | null;
 };
 
 /**
@@ -102,18 +105,61 @@ type RawDiskConfig = {
   version?: string | null;
   // Transcript upload destination org ID
   transcriptDestination?: string | null;
+  // Manually enable experimental UI
+  experimentalUi?: boolean | null;
 };
 
 /**
- * Get the path to the config file
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
+ * Get the path to the config file for a given install directory
+ * Returns ~/.nori-config.json when no installDir provided (user-global config)
+ * Returns $installDir/.nori-config.json when installDir provided (project-local config)
  *
- * @returns The absolute path to .nori-config.json
+ * @param args - Optional configuration arguments
+ * @param args.installDir - Installation directory (null/undefined for user-global config)
+ *
+ * @returns The absolute path to the config file
  */
-export const getConfigPath = (args: { installDir: string }): string => {
-  const { installDir } = args;
-  return path.join(installDir, ".nori-config.json");
+export const getConfigPath = (args?: {
+  installDir?: string | null;
+}): string => {
+  const baseDir = args?.installDir ?? os.homedir();
+  return path.join(baseDir, ".nori-config.json");
+};
+
+/**
+ * Find the config file by searching upward from a starting directory
+ * Searches current directory, then ancestors, falling back to ~/.nori-config.json
+ *
+ * @param args - Optional configuration arguments
+ * @param args.startDir - Directory to start searching from (defaults to process.cwd())
+ *
+ * @returns The path to the found config file, or ~/.nori-config.json if none found
+ */
+export const findConfigPath = async (args?: {
+  startDir?: string | null;
+}): Promise<string> => {
+  const startDir = args?.startDir ?? process.cwd();
+  const homeDir = os.homedir();
+
+  let currentDir = startDir;
+  let previousDir = "";
+
+  // Search upward from startDir
+  while (currentDir !== previousDir) {
+    const configPath = path.join(currentDir, ".nori-config.json");
+    try {
+      await fs.access(configPath);
+      return configPath;
+    } catch {
+      // Config doesn't exist here, continue searching
+    }
+
+    previousDir = currentDir;
+    currentDir = path.dirname(currentDir);
+  }
+
+  // Fall back to user-global config
+  return path.join(homeDir, ".nori-config.json");
 };
 
 /**
@@ -239,16 +285,18 @@ export const getAgentProfile = (args: {
 /**
  * Load existing configuration from disk
  * Uses JSON schema validation for strict type checking.
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
+ * Searches upward from startDir to find the nearest config file,
+ * falling back to ~/.nori-config.json if none found.
+ *
+ * @param args - Optional configuration arguments
+ * @param args.startDir - Directory to start searching from (defaults to process.cwd())
  *
  * @returns The config if valid, null otherwise
  */
-export const loadConfig = async (args: {
-  installDir: string;
+export const loadConfig = async (args?: {
+  startDir?: string | null;
 }): Promise<Config | null> => {
-  const { installDir } = args;
-  const configPath = getConfigPath({ installDir });
+  const configPath = await findConfigPath({ startDir: args?.startDir });
 
   try {
     await fs.access(configPath);
@@ -284,11 +332,12 @@ export const loadConfig = async (args: {
     // After schema validation, types are guaranteed - only need null checks
     const result: Config = {
       auth: null,
-      installDir: validated.installDir ?? installDir,
+      installDir: validated.installDir ?? os.homedir(),
       sendSessionTranscript: validated.sendSessionTranscript,
       autoupdate: validated.autoupdate,
       version: validated.version,
       transcriptDestination: validated.transcriptDestination,
+      experimentalUi: validated.experimentalUi,
     };
 
     // Build auth - handle both nested format (v19+) and flat format (legacy)
@@ -336,7 +385,8 @@ export const loadConfig = async (args: {
     if (
       result.auth != null ||
       result.agents != null ||
-      result.sendSessionTranscript != null
+      result.sendSessionTranscript != null ||
+      result.experimentalUi != null
     ) {
       return result;
     }
@@ -362,6 +412,7 @@ export const loadConfig = async (args: {
  * @param args.organizations - List of organizations the user has access to (null to skip)
  * @param args.isAdmin - Whether the user is an admin for their organization (null to skip)
  * @param args.transcriptDestination - Organization ID for transcript uploads (null to skip)
+ * @param args.experimentalUi - Manually enable the experimental UI (null to skip)
  */
 export const saveConfig = async (args: {
   username: string | null;
@@ -375,6 +426,7 @@ export const saveConfig = async (args: {
   agents?: { [key in ConfigAgentName]?: AgentConfig } | null;
   version?: string | null;
   transcriptDestination?: string | null;
+  experimentalUi?: boolean | null;
   installDir: string;
 }): Promise<void> => {
   const {
@@ -389,9 +441,10 @@ export const saveConfig = async (args: {
     agents,
     version,
     transcriptDestination,
+    experimentalUi,
     installDir,
   } = args;
-  const configPath = getConfigPath({ installDir });
+  const configPath = getConfigPath();
 
   const config: any = {};
 
@@ -438,6 +491,11 @@ export const saveConfig = async (args: {
   // Add transcriptDestination if provided
   if (transcriptDestination != null) {
     config.transcriptDestination = transcriptDestination;
+  }
+
+  // Add experimentalUi if provided
+  if (experimentalUi != null) {
+    config.experimentalUi = experimentalUi;
   }
 
   // Always save installDir
@@ -514,6 +572,7 @@ const configSchema = {
     },
     version: { type: "string" },
     transcriptDestination: { type: "string" },
+    experimentalUi: { type: ["boolean", "null"] },
   },
   additionalProperties: false,
 };
@@ -531,16 +590,12 @@ const validateConfigSchema = ajv.compile(configSchema);
 
 /**
  * Validate configuration file
- * @param args - Configuration arguments
- * @param args.installDir - Installation directory
+ * Always validates ~/.nori-config.json
  *
  * @returns Validation result with details
  */
-export const validateConfig = async (args: {
-  installDir: string;
-}): Promise<ConfigValidationResult> => {
-  const { installDir } = args;
-  const configPath = getConfigPath({ installDir });
+export const validateConfig = async (): Promise<ConfigValidationResult> => {
+  const configPath = getConfigPath();
   const errors: Array<string> = [];
 
   // Check if config file exists

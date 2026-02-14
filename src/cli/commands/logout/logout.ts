@@ -4,81 +4,28 @@
  * Clears stored authentication credentials.
  */
 
-import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 
-import { loadConfig, saveConfig, getConfigPath } from "@/cli/config.js";
-import { info, success } from "@/cli/logger.js";
+import { log } from "@clack/prompts";
+
+import { findConfigPath, loadConfig, saveConfig } from "@/cli/config.js";
 
 import type { Command } from "commander";
-
-/** Default config directory for login/logout commands */
-const DEFAULT_CONFIG_DIR = os.homedir();
-
-/**
- * Check if a file exists
- *
- * @param filePath - Path to check
- *
- * @returns true if file exists, false otherwise
- */
-const fileExists = async (filePath: string): Promise<boolean> => {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/**
- * Find all config directories that have auth credentials, starting from searchDir
- *
- * @param args - Configuration arguments
- * @param args.searchDir - Directory to start searching from
- *
- * @returns Array of directories containing configs with auth
- */
-const findConfigsWithAuth = async (args: {
-  searchDir: string;
-}): Promise<Array<string>> => {
-  const { searchDir } = args;
-  const configDirs: Array<string> = [];
-
-  // Check for config at the search directory itself
-  const rootConfigPath = getConfigPath({ installDir: searchDir });
-  if (await fileExists(rootConfigPath)) {
-    const config = await loadConfig({ installDir: searchDir });
-    if (config?.auth != null) {
-      configDirs.push(searchDir);
-    }
-  }
-
-  // Check for config in .nori subdirectory (home directory installation pattern)
-  const noriSubdir = path.join(searchDir, ".nori");
-  const noriConfigPath = getConfigPath({ installDir: noriSubdir });
-  if (await fileExists(noriConfigPath)) {
-    const config = await loadConfig({ installDir: noriSubdir });
-    if (config?.auth != null) {
-      configDirs.push(noriSubdir);
-    }
-  }
-
-  return configDirs;
-};
 
 /**
  * Clear auth from a single config directory
  *
  * @param args - Configuration arguments
  * @param args.installDir - Directory containing the config
+ * @param args.startDir - Directory to start config search from
  */
 const clearAuthFromConfig = async (args: {
   installDir: string;
+  startDir?: string | null;
 }): Promise<void> => {
-  const { installDir } = args;
-  const existingConfig = await loadConfig({ installDir });
+  const { installDir, startDir } = args;
+  const existingConfig = await loadConfig({ startDir });
 
   if (existingConfig == null) {
     return;
@@ -99,52 +46,31 @@ const clearAuthFromConfig = async (args: {
  * Main logout function
  *
  * @param args - Configuration arguments
- * @param args.installDir - Specific installation directory (when provided, only clears auth from this dir)
- * @param args.searchDir - Directory to search for configs with auth (used when installDir not provided)
+ * @param args.installDir - Installation directory (stored as data in config)
+ * @param args.startDir - Directory to start config search from (defaults to cwd)
  */
 export const logoutMain = async (args?: {
   installDir?: string | null;
-  searchDir?: string | null;
+  startDir?: string | null;
 }): Promise<void> => {
-  const { installDir, searchDir } = args ?? {};
+  const { installDir, startDir } = args ?? {};
 
-  // If specific installDir provided, use original behavior
-  if (installDir != null) {
-    const existingConfig = await loadConfig({ installDir });
+  const existingConfig = await loadConfig({ startDir });
 
-    if (existingConfig?.auth == null) {
-      info({ message: "Not currently logged in." });
-      return;
-    }
-
-    await clearAuthFromConfig({ installDir });
-    success({ message: "Logged out successfully." });
+  if (existingConfig?.auth == null) {
+    log.info("Not currently logged in.");
     return;
   }
 
-  // Search for configs with auth
-  const effectiveSearchDir = searchDir ?? DEFAULT_CONFIG_DIR;
-  const configDirs = await findConfigsWithAuth({
-    searchDir: effectiveSearchDir,
+  // Get the actual config path that was found to determine installDir
+  const configPath = await findConfigPath({ startDir });
+  const configDir = path.dirname(configPath);
+
+  await clearAuthFromConfig({
+    installDir: installDir ?? configDir,
+    startDir,
   });
-
-  if (configDirs.length === 0) {
-    info({ message: "Not currently logged in." });
-    return;
-  }
-
-  // Clear auth from all found configs
-  for (const configDir of configDirs) {
-    await clearAuthFromConfig({ installDir: configDir });
-  }
-
-  if (configDirs.length === 1) {
-    success({ message: "Logged out successfully." });
-  } else {
-    success({
-      message: `Logged out from ${configDirs.length} installations.`,
-    });
-  }
+  log.success("Logged out successfully.");
 };
 
 /**
@@ -164,6 +90,7 @@ export const registerLogoutCommand = (args: { program: Command }): void => {
 
       await logoutMain({
         installDir: globalOpts.installDir || null,
+        startDir: os.homedir(),
       });
     });
 };

@@ -4,7 +4,7 @@
  */
 
 import * as fs from "fs/promises";
-import { tmpdir } from "os";
+import * as os from "os";
 import * as path from "path";
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -13,13 +13,27 @@ import { AgentRegistry } from "@/cli/features/agentRegistry.js";
 
 import { listSkillsetsMain } from "./listSkillsets.js";
 
-// Mock logger to capture output
-const mockRaw = vi.fn();
-const mockError = vi.fn();
-vi.mock("@/cli/logger.js", () => ({
-  raw: (args: { message: string }) => mockRaw(args),
-  error: (args: { message: string }) => mockError(args),
+// Mock os.homedir so getNoriProfilesDir() resolves to the test directory
+vi.mock("os", async (importOriginal) => {
+  const actual = await importOriginal<typeof os>();
+  return {
+    ...actual,
+    homedir: vi.fn().mockReturnValue(actual.homedir()),
+  };
+});
+
+// Mock @clack/prompts for output
+const mockLogError = vi.fn();
+vi.mock("@clack/prompts", () => ({
+  log: {
+    error: (msg: string) => mockLogError(msg),
+  },
 }));
+
+// Mock process.stdout.write for raw output
+const mockStdoutWrite = vi
+  .spyOn(process.stdout, "write")
+  .mockImplementation(() => true);
 
 // Mock process.exit
 const mockExit = vi
@@ -31,13 +45,14 @@ describe("listSkillsetsMain", () => {
 
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(
-      path.join(tmpdir(), "list-skillsets-test-"),
+      path.join(os.tmpdir(), "list-skillsets-test-"),
     );
+    vi.mocked(os.homedir).mockReturnValue(testInstallDir);
     const testNoriDir = path.join(testInstallDir, ".nori");
     await fs.mkdir(testNoriDir, { recursive: true });
     AgentRegistry.resetInstance();
-    mockRaw.mockClear();
-    mockError.mockClear();
+    mockStdoutWrite.mockClear();
+    mockLogError.mockClear();
     mockExit.mockClear();
   });
 
@@ -56,7 +71,10 @@ describe("listSkillsetsMain", () => {
     for (const name of ["senior-swe", "product-manager", "custom-profile"]) {
       const dir = path.join(profilesDir, name);
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, "CLAUDE.md"), `# ${name}`);
+      await fs.writeFile(
+        path.join(dir, "nori.json"),
+        JSON.stringify({ name, version: "1.0.0" }),
+      );
     }
 
     await listSkillsetsMain({
@@ -64,11 +82,11 @@ describe("listSkillsetsMain", () => {
       agent: "claude-code",
     });
 
-    // Should output each profile name via raw logger
-    expect(mockRaw).toHaveBeenCalledWith({ message: "senior-swe" });
-    expect(mockRaw).toHaveBeenCalledWith({ message: "product-manager" });
-    expect(mockRaw).toHaveBeenCalledWith({ message: "custom-profile" });
-    expect(mockRaw).toHaveBeenCalledTimes(3);
+    // Should output each profile name via stdout
+    expect(mockStdoutWrite).toHaveBeenCalledWith("senior-swe\n");
+    expect(mockStdoutWrite).toHaveBeenCalledWith("product-manager\n");
+    expect(mockStdoutWrite).toHaveBeenCalledWith("custom-profile\n");
+    expect(mockStdoutWrite).toHaveBeenCalledTimes(3);
   });
 
   it("should error with exit code 1 when no profiles are installed", async () => {
@@ -81,11 +99,11 @@ describe("listSkillsetsMain", () => {
     });
 
     // Should output error message and exit with code 1
-    expect(mockError).toHaveBeenCalledWith({
-      message: expect.stringContaining("No skillsets installed"),
-    });
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.stringContaining("No skillsets installed"),
+    );
     expect(mockExit).toHaveBeenCalledWith(1);
-    expect(mockRaw).not.toHaveBeenCalled();
+    expect(mockStdoutWrite).not.toHaveBeenCalled();
   });
 
   it("should error with exit code 1 when unknown agent is specified", async () => {
@@ -95,9 +113,9 @@ describe("listSkillsetsMain", () => {
     });
 
     // Should output error message about unknown agent
-    expect(mockError).toHaveBeenCalledWith({
-      message: expect.stringContaining("Unknown agent 'unknown-agent'"),
-    });
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.stringContaining("Unknown agent 'unknown-agent'"),
+    );
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
@@ -118,7 +136,10 @@ describe("listSkillsetsMain", () => {
     await fs.mkdir(profilesDir, { recursive: true });
     const dir = path.join(profilesDir, "senior-swe");
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "CLAUDE.md"), "# senior-swe");
+    await fs.writeFile(
+      path.join(dir, "nori.json"),
+      JSON.stringify({ name: "senior-swe", version: "1.0.0" }),
+    );
 
     await listSkillsetsMain({
       installDir: testInstallDir,
@@ -126,7 +147,7 @@ describe("listSkillsetsMain", () => {
     });
 
     // Should detect claude-code and list its profiles
-    expect(mockRaw).toHaveBeenCalledWith({ message: "senior-swe" });
+    expect(mockStdoutWrite).toHaveBeenCalledWith("senior-swe\n");
   });
 
   it("should default to claude-code when no agents installed", async () => {
@@ -135,7 +156,10 @@ describe("listSkillsetsMain", () => {
     await fs.mkdir(profilesDir, { recursive: true });
     const dir = path.join(profilesDir, "test-profile");
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "CLAUDE.md"), "# test-profile");
+    await fs.writeFile(
+      path.join(dir, "nori.json"),
+      JSON.stringify({ name: "test-profile", version: "1.0.0" }),
+    );
 
     await listSkillsetsMain({
       installDir: testInstallDir,
@@ -143,7 +167,7 @@ describe("listSkillsetsMain", () => {
     });
 
     // Should default to claude-code
-    expect(mockRaw).toHaveBeenCalledWith({ message: "test-profile" });
+    expect(mockStdoutWrite).toHaveBeenCalledWith("test-profile\n");
   });
 });
 
@@ -152,13 +176,14 @@ describe("listSkillsetsMain output format", () => {
 
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(
-      path.join(tmpdir(), "list-skillsets-format-test-"),
+      path.join(os.tmpdir(), "list-skillsets-format-test-"),
     );
+    vi.mocked(os.homedir).mockReturnValue(testInstallDir);
     const testNoriDir = path.join(testInstallDir, ".nori");
     await fs.mkdir(testNoriDir, { recursive: true });
     AgentRegistry.resetInstance();
-    mockRaw.mockClear();
-    mockError.mockClear();
+    mockStdoutWrite.mockClear();
+    mockLogError.mockClear();
     mockExit.mockClear();
   });
 
@@ -175,17 +200,20 @@ describe("listSkillsetsMain output format", () => {
 
     const dir = path.join(profilesDir, "my-profile");
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, "CLAUDE.md"), "# my-profile");
+    await fs.writeFile(
+      path.join(dir, "nori.json"),
+      JSON.stringify({ name: "my-profile", version: "1.0.0" }),
+    );
 
     await listSkillsetsMain({
       installDir: testInstallDir,
       agent: "claude-code",
     });
 
-    // Verify raw was called (unformatted output)
-    expect(mockRaw).toHaveBeenCalledWith({ message: "my-profile" });
+    // Verify stdout was called (unformatted output)
+    expect(mockStdoutWrite).toHaveBeenCalledWith("my-profile\n");
     // Error should not be called
-    expect(mockError).not.toHaveBeenCalled();
+    expect(mockLogError).not.toHaveBeenCalled();
     expect(mockExit).not.toHaveBeenCalled();
   });
 });
@@ -195,11 +223,12 @@ describe("listSkillsetsMain error messages", () => {
 
   beforeEach(async () => {
     testInstallDir = await fs.mkdtemp(
-      path.join(tmpdir(), "list-skillsets-error-test-"),
+      path.join(os.tmpdir(), "list-skillsets-error-test-"),
     );
+    vi.mocked(os.homedir).mockReturnValue(testInstallDir);
     AgentRegistry.resetInstance();
-    mockRaw.mockClear();
-    mockError.mockClear();
+    mockStdoutWrite.mockClear();
+    mockLogError.mockClear();
     mockExit.mockClear();
   });
 
@@ -222,9 +251,9 @@ describe("listSkillsetsMain error messages", () => {
     });
 
     // Error message should include the install path
-    expect(mockError).toHaveBeenCalledWith({
-      message: expect.stringContaining(testInstallDir),
-    });
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.stringContaining(testInstallDir),
+    );
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
@@ -240,9 +269,9 @@ describe("listSkillsetsMain error messages", () => {
     });
 
     // Error message should include the agent display name
-    expect(mockError).toHaveBeenCalledWith({
-      message: expect.stringContaining("Claude Code"),
-    });
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.stringContaining("Claude Code"),
+    );
   });
 
   it("should list available agents in unknown agent error", async () => {
@@ -252,9 +281,9 @@ describe("listSkillsetsMain error messages", () => {
     });
 
     // Error message should list available agents
-    expect(mockError).toHaveBeenCalledWith({
-      message: expect.stringMatching(/Available:.*claude-code/),
-    });
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.stringMatching(/Available:.*claude-code/),
+    );
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 });

@@ -10,17 +10,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadConfig, saveConfig } from "@/cli/config.js";
 
+// Mock os.homedir so getConfigPath resolves to test directories
+vi.mock("os", async (importOriginal) => {
+  const actual = await importOriginal<typeof os>();
+  return {
+    ...actual,
+    homedir: vi.fn().mockReturnValue(actual.homedir()),
+  };
+});
+
 import { logoutMain } from "./logout.js";
 
-// Mock logger to suppress output during tests
-vi.mock("@/cli/logger.js", () => ({
-  info: vi.fn(),
-  success: vi.fn(),
-  error: vi.fn(),
-  warn: vi.fn(),
-  debug: vi.fn(),
-  newline: vi.fn(),
-  raw: vi.fn(),
+// Mock @clack/prompts for output
+vi.mock("@clack/prompts", () => ({
+  log: {
+    info: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    step: vi.fn(),
+  },
 }));
 
 describe("logout command", () => {
@@ -28,6 +37,7 @@ describe("logout command", () => {
 
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "logout-test-"));
+    vi.mocked(os.homedir).mockReturnValue(tempDir);
     vi.clearAllMocks();
   });
 
@@ -50,14 +60,14 @@ describe("logout command", () => {
       });
 
       // Verify auth exists before logout
-      const beforeLogout = await loadConfig({ installDir: tempDir });
+      const beforeLogout = await loadConfig({ startDir: tempDir });
       expect(beforeLogout?.auth).not.toBeNull();
 
       // Perform logout
-      await logoutMain({ installDir: tempDir });
+      await logoutMain({ installDir: tempDir, startDir: tempDir });
 
       // Verify auth is cleared
-      const afterLogout = await loadConfig({ installDir: tempDir });
+      const afterLogout = await loadConfig({ startDir: tempDir });
       expect(afterLogout?.auth).toBeNull();
 
       // Verify other fields are preserved
@@ -68,7 +78,7 @@ describe("logout command", () => {
     });
 
     it("should show info message when not logged in", async () => {
-      const { info } = await import("@/cli/logger.js");
+      const { log } = await import("@clack/prompts");
 
       // Create config without auth
       await saveConfig({
@@ -78,29 +88,25 @@ describe("logout command", () => {
         installDir: tempDir,
       });
 
-      await logoutMain({ installDir: tempDir });
+      await logoutMain({ installDir: tempDir, startDir: tempDir });
 
-      expect(info).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining("Not currently logged in"),
-        }),
+      expect(log.info).toHaveBeenCalledWith(
+        expect.stringContaining("Not currently logged in"),
       );
     });
 
     it("should show info message when no config exists", async () => {
-      const { info } = await import("@/cli/logger.js");
+      const { log } = await import("@clack/prompts");
 
-      await logoutMain({ installDir: tempDir });
+      await logoutMain({ installDir: tempDir, startDir: tempDir });
 
-      expect(info).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining("Not currently logged in"),
-        }),
+      expect(log.info).toHaveBeenCalledWith(
+        expect.stringContaining("Not currently logged in"),
       );
     });
 
     it("should show success message after logging out", async () => {
-      const { success } = await import("@/cli/logger.js");
+      const { log } = await import("@clack/prompts");
 
       // Create config with auth
       await saveConfig({
@@ -110,12 +116,10 @@ describe("logout command", () => {
         installDir: tempDir,
       });
 
-      await logoutMain({ installDir: tempDir });
+      await logoutMain({ installDir: tempDir, startDir: tempDir });
 
-      expect(success).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining("Logged out"),
-        }),
+      expect(log.success).toHaveBeenCalledWith(
+        expect.stringContaining("Logged out"),
       );
     });
 
@@ -134,17 +138,17 @@ describe("logout command", () => {
       });
 
       // Verify auth exists before logout
-      const beforeLogout = await loadConfig({ installDir: tempDir });
+      const beforeLogout = await loadConfig({ startDir: tempDir });
       expect(beforeLogout?.auth?.username).toBe("googleuser@gmail.com");
       expect(beforeLogout?.auth?.refreshToken).toBe(
         "firebase-refresh-token-from-google-sso",
       );
 
       // Perform logout
-      await logoutMain({ installDir: tempDir });
+      await logoutMain({ installDir: tempDir, startDir: tempDir });
 
       // Verify auth is cleared
-      const afterLogout = await loadConfig({ installDir: tempDir });
+      const afterLogout = await loadConfig({ startDir: tempDir });
       expect(afterLogout?.auth).toBeNull();
 
       // Verify other fields are preserved
@@ -154,84 +158,33 @@ describe("logout command", () => {
       expect(afterLogout?.autoupdate).toBe("disabled");
     });
 
-    it("should clear auth from .nori subdirectory config when no installDir provided", async () => {
-      const { success } = await import("@/cli/logger.js");
+    it("should clear auth when no installDir provided and config exists at homedir", async () => {
+      const { log } = await import("@clack/prompts");
 
-      // Create .nori subdirectory (mimics home directory installation pattern)
-      const noriSubdir = path.join(tempDir, ".nori");
-      await fs.mkdir(noriSubdir, { recursive: true });
-
-      // Create config with auth in the .nori subdirectory
+      // Create config with auth at home directory (centralized config)
       await saveConfig({
         username: "user@example.com",
         refreshToken: "mock-refresh-token",
         organizationUrl: "https://noriskillsets.dev",
         agents: { "claude-code": { profile: { baseProfile: "senior-swe" } } },
-        installDir: noriSubdir,
-      });
-
-      // Verify auth exists before logout
-      const beforeLogout = await loadConfig({ installDir: noriSubdir });
-      expect(beforeLogout?.auth?.username).toBe("user@example.com");
-
-      // Perform logout without installDir - should auto-detect the .nori subdirectory
-      await logoutMain({ searchDir: tempDir });
-
-      // Verify auth is cleared
-      const afterLogout = await loadConfig({ installDir: noriSubdir });
-      expect(afterLogout?.auth).toBeNull();
-
-      // Verify success message was shown
-      expect(success).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining("Logged out"),
-        }),
-      );
-    });
-
-    it("should clear auth from all detected installations when no installDir provided", async () => {
-      const { success } = await import("@/cli/logger.js");
-
-      // Create .nori subdirectory
-      const noriSubdir = path.join(tempDir, ".nori");
-      await fs.mkdir(noriSubdir, { recursive: true });
-
-      // Create config with auth at root level
-      await saveConfig({
-        username: "root-user@example.com",
-        refreshToken: "root-token",
-        organizationUrl: "https://noriskillsets.dev",
         installDir: tempDir,
       });
 
-      // Create config with auth in .nori subdirectory
-      await saveConfig({
-        username: "nori-user@example.com",
-        refreshToken: "nori-token",
-        organizationUrl: "https://noriskillsets.dev",
-        installDir: noriSubdir,
-      });
+      // Verify auth exists before logout
+      const beforeLogout = await loadConfig({ startDir: tempDir });
+      expect(beforeLogout?.auth?.username).toBe("user@example.com");
 
-      // Verify both have auth before logout
-      const rootBefore = await loadConfig({ installDir: tempDir });
-      const noriBefore = await loadConfig({ installDir: noriSubdir });
-      expect(rootBefore?.auth?.username).toBe("root-user@example.com");
-      expect(noriBefore?.auth?.username).toBe("nori-user@example.com");
+      // Perform logout without installDir - should find config at homedir
+      // Config is centralized at ~/.nori-config.json (os.homedir() mocked to tempDir)
+      await logoutMain({ startDir: tempDir });
 
-      // Perform logout without installDir - should clear auth from both
-      await logoutMain({ searchDir: tempDir });
+      // Verify auth is cleared
+      const afterLogout = await loadConfig({ startDir: tempDir });
+      expect(afterLogout?.auth).toBeNull();
 
-      // Verify auth is cleared from both
-      const rootAfter = await loadConfig({ installDir: tempDir });
-      const noriAfter = await loadConfig({ installDir: noriSubdir });
-      expect(rootAfter?.auth).toBeNull();
-      expect(noriAfter?.auth).toBeNull();
-
-      // Verify success message indicates multiple installations
-      expect(success).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining("2 installations"),
-        }),
+      // Verify success message was shown
+      expect(log.success).toHaveBeenCalledWith(
+        expect.stringContaining("Logged out"),
       );
     });
   });

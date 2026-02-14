@@ -62,7 +62,7 @@ describe("normalizeInstallDir", () => {
   });
 
   describe("edge cases", () => {
-    it("should handle empty string by using homedir", () => {
+    it("should handle empty string by using home directory", () => {
       const result = normalizeInstallDir({ installDir: "" });
       expect(result).toBe(os.homedir());
     });

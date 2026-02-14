@@ -11,3 +11,77 @@ export {
   type LoginFlowCallbacks,
   type LoginFlowResult,
 } from "./login.js";
+
+export {
+  switchSkillsetFlow,
+  type SwitchSkillsetCallbacks,
+  type SwitchSkillsetFlowResult,
+} from "./switchSkillset.js";
+
+export {
+  initFlow,
+  type InitFlowCallbacks,
+  type InitFlowResult,
+} from "./init.js";
+
+export { newSkillsetFlow, type NewSkillsetFlowResult } from "./newSkillset.js";
+
+export {
+  registerSkillsetFlow,
+  type RegisterSkillsetFlowResult,
+} from "./registerSkillset.js";
+
+export {
+  uploadFlow,
+  type UploadFlowCallbacks,
+  type UploadFlowResult,
+  type UploadResult,
+  type DetermineVersionResult,
+} from "./upload.js";
+
+export {
+  listVersionsFlow,
+  type ListVersionsFlowCallbacks,
+  type ListVersionsFlowResult,
+} from "./listVersions.js";
+
+export {
+  registrySearchFlow,
+  type RegistrySearchFlowCallbacks,
+  type RegistrySearchFlowResult,
+  type SearchFlowResult,
+} from "./registrySearch.js";
+
+export {
+  registryDownloadFlow,
+  type RegistryDownloadFlowCallbacks,
+  type RegistryDownloadFlowResult,
+  type DownloadSearchResult,
+  type DownloadActionResult,
+} from "./registryDownload.js";
+
+export {
+  skillDownloadFlow,
+  type SkillDownloadFlowCallbacks,
+  type SkillDownloadFlowResult,
+  type SkillSearchResult,
+  type SkillDownloadActionResult,
+} from "./skillDownload.js";
+
+export {
+  factoryResetFlow,
+  type FactoryResetFlowCallbacks,
+  type FactoryResetFlowResult,
+  type FactoryResetArtifact,
+  type FindArtifactsResult,
+} from "./factoryReset.js";
+
+export {
+  watchFlow,
+  type WatchFlowCallbacks,
+  type WatchFlowResult,
+  type PrepareResult,
+  type StartDaemonResult,
+} from "./watch.js";
+
+export { unwrapPrompt } from "./utils.js";

@@ -28,6 +28,7 @@ import { initMain } from "@/cli/commands/init/init.js";
 import { getRegistryAuth, loadConfig } from "@/cli/config.js";
 import { getNoriProfilesDir } from "@/cli/features/claude-code/paths.js";
 import { error, success, info, newline, raw } from "@/cli/logger.js";
+import { registryDownloadFlow } from "@/cli/prompts/flows/index.js";
 import { getInstallDirs } from "@/utils/path.js";
 import {
   parseNamespacedPackage,
@@ -35,6 +36,10 @@ import {
 } from "@/utils/url.js";
 
 import type { Config } from "@/cli/config.js";
+import type {
+  DownloadSearchResult,
+  DownloadActionResult,
+} from "@/cli/prompts/flows/index.js";
 import type { Command } from "commander";
 
 /**
@@ -99,22 +104,32 @@ const readNoriJson = async (args: {
 };
 
 /**
+ * Result of downloading a single skill dependency
+ */
+type SkillDependencyResult = {
+  downloaded: boolean;
+  warning?: string | null;
+};
+
+/**
  * Download and install a single skill dependency (always uses latest version)
  * @param args - The download parameters
  * @param args.skillName - The name of the skill to download
  * @param args.skillsDir - The directory where skills are installed
  * @param args.registryUrl - The registry URL to download from
  * @param args.authToken - Optional authentication token for private registries
+ * @param args.silent - If true, collect warnings as return values instead of logging
  *
- * @returns True if skill was downloaded/updated, false if skipped or failed
+ * @returns Result indicating whether the skill was downloaded and any warning
  */
 const downloadSkillDependency = async (args: {
   skillName: string;
   skillsDir: string;
   registryUrl: string;
   authToken?: string | null;
-}): Promise<boolean> => {
-  const { skillName, skillsDir, registryUrl, authToken } = args;
+  silent?: boolean | null;
+}): Promise<SkillDependencyResult> => {
+  const { skillName, skillsDir, registryUrl, authToken, silent } = args;
   const skillDir = path.join(skillsDir, skillName);
 
   try {
@@ -127,10 +142,11 @@ const downloadSkillDependency = async (args: {
 
     const latestVersion = packument["dist-tags"].latest;
     if (latestVersion == null) {
-      info({
-        message: `Warning: No latest version found for skill "${skillName}"`,
-      });
-      return false;
+      const warning = `Warning: No latest version found for skill "${skillName}"`;
+      if (!silent) {
+        info({ message: warning });
+      }
+      return { downloaded: false, warning };
     }
 
     // Check if skill already exists with same version
@@ -147,7 +163,7 @@ const downloadSkillDependency = async (args: {
       if (existingVersionInfo != null) {
         // Skip if already at latest version
         if (existingVersionInfo.version === latestVersion) {
-          return false; // Already installed with latest version
+          return { downloaded: false }; // Already installed with latest version
         }
       }
     }
@@ -209,13 +225,14 @@ const downloadSkillDependency = async (args: {
       ),
     );
 
-    return true;
+    return { downloaded: true };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    info({
-      message: `Warning: Failed to download skill "${skillName}": ${errorMessage}`,
-    });
-    return false;
+    const warning = `Warning: Failed to download skill "${skillName}": ${errorMessage}`;
+    if (!silent) {
+      info({ message: warning });
+    }
+    return { downloaded: false, warning };
   }
 };
 
@@ -226,30 +243,42 @@ const downloadSkillDependency = async (args: {
  * @param args.skillsDir - The directory where skills are installed
  * @param args.registryUrl - The registry URL to download from
  * @param args.authToken - Optional authentication token for private registries
+ * @param args.silent - If true, suppress log output and return warnings instead
+ *
+ * @returns Array of warning messages from failed dependency downloads
  */
 const downloadSkillDependencies = async (args: {
   noriJson: NoriJson;
   skillsDir: string;
   registryUrl: string;
   authToken?: string | null;
-}): Promise<void> => {
-  const { noriJson, skillsDir, registryUrl, authToken } = args;
+  silent?: boolean | null;
+}): Promise<Array<string>> => {
+  const { noriJson, skillsDir, registryUrl, authToken, silent } = args;
 
   const skillDeps = noriJson.dependencies?.skills;
   if (skillDeps == null || Object.keys(skillDeps).length === 0) {
-    return;
+    return [];
   }
 
-  info({ message: "Installing skill dependencies..." });
+  if (!silent) {
+    info({ message: "Installing skill dependencies..." });
+  }
 
+  const warnings: Array<string> = [];
   for (const skillName of Object.keys(skillDeps)) {
-    await downloadSkillDependency({
+    const result = await downloadSkillDependency({
       skillName,
       skillsDir,
       registryUrl,
       authToken,
+      silent,
     });
+    if (result.warning != null) {
+      warnings.push(result.warning);
+    }
   }
+  return warnings;
 };
 
 /**
@@ -513,6 +542,7 @@ export type RegistryDownloadResult = {
  * @param args.registryUrl - Optional registry URL to download from
  * @param args.listVersions - If true, list available versions instead of downloading
  * @param args.cliName - CLI name for user-facing messages (defaults to nori-skillsets)
+ * @param args.experimentalUi - If true, use the clack prompts flow UI
  *
  * @returns Result indicating success or failure
  */
@@ -523,8 +553,16 @@ export const registryDownloadMain = async (args: {
   registryUrl?: string | null;
   listVersions?: boolean | null;
   cliName?: CliName | null;
+  experimentalUi?: boolean | null;
 }): Promise<RegistryDownloadResult> => {
-  const { packageSpec, installDir, registryUrl, listVersions, cliName } = args;
+  const {
+    packageSpec,
+    installDir,
+    registryUrl,
+    listVersions,
+    cliName,
+    experimentalUi,
+  } = args;
   const cwd = args.cwd ?? process.cwd();
   const commandNames = getCommandNames({ cliName });
   const cliPrefix = cliName ?? "nori-skillsets";
@@ -542,12 +580,8 @@ export const registryDownloadMain = async (args: {
   const profileDisplayName =
     orgId === "public" ? packageName : `${orgId}/${packageName}`;
 
-  // Find installation directory
-  let targetInstallDir: string;
-
+  // Find installation directory and auto-init if needed
   if (installDir != null) {
-    targetInstallDir = installDir;
-
     // Check if installation exists at the specified directory
     const allInstallations = getInstallDirs({ currentDir: installDir });
     if (!allInstallations.includes(installDir)) {
@@ -570,49 +604,44 @@ export const registryDownloadMain = async (args: {
   } else {
     const allInstallations = getInstallDirs({ currentDir: cwd });
 
-    // Also check the home directory as it typically has registry auth configured
-    // For registry commands, prefer the home dir installation if it exists
+    // Check home directory for existing installation
     const homeDir = os.homedir();
     const homeInstallations = getInstallDirs({ currentDir: homeDir });
 
-    // Prefer the home dir if it has a Nori installation (typically has registry auth)
-    if (homeInstallations.includes(homeDir)) {
-      targetInstallDir = homeDir;
-    } else if (allInstallations.length === 0) {
-      // No installation found - auto-init at home directory (interactive to allow user prompts)
-      // Skip the profile persistence warning since users are just trying to download a profile
-      info({ message: "Setting up Nori for first time use..." });
-      try {
-        await initMain({
-          installDir: homeDir,
-          nonInteractive: false,
-          skipWarning: true,
-        });
-      } catch (err) {
+    if (!homeInstallations.includes(homeDir)) {
+      if (allInstallations.length === 0) {
+        // No installation found - auto-init at home directory (interactive to allow user prompts)
+        // Skip the profile persistence warning since users are just trying to download a profile
+        info({ message: "Setting up Nori for first time use..." });
+        try {
+          await initMain({
+            installDir: homeDir,
+            nonInteractive: false,
+            skipWarning: true,
+          });
+        } catch (err) {
+          error({
+            message: `Failed to initialize Nori: ${err instanceof Error ? err.message : String(err)}`,
+          });
+          return { success: false };
+        }
+      } else if (allInstallations.length > 1) {
+        const installList = allInstallations
+          .map((dir, index) => `${index + 1}. ${dir}`)
+          .join("\n");
+
         error({
-          message: `Failed to initialize Nori: ${err instanceof Error ? err.message : String(err)}`,
+          message: `Found multiple Nori installations. Cannot determine which one to use.\n\nInstallations found:\n${installList}\n\nPlease use --install-dir to specify the target installation.`,
         });
         return { success: false };
       }
-      targetInstallDir = homeDir;
-    } else if (allInstallations.length > 1) {
-      const installList = allInstallations
-        .map((dir, index) => `${index + 1}. ${dir}`)
-        .join("\n");
-
-      error({
-        message: `Found multiple Nori installations. Cannot determine which one to use.\n\nInstallations found:\n${installList}\n\nPlease use --install-dir to specify the target installation.`,
-      });
-      return { success: false };
-    } else {
-      targetInstallDir = allInstallations[0];
     }
   }
 
-  // Load config for registry auth
-  const config = await loadConfig({ installDir: targetInstallDir });
+  // Load config for registry auth - use os.homedir() since registry needs global auth
+  const config = await loadConfig({ startDir: os.homedir() });
 
-  const profilesDir = getNoriProfilesDir({ installDir: targetInstallDir });
+  const profilesDir = getNoriProfilesDir();
   // For namespaced packages, the profile is in a nested directory (e.g., profiles/myorg/my-profile)
   const targetDir =
     orgId === "public"
@@ -628,6 +657,347 @@ export const registryDownloadMain = async (args: {
     existingVersionInfo = await readVersionInfo({ dir: targetDir });
   } catch {
     // Directory doesn't exist - continue
+  }
+
+  if (experimentalUi) {
+    // Closure variable shared between onSearch and onDownload callbacks
+    let foundRegistry: RegistrySearchResult | null = null;
+    let resolvedTargetVersion = "";
+
+    const result = await registryDownloadFlow({
+      packageDisplayName: profileDisplayName,
+      callbacks: {
+        onSearch: async (): Promise<DownloadSearchResult> => {
+          // Inline search logic - mirrors the legacy path below
+          let flowSearchResults: Array<RegistrySearchResult>;
+
+          const hasUnifiedAuth =
+            config?.auth != null &&
+            config.auth.refreshToken != null &&
+            config.auth.organizations != null;
+
+          if (registryUrl != null) {
+            const publicRegistryUrl = buildOrganizationRegistryUrl({
+              orgId: "public",
+            });
+            if (
+              registryUrl !== REGISTRAR_URL &&
+              registryUrl !== publicRegistryUrl
+            ) {
+              let hasAuth = false;
+              if (hasUnifiedAuth) {
+                const userOrgs = config.auth!.organizations!;
+                for (const userOrgId of userOrgs) {
+                  const orgRegistryUrl = buildOrganizationRegistryUrl({
+                    orgId: userOrgId,
+                  });
+                  if (orgRegistryUrl === registryUrl) {
+                    hasAuth = true;
+                    break;
+                  }
+                }
+              }
+              if (!hasAuth) {
+                const registryAuth =
+                  config != null
+                    ? getRegistryAuth({ config, registryUrl })
+                    : null;
+                if (registryAuth == null) {
+                  return {
+                    status: "error",
+                    error: `No authentication configured for registry: ${registryUrl}`,
+                    hint: "Add registry credentials to your .nori-config.json file.",
+                  };
+                }
+              }
+            }
+
+            const { result: searchResult, error: searchError } =
+              await searchSpecificRegistry({
+                packageName,
+                registryUrl,
+                config,
+              });
+            if (searchError?.isNetworkError) {
+              return {
+                status: "error",
+                error: `Network error while connecting to ${registryUrl}:\n\n${searchError.message}`,
+              };
+            }
+            flowSearchResults = searchResult != null ? [searchResult] : [];
+          } else if (hasUnifiedAuth) {
+            const targetRegistryUrl = buildOrganizationRegistryUrl({ orgId });
+            const userOrgs = config.auth!.organizations!;
+
+            if (!userOrgs.includes(orgId)) {
+              return {
+                status: "error",
+                error: `You do not have access to organization "${orgId}".`,
+                hint: `Your available organizations: ${userOrgs.length > 0 ? userOrgs.join(", ") : "(none)"}`,
+              };
+            }
+
+            const registryAuth = {
+              registryUrl: targetRegistryUrl,
+              username: config.auth!.username,
+              refreshToken: config.auth!.refreshToken,
+            };
+
+            try {
+              const authToken = await getRegistryAuthToken({ registryAuth });
+              const packument = await registrarApi.getPackument({
+                packageName,
+                registryUrl: targetRegistryUrl,
+                authToken,
+              });
+              flowSearchResults = [
+                { registryUrl: targetRegistryUrl, packument, authToken },
+              ];
+            } catch (err) {
+              if (err instanceof NetworkError) {
+                return {
+                  status: "error",
+                  error: `Network error while connecting to ${targetRegistryUrl}:\n\n${err.message}`,
+                };
+              }
+              flowSearchResults = [];
+            }
+          } else if (orgId === "public") {
+            try {
+              const packument = await registrarApi.getPackument({
+                packageName,
+                registryUrl: REGISTRAR_URL,
+              });
+              flowSearchResults = [{ registryUrl: REGISTRAR_URL, packument }];
+            } catch (err) {
+              if (err instanceof NetworkError) {
+                return {
+                  status: "error",
+                  error: `Network error while connecting to registry:\n\n${err.message}`,
+                };
+              }
+              flowSearchResults = [];
+            }
+          } else {
+            return {
+              status: "error",
+              error: `Skillset "${orgId}/${packageName}" not found.`,
+              hint: `To download from organization "${orgId}", log in with:\n  nori-skillsets login`,
+            };
+          }
+
+          if (flowSearchResults.length === 0) {
+            return {
+              status: "error",
+              error: `Skillset "${profileDisplayName}" not found in any registry.`,
+            };
+          }
+
+          if (flowSearchResults.length > 1) {
+            return {
+              status: "error",
+              error: formatMultiplePackagesError({
+                packageName,
+                results: flowSearchResults,
+                cliName,
+              }),
+            };
+          }
+
+          foundRegistry = flowSearchResults[0];
+
+          if (listVersions) {
+            return {
+              status: "list-versions",
+              formattedVersionList: formatVersionList({
+                packageName,
+                packument: foundRegistry.packument,
+                registryUrl: foundRegistry.registryUrl,
+                cliName,
+              }),
+              versionCount: Object.keys(foundRegistry.packument.versions)
+                .length,
+            };
+          }
+
+          resolvedTargetVersion =
+            version ?? foundRegistry.packument["dist-tags"].latest;
+
+          if (profileExists && existingVersionInfo != null) {
+            const installedVersion = existingVersionInfo.version;
+            const installedValid = semver.valid(installedVersion) != null;
+            const targetValid = semver.valid(resolvedTargetVersion) != null;
+
+            if (installedValid && targetValid) {
+              if (semver.gte(installedVersion, resolvedTargetVersion)) {
+                let depWarnings: Array<string> = [];
+                const noriJson = await readNoriJson({ profileDir: targetDir });
+                if (noriJson != null) {
+                  const profileSkillsDir = path.join(targetDir, "skills");
+                  depWarnings = await downloadSkillDependencies({
+                    noriJson,
+                    skillsDir: profileSkillsDir,
+                    registryUrl: foundRegistry.registryUrl,
+                    authToken: foundRegistry.authToken,
+                    silent: true,
+                  });
+                }
+                return {
+                  status: "already-current",
+                  version: installedVersion,
+                  warnings: depWarnings,
+                };
+              }
+              return {
+                status: "ready",
+                targetVersion: resolvedTargetVersion,
+                isUpdate: true,
+                currentVersion: installedVersion,
+              };
+            } else if (installedVersion === resolvedTargetVersion) {
+              let depWarnings: Array<string> = [];
+              const noriJson = await readNoriJson({ profileDir: targetDir });
+              if (noriJson != null) {
+                const profileSkillsDir = path.join(targetDir, "skills");
+                depWarnings = await downloadSkillDependencies({
+                  noriJson,
+                  skillsDir: profileSkillsDir,
+                  registryUrl: foundRegistry.registryUrl,
+                  authToken: foundRegistry.authToken,
+                  silent: true,
+                });
+              }
+              return {
+                status: "already-current",
+                version: installedVersion,
+                warnings: depWarnings,
+              };
+            }
+          }
+
+          if (profileExists && existingVersionInfo == null) {
+            return {
+              status: "error",
+              error: `Skillset "${packageName}" already exists at:\n${targetDir}\n\nThis skillset has no version information (.nori-version file).`,
+              hint: `To reinstall:\n  rm -rf "${targetDir}"\n  ${cliPrefix} ${commandNames.download} ${packageName}`,
+            };
+          }
+
+          return {
+            status: "ready",
+            targetVersion: resolvedTargetVersion,
+            isUpdate: false,
+          };
+        },
+        onDownload: async (): Promise<DownloadActionResult> => {
+          const selectedRegistry = foundRegistry!;
+
+          try {
+            const tarballData = await registrarApi.downloadTarball({
+              packageName,
+              version: version ?? undefined,
+              registryUrl: selectedRegistry.registryUrl,
+              authToken: selectedRegistry.authToken ?? undefined,
+            });
+
+            if (profileExists) {
+              const tempDir = path.join(
+                profilesDir,
+                `.${packageName}-download-temp`,
+              );
+              await fs.mkdir(tempDir, { recursive: true });
+
+              try {
+                await extractTarball({ tarballData, targetDir: tempDir });
+              } catch (extractErr) {
+                await fs.rm(tempDir, { recursive: true, force: true });
+                throw extractErr;
+              }
+
+              const existingFiles = await fs.readdir(targetDir);
+              for (const file of existingFiles) {
+                if (file !== ".nori-version" && file !== "skills") {
+                  await fs.rm(path.join(targetDir, file), {
+                    recursive: true,
+                    force: true,
+                  });
+                }
+              }
+
+              const extractedFiles = await fs.readdir(tempDir);
+              for (const file of extractedFiles) {
+                if (file === "skills") {
+                  await fs.rm(path.join(tempDir, file), {
+                    recursive: true,
+                    force: true,
+                  });
+                  continue;
+                }
+                await fs.rename(
+                  path.join(tempDir, file),
+                  path.join(targetDir, file),
+                );
+              }
+
+              await fs.rm(tempDir, { recursive: true, force: true });
+            } else {
+              await fs.mkdir(targetDir, { recursive: true });
+
+              try {
+                await extractTarball({ tarballData, targetDir });
+              } catch (extractErr) {
+                await fs.rm(targetDir, { recursive: true, force: true });
+                throw extractErr;
+              }
+            }
+
+            await fs.writeFile(
+              path.join(targetDir, ".nori-version"),
+              JSON.stringify(
+                {
+                  version: resolvedTargetVersion,
+                  registryUrl: selectedRegistry.registryUrl,
+                },
+                null,
+                2,
+              ),
+            );
+
+            // Download skill dependencies and collect warnings
+            let warnings: Array<string> = [];
+            const noriJson = await readNoriJson({ profileDir: targetDir });
+            if (noriJson != null) {
+              const profileSkillsDir = path.join(targetDir, "skills");
+              warnings = await downloadSkillDependencies({
+                noriJson,
+                skillsDir: profileSkillsDir,
+                registryUrl: selectedRegistry.registryUrl,
+                authToken: selectedRegistry.authToken,
+                silent: true,
+              });
+            }
+
+            return {
+              success: true,
+              version: resolvedTargetVersion,
+              isUpdate: profileExists,
+              installedTo: targetDir,
+              switchHint: `${cliPrefix} ${commandNames.switchProfile} ${profileDisplayName}`,
+              profileDisplayName,
+              warnings,
+            };
+          } catch (err) {
+            const errorMessage =
+              err instanceof Error ? err.message : String(err);
+            return {
+              success: false,
+              error: `Failed to download skillset "${profileDisplayName}": ${errorMessage}`,
+            };
+          }
+        },
+      },
+    });
+    return { success: result != null };
   }
 
   // Search for the package
@@ -755,69 +1125,12 @@ export const registryDownloadMain = async (args: {
       searchResults = [];
     }
   } else {
-    // Namespaced package without unified auth in current config
-    // Check home directory for auth as fallback (common pattern: user-level login)
-    const homeDir = os.homedir();
-    const homeConfig = await loadConfig({ installDir: homeDir });
-    const homeHasUnifiedAuthWithOrgs =
-      homeConfig?.auth != null &&
-      homeConfig.auth.refreshToken != null &&
-      homeConfig.auth.organizations != null;
-
-    if (homeHasUnifiedAuthWithOrgs) {
-      // Use home dir auth for namespaced package
-      const targetRegistryUrl = buildOrganizationRegistryUrl({ orgId });
-      const userOrgs = homeConfig.auth!.organizations!;
-
-      // Check if user has access to this org
-      if (!userOrgs.includes(orgId)) {
-        const displayName = `${orgId}/${packageName}`;
-        error({
-          message: `You do not have access to organization "${orgId}".\n\nCannot download "${displayName}" from ${targetRegistryUrl}.\n\nYour available organizations: ${userOrgs.length > 0 ? userOrgs.join(", ") : "(none)"}`,
-        });
-        return { success: false };
-      }
-
-      // Get auth token for the org registry using home dir auth
-      const registryAuth = {
-        registryUrl: targetRegistryUrl,
-        username: homeConfig.auth!.username,
-        refreshToken: homeConfig.auth!.refreshToken,
-      };
-
-      try {
-        const authToken = await getRegistryAuthToken({ registryAuth });
-        const packument = await registrarApi.getPackument({
-          packageName,
-          registryUrl: targetRegistryUrl,
-          authToken,
-        });
-
-        searchResults = [
-          {
-            registryUrl: targetRegistryUrl,
-            packument,
-            authToken,
-          },
-        ];
-      } catch (err) {
-        if (err instanceof NetworkError) {
-          error({
-            message: `Network error while connecting to ${targetRegistryUrl}:\n\n${err.message}`,
-          });
-          return { success: false };
-        }
-        // API error (like 404) - package not found in org registry
-        searchResults = [];
-      }
-    } else {
-      // No auth anywhere - require login
-      const displayName = `${orgId}/${packageName}`;
-      error({
-        message: `Skillset "${displayName}" not found. To download from organization "${orgId}", log in with:\n\n  nori-skillsets login`,
-      });
-      return { success: false };
-    }
+    // Namespaced package without unified auth - require login
+    const displayName = `${orgId}/${packageName}`;
+    error({
+      message: `Skillset "${displayName}" not found. To download from organization "${orgId}", log in with:\n\n  nori-skillsets login`,
+    });
+    return { success: false };
   }
 
   // Handle search results

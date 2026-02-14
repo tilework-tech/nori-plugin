@@ -231,21 +231,25 @@ const downloadSkillDependency = async (args: {
  * @param args.skillsDir - The directory where skills are installed
  * @param args.registryUrl - The registry URL to download from
  * @param args.authToken - Optional authentication token for private registries
+ * @param args.silent - If true, suppress log output (used when clack spinner is active)
  */
 const downloadSkillDependencies = async (args: {
   noriJson: NoriJson;
   skillsDir: string;
   registryUrl: string;
   authToken?: string | null;
+  silent?: boolean | null;
 }): Promise<void> => {
-  const { noriJson, skillsDir, registryUrl, authToken } = args;
+  const { noriJson, skillsDir, registryUrl, authToken, silent } = args;
 
   const skillDeps = noriJson.dependencies?.skills;
   if (skillDeps == null || Object.keys(skillDeps).length === 0) {
     return;
   }
 
-  info({ message: "Installing skill dependencies..." });
+  if (!silent) {
+    info({ message: "Installing skill dependencies..." });
+  }
 
   for (const skillName of Object.keys(skillDeps)) {
     await downloadSkillDependency({
@@ -814,6 +818,7 @@ export const registryDownloadMain = async (args: {
                     skillsDir: profileSkillsDir,
                     registryUrl: foundRegistry.registryUrl,
                     authToken: foundRegistry.authToken,
+                    silent: true,
                   });
                 }
                 return {
@@ -836,6 +841,7 @@ export const registryDownloadMain = async (args: {
                   skillsDir: profileSkillsDir,
                   registryUrl: foundRegistry.registryUrl,
                   authToken: foundRegistry.authToken,
+                  silent: true,
                 });
               }
               return {
@@ -943,6 +949,7 @@ export const registryDownloadMain = async (args: {
                 skillsDir: profileSkillsDir,
                 registryUrl: selectedRegistry.registryUrl,
                 authToken: selectedRegistry.authToken,
+                silent: true,
               });
             }
 

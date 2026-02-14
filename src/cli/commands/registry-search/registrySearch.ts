@@ -484,11 +484,25 @@ const performSearch = async (args: {
     cliName,
   });
 
+  const skillsetCount = results.reduce(
+    (sum, r) =>
+      sum +
+      (r.profileResult.error == null ? r.profileResult.packages.length : 0),
+    0,
+  );
+  const skillCount = results.reduce(
+    (sum, r) =>
+      sum + (r.skillResult.error == null ? r.skillResult.skills.length : 0),
+    0,
+  );
+
   return {
     success: true,
     hasResults: true,
     formattedResults,
     downloadHints,
+    skillsetCount,
+    skillCount,
   };
 };
 

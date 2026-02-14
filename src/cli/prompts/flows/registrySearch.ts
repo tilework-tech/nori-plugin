@@ -21,6 +21,8 @@ export type SearchFlowResult =
       hasResults: true;
       formattedResults: string;
       downloadHints: string;
+      skillsetCount: number;
+      skillCount: number;
     }
   | { success: true; hasResults: false; query: string }
   | { success: false; error: string };
@@ -76,7 +78,7 @@ export const registrySearchFlow = async (args: {
 
   if (!searchResult.hasResults) {
     log.info(`No skillsets or skills found matching "${searchResult.query}".`);
-    outro("Search complete");
+    outro("Search returned no results");
     return { found: false };
   }
 
@@ -86,6 +88,16 @@ export const registrySearchFlow = async (args: {
     log.info(searchResult.downloadHints);
   }
 
-  outro("Search complete");
+  const { skillsetCount, skillCount } = searchResult;
+  const parts: Array<string> = [];
+  if (skillsetCount > 0) {
+    parts.push(
+      `${skillsetCount} ${skillsetCount === 1 ? "skillset" : "skillsets"}`,
+    );
+  }
+  if (skillCount > 0) {
+    parts.push(`${skillCount} ${skillCount === 1 ? "skill" : "skills"}`);
+  }
+  outro(`Search returned ${parts.join(" and ")}`);
   return { found: true };
 };

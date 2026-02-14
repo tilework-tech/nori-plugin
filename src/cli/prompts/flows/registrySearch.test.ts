@@ -48,6 +48,8 @@ describe("registrySearchFlow", () => {
           "Skillsets:\npublic:\n  my-skillset - A test skillset",
         downloadHints:
           "To install a skillset, run: nori-skillsets download <package-name>",
+        skillsetCount: 1,
+        skillCount: 0,
       }),
     };
   });
@@ -97,10 +99,10 @@ describe("registrySearchFlow", () => {
       );
     });
 
-    it("should show outro", async () => {
+    it("should show outro with count", async () => {
       await registrySearchFlow({ callbacks: mockCallbacks });
 
-      expect(clack.outro).toHaveBeenCalledWith("Search complete");
+      expect(clack.outro).toHaveBeenCalledWith("Search returned 1 skillset");
     });
 
     it("should return found: true", async () => {
@@ -133,10 +135,10 @@ describe("registrySearchFlow", () => {
       expect(clack.note).not.toHaveBeenCalled();
     });
 
-    it("should show outro", async () => {
+    it("should show outro with no results message", async () => {
       await registrySearchFlow({ callbacks: mockCallbacks });
 
-      expect(clack.outro).toHaveBeenCalledWith("Search complete");
+      expect(clack.outro).toHaveBeenCalledWith("Search returned no results");
     });
 
     it("should return found: false", async () => {
@@ -195,6 +197,8 @@ describe("registrySearchFlow", () => {
         hasResults: true,
         formattedResults: "Skillsets:\npublic:\n  my-skillset",
         downloadHints: "",
+        skillsetCount: 1,
+        skillCount: 0,
       });
     });
 
@@ -208,7 +212,7 @@ describe("registrySearchFlow", () => {
       await registrySearchFlow({ callbacks: mockCallbacks });
 
       expect(clack.note).toHaveBeenCalled();
-      expect(clack.outro).toHaveBeenCalledWith("Search complete");
+      expect(clack.outro).toHaveBeenCalledWith("Search returned 1 skillset");
     });
   });
 });

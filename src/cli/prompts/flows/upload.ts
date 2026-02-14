@@ -69,6 +69,7 @@ export type UploadFlowResult = {
   extractedSkills?: ExtractedSkillsSummary | null;
   linkedSkillIds: Set<string>;
   namespacedSkillIds: Set<string>;
+  skippedSkillIds: Set<string>;
 } | null;
 
 /**
@@ -112,13 +113,21 @@ const buildResolutionOptions = (args: {
     });
   }
 
-  // "link" is only available when content is unchanged
-  if (contentUnchanged && conflict.availableActions.includes("link")) {
-    options.push({
-      value: "link",
-      label: "Use Existing",
-      hint: `Link to existing v${conflict.latestVersion ?? "?"}`,
-    });
+  // "link" action has two presentations depending on content status
+  if (conflict.availableActions.includes("link")) {
+    if (contentUnchanged) {
+      options.push({
+        value: "link",
+        label: "Use Existing",
+        hint: `Link to existing v${conflict.latestVersion ?? "?"}`,
+      });
+    } else {
+      options.push({
+        value: "link",
+        label: "Skip Upload",
+        hint: "Keep in manifest at current version",
+      });
+    }
   }
 
   return options;
@@ -334,11 +343,144 @@ const buildAutoResolutionStrategy = (args: {
 };
 
 /**
+ * Build resolution options common to all unresolved conflicts for batch mode.
+ * Only includes actions available across ALL conflicts.
+ *
+ * @param args - The function arguments
+ * @param args.conflicts - Array of unresolved skill conflicts
+ * @param args.profileName - The profile name for namespace preview
+ *
+ * @returns Array of resolution options available for all conflicts
+ */
+const buildCommonResolutionOptions = (args: {
+  conflicts: Array<SkillConflict>;
+  profileName: string;
+}): Array<{ value: SkillResolutionAction; label: string; hint?: string }> => {
+  const { conflicts, profileName } = args;
+
+  if (conflicts.length === 0) {
+    return [];
+  }
+
+  // Find actions common to ALL conflicts
+  const firstActions = new Set(conflicts[0].availableActions);
+  const commonActions = conflicts.reduce((common, conflict) => {
+    const actionSet = new Set(conflict.availableActions);
+    return new Set([...common].filter((a) => actionSet.has(a)));
+  }, firstActions);
+
+  const options: Array<{
+    value: SkillResolutionAction;
+    label: string;
+    hint?: string;
+  }> = [];
+
+  if (commonActions.has("updateVersion")) {
+    options.push({
+      value: "updateVersion",
+      label: "Update Version",
+      hint: "Publish each as new version of existing skill",
+    });
+  }
+
+  if (commonActions.has("namespace")) {
+    options.push({
+      value: "namespace",
+      label: "Namespace",
+      hint: `Rename each to ${profileName}-<skillId>`,
+    });
+  }
+
+  // All unresolved conflicts here have changed content, so "link" = "Skip Upload"
+  if (commonActions.has("link")) {
+    options.push({
+      value: "link",
+      label: "Skip Upload",
+      hint: "Keep all in manifest at current version",
+    });
+  }
+
+  return options;
+};
+
+/**
+ * Format unresolved conflicts for display in a note before batch prompting
+ *
+ * @param args - The function arguments
+ * @param args.conflicts - Array of unresolved skill conflicts
+ *
+ * @returns Formatted string listing all unresolved conflicts
+ */
+const formatUnresolvedConflictsForNote = (args: {
+  conflicts: Array<SkillConflict>;
+}): string => {
+  const { conflicts } = args;
+  const lines: Array<string> = [];
+
+  for (const conflict of conflicts) {
+    const versionInfo =
+      conflict.latestVersion != null ? ` (v${conflict.latestVersion})` : "";
+    lines.push(`  ${conflict.skillId}${versionInfo}`);
+  }
+
+  return lines.join("\n");
+};
+
+/**
+ * Resolve all unresolved conflicts with a single action chosen by the user.
+ * For "updateVersion", each skill gets its own incremented version.
+ *
+ * @param args - The function arguments
+ * @param args.conflicts - Array of unresolved skill conflicts
+ * @param args.profileName - The profile name for namespace preview
+ * @param args.cancelMessage - Message to display on cancel
+ *
+ * @returns Resolution strategy or null if cancelled
+ */
+const resolveAllConflictsSameWay = async (args: {
+  conflicts: Array<SkillConflict>;
+  profileName: string;
+  cancelMessage: string;
+}): Promise<SkillResolutionStrategy | null> => {
+  const { conflicts, profileName, cancelMessage } = args;
+
+  const options = buildCommonResolutionOptions({ conflicts, profileName });
+
+  const action = unwrapPrompt({
+    value: await select({
+      message: "How should all conflicts be resolved?",
+      options,
+    }),
+    cancelMessage,
+  });
+
+  if (action == null) return null;
+
+  const strategy: SkillResolutionStrategy = {};
+
+  if (action === "updateVersion") {
+    for (const conflict of conflicts) {
+      const version = getSuggestedVersion({
+        currentVersion: conflict.latestVersion,
+      });
+      strategy[conflict.skillId] = { action: "updateVersion", version };
+    }
+  } else {
+    for (const conflict of conflicts) {
+      strategy[conflict.skillId] = { action };
+    }
+  }
+
+  return strategy;
+};
+
+/**
  * Format skill summary for display in a note
  * @param args - The function arguments
  * @param args.extractedSkills - Skills extracted during upload
  * @param args.linkedSkillIds - Set of skill IDs that were linked
  * @param args.namespacedSkillIds - Set of skill IDs that were namespaced
+ * @param args.skippedSkillIds - Set of skill IDs that were skipped
  *
  * @returns Formatted skill summary string or null if no skills
  */
@@ -346,8 +488,14 @@ const formatSkillSummaryForNote = (args: {
   extractedSkills?: ExtractedSkillsSummary | null;
   linkedSkillIds: Set<string>;
   namespacedSkillIds: Set<string>;
+  skippedSkillIds: Set<string>;
 }): string | null => {
-  const { extractedSkills, linkedSkillIds, namespacedSkillIds } = args;
+  const {
+    extractedSkills,
+    linkedSkillIds,
+    namespacedSkillIds,
+    skippedSkillIds,
+  } = args;
 
   if (extractedSkills == null) {
     return null;
@@ -361,12 +509,18 @@ const formatSkillSummaryForNote = (args: {
 
   const lines: Array<string> = ["Skills:"];
 
-  const linkedSkills = succeeded.filter((s) => linkedSkillIds.has(s.name));
+  const skippedSkills = succeeded.filter((s) => skippedSkillIds.has(s.name));
+  const linkedSkills = succeeded.filter(
+    (s) => linkedSkillIds.has(s.name) && !skippedSkillIds.has(s.name),
+  );
   const namespacedSkills = succeeded.filter((s) =>
     namespacedSkillIds.has(s.name),
   );
   const uploadedSkills = succeeded.filter(
-    (s) => !linkedSkillIds.has(s.name) && !namespacedSkillIds.has(s.name),
+    (s) =>
+      !linkedSkillIds.has(s.name) &&
+      !namespacedSkillIds.has(s.name) &&
+      !skippedSkillIds.has(s.name),
   );
 
   if (uploadedSkills.length > 0) {
@@ -386,6 +540,13 @@ const formatSkillSummaryForNote = (args: {
   if (namespacedSkills.length > 0) {
     lines.push("  Namespaced:");
     for (const skill of namespacedSkills) {
+      lines.push(`    - ${skill.name}@${skill.version}`);
+    }
+  }
+
+  if (skippedSkills.length > 0) {
+    lines.push("  Skipped:");
+    for (const skill of skippedSkills) {
       lines.push(`    - ${skill.name}@${skill.version}`);
     }
   }
@@ -494,6 +655,7 @@ export const uploadFlow = async (args: {
   // Track resolution actions for summary
   const linkedSkillIds = new Set<string>();
   const namespacedSkillIds = new Set<string>();
+  const skippedSkillIds = new Set<string>();
 
   // Show intro first
   intro(`Upload ${profileDisplayName} to ${registryUrl}`);
@@ -539,11 +701,59 @@ export const uploadFlow = async (args: {
       // Interactive resolution needed
       uploadSpinner.stop("Skill conflicts detected");
 
-      const interactiveStrategy = await resolveConflictsInFlow({
-        conflicts: unresolvedConflicts,
-        profileName,
-        cancelMessage: cancelMsg,
-      });
+      let interactiveStrategy: SkillResolutionStrategy | null = null;
+
+      if (unresolvedConflicts.length > 1) {
+        // Show all conflicts in a note, then ask batch vs one-by-one
+        note(
+          formatUnresolvedConflictsForNote({ conflicts: unresolvedConflicts }),
+          `${unresolvedConflicts.length} conflicts require resolution`,
+        );
+
+        const batchChoice = unwrapPrompt({
+          value: await select({
+            message: "How would you like to resolve these conflicts?",
+            options: [
+              {
+                value: "all-same" as const,
+                label: "Resolve all the same way",
+                hint: "Apply a single resolution to all conflicts",
+              },
+              {
+                value: "one-by-one" as const,
+                label: "Choose one-by-one",
+                hint: "Resolve each conflict individually",
+              },
+            ],
+          }),
+          cancelMessage: cancelMsg,
+        });
+
+        if (batchChoice == null) {
+          return null;
+        }
+
+        if (batchChoice === "all-same") {
+          interactiveStrategy = await resolveAllConflictsSameWay({
+            conflicts: unresolvedConflicts,
+            profileName,
+            cancelMessage: cancelMsg,
+          });
+        } else {
+          interactiveStrategy = await resolveConflictsInFlow({
+            conflicts: unresolvedConflicts,
+            profileName,
+            cancelMessage: cancelMsg,
+          });
+        }
+      } else {
+        // Single unresolved conflict — go straight to individual resolution
+        interactiveStrategy = await resolveConflictsInFlow({
+          conflicts: unresolvedConflicts,
+          profileName,
+          cancelMessage: cancelMsg,
+        });
+      }
 
       if (interactiveStrategy == null) {
         return null;
@@ -552,6 +762,13 @@ export const uploadFlow = async (args: {
       // Track resolution actions
       for (const [skillId, resolution] of Object.entries(interactiveStrategy)) {
         if (resolution.action === "link") {
+          // Determine if this is a "skip" (changed content) or genuine link (unchanged)
+          const conflict = unresolvedConflicts.find(
+            (c) => c.skillId === skillId,
+          );
+          if (conflict != null && conflict.contentUnchanged !== true) {
+            skippedSkillIds.add(skillId);
+          }
           linkedSkillIds.add(skillId);
         } else if (resolution.action === "namespace") {
           namespacedSkillIds.add(skillId);
@@ -591,6 +808,7 @@ export const uploadFlow = async (args: {
     extractedSkills: result.extractedSkills,
     linkedSkillIds,
     namespacedSkillIds,
+    skippedSkillIds,
   });
 
   const summaryLines: Array<string> = [];
@@ -613,5 +831,6 @@ export const uploadFlow = async (args: {
     extractedSkills: result.extractedSkills,
     linkedSkillIds,
     namespacedSkillIds,
+    skippedSkillIds,
   };
 };

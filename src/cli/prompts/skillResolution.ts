@@ -63,13 +63,21 @@ const buildResolutionOptions = (args: {
     });
   }
 
-  // "link" is only available when content is unchanged
-  if (contentUnchanged && conflict.availableActions.includes("link")) {
-    options.push({
-      value: "link",
-      label: "Use Existing",
-      hint: `Link to existing v${conflict.latestVersion ?? "?"}`,
-    });
+  // "link" action has two presentations depending on content status
+  if (conflict.availableActions.includes("link")) {
+    if (contentUnchanged) {
+      options.push({
+        value: "link",
+        label: "Use Existing",
+        hint: `Link to existing v${conflict.latestVersion ?? "?"}`,
+      });
+    } else {
+      options.push({
+        value: "link",
+        label: "Skip Upload",
+        hint: "Keep in manifest at current version",
+      });
+    }
   }
 
   return options;

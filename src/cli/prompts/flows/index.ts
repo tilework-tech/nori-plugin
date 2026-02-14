@@ -46,6 +46,14 @@ export {
 } from "./listVersions.js";
 
 export {
+  factoryResetFlow,
+  type FactoryResetFlowCallbacks,
+  type FactoryResetFlowResult,
+  type FactoryResetArtifact,
+  type FindArtifactsResult,
+} from "./factoryReset.js";
+
+export {
   watchFlow,
   type WatchFlowCallbacks,
   type WatchFlowResult,

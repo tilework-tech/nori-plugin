@@ -122,7 +122,7 @@ describe("selectSkillResolution", () => {
       });
     });
 
-    it("should NOT show link option when content has changed even if API allows it", async () => {
+    it("should show link as 'Skip Upload' when content has changed and API allows link", async () => {
       const conflicts: Array<SkillConflict> = [
         {
           skillId: "changed-skill",
@@ -143,12 +143,18 @@ describe("selectSkillResolution", () => {
       });
 
       const selectCall = vi.mocked(clack.select).mock.calls[0][0];
-      const options = selectCall.options as Array<{ value: string }>;
+      const options = selectCall.options as Array<{
+        value: string;
+        label: string;
+      }>;
       const optionValues = options.map((o) => o.value);
 
-      expect(optionValues).not.toContain("link");
+      expect(optionValues).toContain("link");
       expect(optionValues).toContain("namespace");
       expect(optionValues).toContain("updateVersion");
+
+      const linkOption = options.find((o) => o.value === "link");
+      expect(linkOption?.label).toBe("Skip Upload");
     });
   });
 
@@ -479,6 +485,72 @@ describe("selectSkillResolution", () => {
       const namespaceOption = options.find((o) => o.value === "namespace");
 
       expect(namespaceOption?.hint).toContain("test-profile-my-skill");
+    });
+  });
+
+  describe("skip upload option", () => {
+    it("should show skip option for changed skills when link is in availableActions", async () => {
+      const conflicts: Array<SkillConflict> = [
+        {
+          skillId: "changed-skill",
+          exists: true,
+          canPublish: true,
+          latestVersion: "1.0.0",
+          owner: "me@example.com",
+          availableActions: ["cancel", "namespace", "updateVersion", "link"],
+          contentUnchanged: false,
+        },
+      ];
+
+      vi.mocked(clack.select).mockResolvedValueOnce("link");
+
+      const result = await selectSkillResolution({
+        conflicts,
+        profileName: "my-profile",
+      });
+
+      const selectCall = vi.mocked(clack.select).mock.calls[0][0];
+      const options = selectCall.options as Array<{
+        value: string;
+        label: string;
+      }>;
+      const skipOption = options.find((o) => o.value === "link");
+      expect(skipOption).toBeDefined();
+      expect(skipOption?.label).toBe("Skip Upload");
+      expect(result).toEqual({
+        "changed-skill": { action: "link" },
+      });
+    });
+
+    it("should NOT show skip option for unchanged skills", async () => {
+      const conflicts: Array<SkillConflict> = [
+        {
+          skillId: "unchanged-skill",
+          exists: true,
+          canPublish: false,
+          latestVersion: "1.0.0",
+          owner: "other@example.com",
+          availableActions: ["cancel", "namespace", "link"],
+          contentUnchanged: true,
+        },
+      ];
+
+      vi.mocked(clack.select).mockResolvedValueOnce("link");
+
+      await selectSkillResolution({
+        conflicts,
+        profileName: "my-profile",
+      });
+
+      const selectCall = vi.mocked(clack.select).mock.calls[0][0];
+      const options = selectCall.options as Array<{
+        value: string;
+        label: string;
+      }>;
+      const linkOption = options.find((o) => o.value === "link");
+      expect(linkOption).toBeDefined();
+      // For unchanged skills, it should say "Use Existing", not "Skip Upload"
+      expect(linkOption?.label).toBe("Use Existing");
     });
   });
 

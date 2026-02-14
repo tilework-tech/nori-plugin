@@ -523,8 +523,8 @@ export const registrySearchMain = async (args: {
     }
   }
 
-  // Load config to check for org auth
-  const config = await loadConfig();
+  // Load config to check for org auth - use os.homedir() since registry needs global auth
+  const config = await loadConfig({ startDir: os.homedir() });
 
   if (experimentalUi) {
     await registrySearchFlow({
